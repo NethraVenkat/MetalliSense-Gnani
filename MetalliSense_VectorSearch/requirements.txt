@@ -1,0 +1,10 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+sentence-transformers==2.7.0
+numpy
+python-dotenv
+# Optional — enables the real Actian VectorAI DB instead of the local
+# fallback. Confirmed real package name is actian-vectorai-client (not
+# actian-vectorai). Safe to leave uninstalled; everything still works.
+# actian-vectorai-client
