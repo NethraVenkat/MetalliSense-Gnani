@@ -1,0 +1,40 @@
+{
+  "domain": "melt.automconsultancy.in",
+  "project": "metallisense-static-demo",
+  "attached": true,
+  "ownershipVerified": true,
+  "configurationStatus": "configured-correctly",
+  "requiredRecords": [
+    {
+      "type": "CNAME",
+      "host": "melt",
+      "value": "d61a65b3f451dbaa.vercel-dns-017.com",
+      "dnsResolved": true
+    },
+    {
+      "type": "TXT",
+      "host": "_vercel",
+      "value": "vc-domain-verify=melt.automconsultancy.in,b1ca39762e05e2764d64"
+    }
+  ],
+  "txtVerificationRequired": true,
+  "status": "LIVE",
+  "userReportedRecordAdded": true,
+  "dnsChecks": {
+    "localResolver": "NXDOMAIN",
+    "cloudflare": "NXDOMAIN",
+    "google": "parent domain and subdomain NXDOMAIN",
+    "inRegistry": "parent domain and subdomain NXDOMAIN"
+  },
+  "originalTypo": "melt.automconsulotancy.in",
+  "projectVerified": true,
+  "vercelMessage": "melt.automconsultancy.in has a valid configuration and is verified for project metallisense-static-demo.",
+  "httpsVerified": true,
+  "httpsHttpStatus": 200,
+  "directDeepLinkHttpStatus": 200,
+  "url": "https://melt.automconsultancy.in",
+  "deepLinkRefreshVerified": true,
+  "browserRoutesVerified": 23,
+  "browserErrors": 0,
+  "backendRequests": 0
+}

@@ -1,0 +1,397 @@
+[
+  {
+    "grade": "SG-IRON",
+    "case": "midpoint",
+    "composition": {
+      "Fe": 86.0,
+      "C": 3.5,
+      "Si": 2.3,
+      "Mn": 0.65,
+      "P": 0.045,
+      "S": 0.02
+    },
+    "anomaly": {
+      "anomaly_score": 0.09779341349785578,
+      "severity": "LOW",
+      "message": "Composition appears normal with expected characteristics.",
+      "raw_score": -0.4030218913738794
+    },
+    "alloy": {
+      "recommended_additions": {},
+      "confidence": 1.0,
+      "message": "Composition is within specification. No corrections needed.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "SG-IRON",
+    "case": "low",
+    "composition": {
+      "Fe": 86.0,
+      "C": 1.5,
+      "Si": 0.9,
+      "Mn": 0.15,
+      "P": 0.045,
+      "S": 0.02
+    },
+    "anomaly": {
+      "anomaly_score": 0.6993518117826351,
+      "severity": "HIGH",
+      "message": "High anomaly detected. Potential sensor drift or unstable melt chemistry.",
+      "raw_score": -0.5896950903732294
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 0.3194,
+        "C": 0.775,
+        "Si": 0.1486,
+        "Mn": 0.6577
+      },
+      "confidence": 0.5309440000000001,
+      "message": "Low confidence. Large corrections needed. Manual review recommended.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "SG-IRON",
+    "case": "high",
+    "composition": {
+      "Fe": 86.0,
+      "C": 5.6,
+      "Si": 2.3,
+      "Mn": 0.65,
+      "P": 0.11199999999999999,
+      "S": 0.041999999999999996
+    },
+    "anomaly": {
+      "anomaly_score": 0.833966533443676,
+      "severity": "HIGH",
+      "message": "High anomaly detected. Potential sensor drift or unstable melt chemistry.",
+      "raw_score": -0.6314681930288049
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 1.0
+      },
+      "confidence": 0.7,
+      "message": "Elements too high: C, P, S. Dilution recommended.",
+      "warning": "Elements C, P, S exceed specification. Consider dilution with base metal or re-melting."
+    }
+  },
+  {
+    "grade": "GREY-IRON",
+    "case": "midpoint",
+    "composition": {
+      "Fe": 88.5,
+      "C": 3.15,
+      "Si": 1.75,
+      "Mn": 0.8,
+      "P": 0.08499999999999999,
+      "S": 0.06999999999999999
+    },
+    "anomaly": {
+      "anomaly_score": 0.1401478706440008,
+      "severity": "LOW",
+      "message": "Composition appears normal with expected characteristics.",
+      "raw_score": -0.4161651573143024
+    },
+    "alloy": {
+      "recommended_additions": {},
+      "confidence": 1.0,
+      "message": "Composition is within specification. No corrections needed.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "GREY-IRON",
+    "case": "low",
+    "composition": {
+      "Fe": 88.5,
+      "C": 1.25,
+      "Si": 0.5,
+      "Mn": 0.2,
+      "P": 0.08499999999999999,
+      "S": 0.06999999999999999
+    },
+    "anomaly": {
+      "anomaly_score": 0.7749510134169469,
+      "severity": "HIGH",
+      "message": "High anomaly detected. Potential sensor drift or unstable melt chemistry.",
+      "raw_score": -0.6131547326143025
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 0.9012,
+        "C": 0.6675,
+        "Si": 0.0189,
+        "Mn": 0.7425
+      },
+      "confidence": 0.501092,
+      "message": "Low confidence. Large corrections needed. Manual review recommended.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "GREY-IRON",
+    "case": "high",
+    "composition": {
+      "Fe": 88.5,
+      "C": 5.319999999999999,
+      "Si": 1.75,
+      "Mn": 0.8,
+      "P": 0.21,
+      "S": 0.16799999999999998
+    },
+    "anomaly": {
+      "anomaly_score": 0.9291207522346542,
+      "severity": "HIGH",
+      "message": "High anomaly detected. Potential sensor drift or unstable melt chemistry.",
+      "raw_score": -0.6609960700738977
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 1.0
+      },
+      "confidence": 0.7,
+      "message": "Elements too high: C, P, S. Dilution recommended.",
+      "warning": "Elements C, P, S exceed specification. Consider dilution with base metal or re-melting."
+    }
+  },
+  {
+    "grade": "LOW-CARBON-STEEL",
+    "case": "midpoint",
+    "composition": {
+      "Fe": 98.75,
+      "C": 0.15,
+      "Si": 0.3,
+      "Mn": 0.6,
+      "P": 0.025,
+      "S": 0.030000000000000002
+    },
+    "anomaly": {
+      "anomaly_score": 0.012067100830587887,
+      "severity": "LOW",
+      "message": "Composition appears normal with expected characteristics.",
+      "raw_score": -0.3764196444936993
+    },
+    "alloy": {
+      "recommended_additions": {},
+      "confidence": 1.0,
+      "message": "Composition is within specification. No corrections needed.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "LOW-CARBON-STEEL",
+    "case": "low",
+    "composition": {
+      "Fe": 98.75,
+      "C": 0.025,
+      "Si": 0.05,
+      "Mn": 0.15,
+      "P": 0.025,
+      "S": 0.030000000000000002
+    },
+    "anomaly": {
+      "anomaly_score": 0.6167389560823018,
+      "severity": "MEDIUM",
+      "message": "Moderate anomaly detected. Consider verifying sensor calibration.",
+      "raw_score": -0.5640589990211272
+    },
+    "alloy": {
+      "recommended_additions": {
+        "C": 0.1252,
+        "Si": 0.2486,
+        "Mn": 0.45
+      },
+      "confidence": 0.759346,
+      "message": "Moderate confidence. Consider verifying with metallurgical expert.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "LOW-CARBON-STEEL",
+    "case": "high",
+    "composition": {
+      "Fe": 98.75,
+      "C": 0.35,
+      "Si": 0.3,
+      "Mn": 0.6,
+      "P": 0.055999999999999994,
+      "S": 0.06999999999999999
+    },
+    "anomaly": {
+      "anomaly_score": 0.736988406012066,
+      "severity": "HIGH",
+      "message": "High anomaly detected. Potential sensor drift or unstable melt chemistry.",
+      "raw_score": -0.6013743279406557
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 1.0
+      },
+      "confidence": 0.7,
+      "message": "Elements too high: C, P, S. Dilution recommended.",
+      "warning": "Elements C, P, S exceed specification. Consider dilution with base metal or re-melting."
+    }
+  },
+  {
+    "grade": "MEDIUM-CARBON-STEEL",
+    "case": "midpoint",
+    "composition": {
+      "Fe": 98.25,
+      "C": 0.44999999999999996,
+      "Si": 0.375,
+      "Mn": 1.0,
+      "P": 0.025,
+      "S": 0.030000000000000002
+    },
+    "anomaly": {
+      "anomaly_score": 0.006834884655972098,
+      "severity": "LOW",
+      "message": "Composition appears normal with expected characteristics.",
+      "raw_score": -0.37479600407249236
+    },
+    "alloy": {
+      "recommended_additions": {},
+      "confidence": 1.0,
+      "message": "Composition is within specification. No corrections needed.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "MEDIUM-CARBON-STEEL",
+    "case": "low",
+    "composition": {
+      "Fe": 98.25,
+      "C": 0.15,
+      "Si": 0.075,
+      "Mn": 0.25,
+      "P": 0.025,
+      "S": 0.030000000000000002
+    },
+    "anomaly": {
+      "anomaly_score": 0.6067503098777756,
+      "severity": "MEDIUM",
+      "message": "Moderate anomaly detected. Consider verifying sensor calibration.",
+      "raw_score": -0.5609593622344275
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 0.0202,
+        "C": 0.2777,
+        "Si": 0.3033,
+        "Mn": 0.7525
+      },
+      "confidence": 0.6512040000000001,
+      "message": "Moderate confidence. Consider verifying with metallurgical expert.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "MEDIUM-CARBON-STEEL",
+    "case": "high",
+    "composition": {
+      "Fe": 98.25,
+      "C": 0.84,
+      "Si": 0.375,
+      "Mn": 1.0,
+      "P": 0.055999999999999994,
+      "S": 0.06999999999999999
+    },
+    "anomaly": {
+      "anomaly_score": 0.7430113312161033,
+      "severity": "HIGH",
+      "message": "High anomaly detected. Potential sensor drift or unstable melt chemistry.",
+      "raw_score": -0.6032433380290814
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 0.0202
+      },
+      "confidence": 0.9345540000000001,
+      "message": "High confidence recommendation. Additions should bring composition into spec.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "HIGH-CARBON-STEEL",
+    "case": "midpoint",
+    "composition": {
+      "Fe": 97.75,
+      "C": 1.0,
+      "Si": 0.5,
+      "Mn": 1.2,
+      "P": 0.025,
+      "S": 0.030000000000000002
+    },
+    "anomaly": {
+      "anomaly_score": 0.031693448496447854,
+      "severity": "LOW",
+      "message": "Composition appears normal with expected characteristics.",
+      "raw_score": -0.3825100142963749
+    },
+    "alloy": {
+      "recommended_additions": {},
+      "confidence": 1.0,
+      "message": "Composition is within specification. No corrections needed.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "HIGH-CARBON-STEEL",
+    "case": "low",
+    "composition": {
+      "Fe": 97.75,
+      "C": 0.3,
+      "Si": 0.1,
+      "Mn": 0.3,
+      "P": 0.025,
+      "S": 0.030000000000000002
+    },
+    "anomaly": {
+      "anomaly_score": 0.594868689631161,
+      "severity": "MEDIUM",
+      "message": "Moderate anomaly detected. Consider verifying sensor calibration.",
+      "raw_score": -0.5572723053051999
+    },
+    "alloy": {
+      "recommended_additions": {
+        "Fe": 0.0238,
+        "C": 0.675,
+        "Si": 0.3992,
+        "Mn": 0.8912
+      },
+      "confidence": 0.580864,
+      "message": "Low confidence. Large corrections needed. Manual review recommended.",
+      "warning": null
+    }
+  },
+  {
+    "grade": "HIGH-CARBON-STEEL",
+    "case": "high",
+    "composition": {
+      "Fe": 97.75,
+      "C": 1.9599999999999997,
+      "Si": 0.5,
+      "Mn": 1.2,
+      "P": 0.055999999999999994,
+      "S": 0.06999999999999999
+    },
+    "anomaly": {
+      "anomaly_score": 0.7641902262023605,
+      "severity": "HIGH",
+      "message": "High anomaly detected. Potential sensor drift or unstable melt chemistry.",
+      "raw_score": -0.6098154881139752
+    },
+    "alloy": {
+      "recommended_additions": {
+        "C": 0.426,
+        "Si": 0.0253
+      },
+      "confidence": 0.8329659999999999,
+      "message": "High confidence recommendation. Additions should bring composition into spec.",
+      "warning": null
+    }
+  }
+]

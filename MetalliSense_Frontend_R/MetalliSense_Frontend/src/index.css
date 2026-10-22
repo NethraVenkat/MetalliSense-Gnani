@@ -1,0 +1,149 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #f8fafb 0%, #f1f5f8 50%, #f0fdf6 100%);
+    color: #1a2129;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  * {
+    transition: color 200ms ease, background-color 200ms ease;
+  }
+}
+
+@layer components {
+  /* Primary Button - Metallic Green */
+  .btn-primary {
+    background: linear-gradient(135deg, #15c26b 0%, #0fa055 100%);
+    color: white;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(15, 194, 107, 0.1);
+    transition: all 200ms ease;
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 0 8px 24px rgba(15, 194, 107, 0.15);
+  }
+  
+  .btn-primary:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #15c26b;
+  }
+  
+  /* Secondary Button - Steel Grey */
+  .btn-secondary {
+    background: linear-gradient(135deg, #2d3742 0%, #1a2129 100%);
+    color: white;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    transition: all 200ms ease;
+  }
+  
+  .btn-secondary:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .btn-secondary:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #4f5f73;
+  }
+  
+  /* Input Field - Premium Style */
+  .input-field {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border: 2px solid #e5eaef;
+    border-radius: 0.5rem;
+    background-color: white;
+    transition: all 200ms ease;
+  }
+  
+  .input-field::placeholder {
+    color: #9eafc0;
+  }
+  
+  .input-field:focus {
+    outline: none;
+    border-color: #15c26b;
+    box-shadow: 0 0 0 3px rgba(21, 194, 107, 0.1);
+  }
+  
+  /* Card - Elevated Design */
+  .card {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(15, 194, 107, 0.1);
+    border: 1px solid #e5eaef;
+    transition: all 200ms ease;
+  }
+  
+  .card:hover {
+    box-shadow: 0 8px 24px rgba(15, 194, 107, 0.15);
+  }
+  
+  /* Gradient Text */
+  .text-gradient {
+    background: linear-gradient(135deg, #15c26b 0%, #0fa055 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  /* Status Badge */
+  .status-online {
+    background-color: #15c26b;
+    color: white;
+    box-shadow: 0 4px 12px rgba(21, 194, 107, 0.3);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .status-offline {
+    background-color: #9eafc0;
+    color: white;
+  }
+}
+
+/* ── Molten-metal loaders (FurnaceLoader / CrucibleIcon) ───────────── */
+@keyframes ms-flicker { 0%,100% { opacity: .88; } 20% { opacity: 1; } 45% { opacity: .8; } 70% { opacity: .97; } }
+@keyframes ms-tilt { 0%,100% { transform: rotate(15deg); } 50% { transform: rotate(19deg); } }
+@keyframes ms-flow { to { stroke-dashoffset: -44; } }
+@keyframes ms-stream-body { 0%,100% { stroke-width: 7; } 50% { stroke-width: 6; } }
+@keyframes ms-fill { 0% { opacity: .55; } 50% { opacity: 1; } 100% { opacity: .55; } }
+@keyframes ms-ripple { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(2.2); opacity: 0; } }
+@keyframes ms-spark-arc {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  8%   { opacity: 1; }
+  45%  { transform: translate(calc(var(--dx) * .55), var(--rise)) scale(.9); }
+  100% { transform: translate(var(--dx), 14px) scale(.2); opacity: 0; }
+}
+@keyframes ms-ember { 0% { transform: translate(0, 0) scale(1); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--rx, 0), -9px) scale(.2); opacity: 0; } }
+@keyframes ms-ember-lg { 0% { transform: translate(0, 0) scale(1); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(var(--rx, 0), -34px) scale(.2); opacity: 0; } }
+@keyframes ms-smoke { 0% { transform: translate(0, 0) scale(.6); opacity: 0; } 20% { opacity: .22; } 100% { transform: translate(10px, -60px) scale(2.2); opacity: 0; } }
+@keyframes ms-progress { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
+
+.ms-flicker { animation: ms-flicker 1.6s ease-in-out infinite; }
+.ms-tilt { animation: ms-tilt 3.2s ease-in-out infinite; }
+.ms-stream { stroke-dasharray: 6 5 14 7 3 9; animation: ms-flow .55s linear infinite; }
+.ms-stream-body { animation: ms-stream-body .8s ease-in-out infinite; }
+.ms-fill { animation: ms-fill 2.4s ease-in-out infinite; }
+.ms-ripple { transform-box: fill-box; transform-origin: center; animation: ms-ripple 1s ease-out infinite; }
+.ms-spark-arc { transform-box: fill-box; animation: ms-spark-arc 1.35s cubic-bezier(.25,.6,.4,1) infinite; }
+.ms-ember { transform-box: fill-box; animation: ms-ember 1.2s ease-out infinite; }
+.ms-ember-lg { transform-box: fill-box; animation: ms-ember-lg 2s ease-out infinite; }
+.ms-smoke { transform-box: fill-box; transform-origin: center; animation: ms-smoke 2.7s ease-out infinite; }
+.ms-progress { animation: ms-progress 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-flicker, .ms-tilt, .ms-stream, .ms-stream-body, .ms-fill, .ms-ripple, .ms-spark-arc,
+  .ms-ember, .ms-ember-lg, .ms-smoke, .ms-progress { animation: none; }
+}

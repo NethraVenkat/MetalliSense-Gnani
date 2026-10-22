@@ -1,0 +1,13 @@
+{
+  "productionUrl": "https://metallisense-static-demo.vercel.app",
+  "deploymentUrl": "https://metallisense-static-demo-db80kknz1-melt7.vercel.app",
+  "deploymentId": "dpl_BprHfVdC6yHvXD4U4G6Ay7Fs7DbJ",
+  "target": "production",
+  "readyState": "READY",
+  "localRoutesVerified": 23,
+  "outputSecretFilenameViolations": 0,
+  "outputSecretPatternMatches": 0,
+  "githubAutoLink": "failed: account needs GitHub Login Connection; manual production deploy succeeded",
+  "buildWarnings": "npm reported 12 dependency vulnerabilities (2 moderate, 10 high); no breaking dependency upgrades applied",
+  "liveCheck": "PASSED: all 23 routes, deep-link refresh, charge optimizer, copilot endpoint and actual copilot chat UI; zero browser errors, failed requests, HTTP errors or off-origin/backend requests"
+}
