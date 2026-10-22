@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "framework": "vite",
+  "buildCommand": "VITE_MOCK_MODE=true npm run build:mock",
+  "outputDirectory": "dist",
+  "installCommand": "npm install"
+}
