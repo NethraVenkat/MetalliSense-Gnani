@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { mapIntent } from '../src/services/voiceIntents';
 describe('read-only voice intents', () => {
   it.each([
+    ['sheet 1051 status in a', 'heat_status', { heatNumber: 1051 }],
+    ['hit 1051 status', 'heat_status', { heatNumber: 1051 }],
+    ['1051 status enna', 'heat_status', { heatNumber: 1051 }],
+    ['heath 42 status', 'heat_status', { heatNumber: 42 }],
     ['heat forty two status in a', 'heat_status', { heatNumber: 42 }],
     ['heat 42 status in a', 'heat_status', { heatNumber: 42 }],
     ['silicon evolve', 'element_value', { element: 'Si' }],
@@ -36,6 +40,19 @@ describe('read-only voice intents', () => {
     ['stock open', 'open_screen', { route: '/raw-material-stock' }],
     ['explain the furnace', 'ask_copilot', {}], ['', 'ask_copilot', {}],
   ])('%s', (text, intent, params) => expect(mapIntent(text)).toEqual({ intent, params }));
+  it.each(['heat', 'heath', 'sheet', 'hit', 'hate', 'eat', 'heet', "he't", 'he’t', 'h', 'h-'])('recognizes heat alias %s before a number', alias => {
+    expect(mapIntent(`${alias} 1051 status`)).toEqual({ intent: 'heat_status', params: { heatNumber: 1051 } });
+  });
+  it.each(['status', 'epdi', 'enna', 'in a', 'nilai', 'நிலை'])('finds a heat number anywhere with status word %s', word => {
+    expect(mapIntent(`please check 1051 ${word}`)).toEqual({ intent: 'heat_status', params: { heatNumber: 1051 } });
+    expect(mapIntent(`please check 123 ${word}`)).toEqual({ intent: 'heat_status', params: { heatNumber: 123 } });
+  });
+  it.each(['please check 42 status', 'please check 12345 status', 'please check 1051', 'spreadsheet 42 status'])('does not infer heat from %s', text => {
+    expect(mapIntent(text)).toEqual({ intent: 'ask_copilot', params: {} });
+  });
+  it('still blocks unsafe commands with misheard heat names', () => {
+    expect(mapIntent('release sheet 1051 status')).toMatchObject({ intent: 'blocked' });
+  });
   it.each(['inna', 'ena', 'yenna', 'anna', 'in a'])('understands phrase-ending %s', word => {
     expect(mapIntent(`heat forty two status ${word}.`)).toEqual({ intent: 'heat_status', params: { heatNumber: 42 } });
   });

@@ -36,7 +36,10 @@ export function mapIntent(transcript) {
   const text = normalizeTranscript(transcript);
   const params = {};
   if (/approve|confirm|release|deduct|start\s+melt|invoice|delete|அனுமதி|ஒப்புதல்/u.test(text)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
-  const heat = text.match(/(?:\bheat\s*|\bh[\s-]*)(\d+)\b/i) || text.match(/^\s*(\d+)\b/);
+  const hasStatusWord = /\b(?:status|epdi|enna|in\s+a|nilai)\b/u.test(text) || has(text, 'நிலை');
+  const heat = text.match(/\b(?:heat|heath|sheet|hit|hate|eat|heet|he['’]t|h)[\s-]*(\d+)\b/i)
+    || text.match(/^\s*(\d+)\b/)
+    || (hasStatusWord ? text.match(/\b(\d{3,4})\b/) : null);
   if (heat) params.heatNumber = Number(heat[1]);
   if (/stock|இருப்பு/u.test(text) && !/open|kaattu|காட்டு|திற/u.test(text)) {
     if (/fesi|ferro\s*silicon/i.test(text)) params.alloy = 'FeSi';
