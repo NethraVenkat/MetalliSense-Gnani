@@ -1,6 +1,8 @@
 // Build the audition sentence with the app's formatter and its actual H-1053 seed.
 // No browser, STT, gate mutation or network requests.
-import { buildHoldAlert } from '../../../../MetalliSense_Frontend_R/MetalliSense_Frontend/src/services/voiceGateAnswers.js';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildHoldAlertTexts } from '../../../../MetalliSense_Frontend_R/MetalliSense_Frontend/src/services/voiceGateAnswers.js';
 import configFactory from '../../../../MetalliSense_Frontend_R/MetalliSense_Frontend/src/mock/handlers/premeltGate/config.js';
 import historyFactory from '../../../../MetalliSense_Frontend_R/MetalliSense_Frontend/src/mock/handlers/premeltGate/supplierHistory.js';
 import storeFactory from '../../../../MetalliSense_Frontend_R/MetalliSense_Frontend/src/mock/handlers/premeltGate/store.js';
@@ -23,4 +25,8 @@ const gate = { decision: 'HOLD', checks: [
   { id: 'lot_status', status: 'FAIL', details: [{ lotId: lot.lotId, status: 'FAIL', text: lot.status }] },
   { id: 'residuals', status: 'FAIL', details: [{ element: 'Cu', value: lot.declared.Cu, max, status: 'FAIL' }] },
 ] };
-process.stdout.write(JSON.stringify({ text: buildHoldAlert(heat.heatId, gate, 'ta') }));
+export const { spokenAlert, displayAlert } = buildHoldAlertTexts(heat.heatId, gate, 'ta');
+// Keep the Python audition's `text` field, now using the short spoken alert.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.stdout.write(JSON.stringify({ text: spokenAlert, spokenAlert, displayAlert }));
+}

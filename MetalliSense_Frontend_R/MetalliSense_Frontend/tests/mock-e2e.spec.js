@@ -34,7 +34,7 @@ test('H-1053 HOLD voice demo uses real checks and read-only transcript actions',
  await page.getByRole('button', { name: /H-1053/ }).click();
  await page.getByRole('button', { name: 'Run pre-melt check', exact: true }).click();
  const panel = page.locator('section[aria-label="Shop floor voice"]');
- await expect.poll(() => speech.filter(s => s.text.startsWith('Heat H-1053: Gate HOLD.')).length).toBe(1);
+ await expect.poll(() => speech.filter(s => s.text.startsWith('Heat H-1053 HOLD.')).length).toBe(1);
  await expect(page.getByRole('button', { name: 'Start melting — locked', exact: true })).toBeDisabled();
  await page.getByRole('button', { name: 'Run pre-melt check', exact: true }).click();
  await expect(page.getByRole('button', { name: 'Run pre-melt check', exact: true })).toBeEnabled();
@@ -55,8 +55,8 @@ test('H-1053 HOLD voice demo uses real checks and read-only transcript actions',
   await expect(panel.getByText('திரையில் approve செய்யவும்', { exact: true })).toBeVisible();
  }
  await expect.poll(() => speech.filter(s => s.text === 'திரையில் approve செய்யவும்').length).toBe(2);
- expect(speech.filter(s => s.text.startsWith('Heat H-1053: Gate HOLD.'))).toHaveLength(1);
- expect(speech.filter(s => s.text.startsWith('Heat H-1053: Gate HOLD.'))[0].language).toBe('ta');
+ expect(speech.filter(s => s.text.startsWith('Heat H-1053 HOLD.'))).toHaveLength(1);
+ expect(speech.filter(s => s.text.startsWith('Heat H-1053 HOLD.'))[0].language).toBe('ta');
  const heat = (await call(page, '/api/v2/premelt/heats/H-1053')).data;
  expect(heat.status).toBe('PLANNED');
  expect(heat.gateResult.decision).toBe('HOLD');

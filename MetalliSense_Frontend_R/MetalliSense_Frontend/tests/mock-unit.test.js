@@ -5,7 +5,7 @@ import { startMock,dispatch,requirePort,reset } from '../src/mock/server.js';
 import { solveCharge } from '../src/mock/handlers/optimizer.js';
 import { alloy,anomaly } from '../src/mock/handlers/ai.js';
 import { mapIntent } from '../src/services/voiceIntents.js';
-import { createHoldAnnouncer, heatVoiceAnswer, spokenGateReasonAnswer, gateReasonAnswer } from '../src/services/voiceGateAnswers.js';
+import { createHoldAnnouncer, buildHoldAlert, buildHoldAlertTexts, heatVoiceAnswer, spokenGateReasonAnswer, gateReasonAnswer } from '../src/services/voiceGateAnswers.js';
 const saved=new Map();
 globalThis.localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)};
 globalThis.sessionStorage={removeItem:()=>{}};
@@ -88,9 +88,10 @@ describe('resettable H-1053 HOLD voice demo', () => {
   announcer.announce('H-1053', gate, speak, 'ta');
   announcer.announce('H-1053', await check(), speak, 'en');
   expect(speak).toHaveBeenCalledTimes(1);
-  expect(speak.mock.calls[0][0]).toContain('Heat H-1053: Gate HOLD. உருக்கத் தொடங்க முடியாது');
-  expect(speak.mock.calls[0][0]).toContain('செம்பு 0.50 சதவீதம், அதிகம்');
+  expect(speak.mock.calls[0][0]).toBe('Heat H-1053 HOLD. PIG-1053 lot quarantine. திரையில் பார்க்கவும்.');
+  expect(speak.mock.calls[0][0]).not.toContain('செம்பு');
   expect(speak.mock.calls[0][1]).toBe('ta');
+  expect(speak.mock.calls[0][2]).toBe('alert');
   announcer.reset();
   announcer.announce('H-1053', gate, speak, 'ta');
   expect(speak).toHaveBeenCalledTimes(2);
@@ -104,6 +105,56 @@ describe('resettable H-1053 HOLD voice demo', () => {
   expect(speak).not.toHaveBeenCalled();
   announcer.announce('H-1053', gate, speak, 'ta', false);
   expect(speak).toHaveBeenCalledTimes(1);
+ });
+ it('HOLD spoken alert is at most 15 words (Tamil and English)', async () => {
+  const gate = await check();
+  for (const lang of ['ta', 'en']) {
+   for (const candidate of [gate, { decision: 'HOLD', blocking: ['A very long unstructured blocking reason with many extra words explaining every detail that must stay on screen'] }]) {
+    const { spokenAlert } = buildHoldAlertTexts('H-1053', candidate, lang);
+    expect(spokenAlert.trim().split(/\s+/).length).toBeLessThanOrEqual(15);
+   }
+  }
+ });
+ it('HOLD spoken alert names the heat and only the first blocking reason', async () => {
+  const gate = await check();
+  for (const lang of ['ta', 'en']) {
+   const { spokenAlert } = buildHoldAlertTexts('H-1053', gate, lang);
+   expect(spokenAlert).toContain('Heat H-1053');
+   expect(spokenAlert).toContain('PIG-1053 lot quarantine');
+   expect(spokenAlert).not.toMatch(/செம்பு|காப்பர்|Cu|0\.50/);
+  }
+  const chemistryFirst = { decision: 'HOLD', checks: [
+   { id: 'spec_prediction', status: 'WARN', details: [{ element: 'C', value: 2.5, min: 3, status: 'WARN' }] },
+   { id: 'residuals', status: 'FAIL', details: [
+    { element: 'Cu', value: .5, max: .3, status: 'FAIL' },
+    { element: 'Cr', value: .2, max: .08, status: 'FAIL' },
+   ] },
+   ...gate.checks,
+  ] };
+  expect(buildHoldAlertTexts('H-1053', chemistryFirst, 'ta').spokenAlert)
+   .toBe('Heat H-1053 HOLD. காப்பர் 0.50 சதவீதம், அதிகம். திரையில் பார்க்கவும்.');
+  expect(buildHoldAlertTexts('H-1053', chemistryFirst, 'en').spokenAlert)
+   .toBe('Heat H-1053 on HOLD. Cu 0.50 percent, high. Check the screen.');
+ });
+ it('HOLD on-screen alert text is unchanged', async () => {
+  const gate = await check();
+  // Preserve the real gate's existing warning/remainder suffix as well.
+  expect(buildHoldAlertTexts('H-1053', gate, 'ta').displayAlert).toBe(buildHoldAlert('H-1053', gate, 'ta'));
+  const blockingOnly = { ...gate, checks: gate.checks.filter(c => c.status === 'FAIL') };
+  const tamil = buildHoldAlertTexts('H-1053', blockingOnly, 'ta');
+  expect(tamil.displayAlert).toBe('Heat H-1053: Gate HOLD. உருக்கத் தொடங்க முடியாது. PIG-1053: தனிமைப்படுத்தப்பட்டுள்ளது. செம்பு 0.50 சதவீதம், அதிகம்');
+  expect(buildHoldAlertTexts('H-1053', blockingOnly, 'en').displayAlert)
+   .toBe('Heat H-1053: Gate HOLD. Furnace start is locked. PIG-1053: quarantined. Cu 0.50 percent, high');
+  expect(tamil.displayAlert).toBe(buildHoldAlert('H-1053', blockingOnly, 'ta'));
+  expect(spokenGateReasonAnswer(blockingOnly, 'ta')).toBe('PIG-1053: தனிமைப்படுத்தப்பட்டுள்ளது. செம்பு 0.50 சதவீதம், அதிகம்');
+  expect(gateReasonAnswer(gate, 'ta')).toContain('0.3 சதவீதத்தை மீறுகிறது');
+ });
+ it('future auditions export the short spoken text and retain the full display text', async () => {
+  const fixture = await import('../../../MetalliSense_Agent_R/MetalliSense_Agent/tools/tts_audition/hold_sentence.mjs');
+  const expected = buildHoldAlertTexts('H-1053', await check(), 'ta');
+  expect(fixture.spokenAlert).toBe(expected.spokenAlert);
+  const gate = await check();
+  expect(fixture.displayAlert).toBe(buildHoldAlert('H-1053', { ...gate, checks: gate.checks.filter(c => c.status === 'FAIL') }, 'ta'));
  });
 });
 describe('short gate-reason speech with complete screen text', () => {

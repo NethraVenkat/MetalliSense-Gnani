@@ -98,6 +98,41 @@ export function buildHoldAlert(heatId, gate, lang = 'ta') {
     : `Heat ${heatId}: Gate HOLD. Furnace start is locked. ${spokenGateReasonAnswer(gate, lang)}`;
 }
 
+function firstBlockingReason(gate, lang) {
+  const check = gate?.checks?.find(c => c.status === 'FAIL' && c.id !== 'ai_assessment');
+  const detail = check?.details?.find(d => d.status === 'FAIL');
+  if (detail?.element && Number.isFinite(detail.value)) {
+    const low = detail.value < detail.min;
+    const value = detail.value.toFixed(2);
+    return lang === 'ta'
+      ? `${detail.element === 'Cu' ? 'காப்பர்' : names[detail.element] || detail.element} ${value} சதவீதம், ${low ? 'குறைவு' : 'அதிகம்'}`
+      : `${detail.element} ${value} percent, ${low ? 'low' : 'high'}`;
+  }
+  if (check?.id === 'lot_status' && detail?.lotId) {
+    if (/QUARANTINED/.test(detail.text || '')) return `${detail.lotId} lot quarantine`;
+    return lang === 'ta' ? `${detail.lotId} பயன்படுத்த அனுமதி இல்லை` : `${detail.lotId} not released`;
+  }
+  if (lang === 'ta' && check) return ({
+    charge_weight: 'சார்ஜ் எடை தவறு', stock: 'போதிய கையிருப்பு இல்லை',
+    yard_inspection: 'ஆய்வு முழுமையாக இல்லை', dri_quality: 'ஸ்பாஞ்ச் இரும்பு தரப் பிரச்சினை',
+    spec_prediction: 'கலவை வரம்பு மீறல்', residuals: 'எஞ்சிய தனிமம் அதிகம்',
+  })[check.id] || 'தரத் தடை உள்ளது';
+  const saved = (gate?.blocking || []).map(textOf).find(text => text && !/\b(?:AI|off-spec risk|confidence)\b/i.test(text));
+  // Bound even legacy/unstructured reasons; the complete text stays on screen.
+  return (check?.title || saved || (lang === 'ta' ? 'தரத் தடை உள்ளது' : 'Gate check failed'))
+    .split(/[.!?](?=\s|$)/)[0].trim().split(/\s+/).slice(0, 8).join(' ');
+}
+
+export function buildHoldAlertTexts(heatId, gate, lang = 'ta') {
+  const reason = firstBlockingReason(gate, lang);
+  return {
+    displayAlert: buildHoldAlert(heatId, gate, lang),
+    spokenAlert: lang === 'ta'
+      ? `Heat ${heatId} HOLD. ${reason}. திரையில் பார்க்கவும்.`
+      : `Heat ${heatId} on HOLD. ${reason}. Check the screen.`,
+  };
+}
+
 export function createHoldAnnouncer() {
   const decisions = new Map();
   return {
@@ -108,7 +143,8 @@ export function createHoldAnnouncer() {
       if (gate?.decision === 'HOLD' && muted) return;
       decisions.set(heatId, gate?.decision);
       if (gate?.decision !== 'HOLD' || previous === 'HOLD') return;
-      return speak(buildHoldAlert(heatId, gate, lang), lang, 'alert');
+      const { spokenAlert } = buildHoldAlertTexts(heatId, gate, lang);
+      return speak(spokenAlert, lang, 'alert');
     },
   };
 }

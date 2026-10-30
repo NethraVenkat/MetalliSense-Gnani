@@ -126,6 +126,8 @@ describe('TTS delivery style', () => {
       await createHoldAnnouncer().announce('H-1053', { decision: 'HOLD', checks: [] }, speakText, 'ta');
       expect(post.mock.lastCall[1]).toMatchObject({ language: 'ta', style: 'alert', slow: false });
       expect(post.mock.lastCall[1].text).not.toMatch(/<[^>]+>/);
+      expect(post.mock.lastCall[1].text).toMatch(/^Heat H-1053 HOLD\./);
+      expect(post.mock.lastCall[1].text.trim().split(/\s+/).length).toBeLessThanOrEqual(15);
     } finally { vi.unstubAllGlobals(); }
   });
   it('normal answers use style normal', async () => {
