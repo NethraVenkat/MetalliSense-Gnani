@@ -1,7 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mapIntent } from '../src/services/voiceIntents';
+import { mapIntent, normalizeTranscript } from '../src/services/voiceIntents';
 describe('read-only voice intents', () => {
   it.each([
+    ['heat one zero five one status என்ன?', 'heat_status', { heatNumber: 1051 }],
+    ['heat forty two எப்படி இருக்கு?', 'heat_status', { heatNumber: 42 }],
+    ['heat four two நிலை?', 'heat_status', { heatNumber: 42 }],
+    ['heat ten fifty one நிலை.', 'heat_status', { heatNumber: 1051 }],
+    ['FESI stock எவ்வளவு?', 'stock_check', { alloy: 'FeSi' }],
+    ['Spectrometer காட்டு.', 'open_screen', { route: '/spectrometer' }],
+    ['So dashboard.', 'open_screen', { route: '/dashboard' }],
+    ['show dashboard', 'open_screen', { route: '/dashboard' }],
+    ['ஏன் hold heat one zero five one?', 'gate_reason', { heatNumber: 1051 }],
     ['sheet 1051 status in a', 'heat_status', { heatNumber: 1051 }],
     ['hit 1051 status', 'heat_status', { heatNumber: 1051 }],
     ['1051 status enna', 'heat_status', { heatNumber: 1051 }],
@@ -76,6 +85,27 @@ describe('read-only voice intents', () => {
   });
   it.each(['approve heat 42', 'confirm', 'release', 'deduct stock', 'start melt', 'invoice', 'delete', 'அனுமதி', 'ஒப்புதல்'])('blocks %s', text => {
     expect(mapIntent(text)).toMatchObject({ intent: 'blocked', reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } });
+  });
+});
+
+describe('shared transcript normalization', () => {
+  it.each([
+    ['heat one zero five one status என்ன?', 'heat 1051 status enna'],
+    ['heat forty two எப்படி இருக்கு?', 'heat 42 epdi irukku'],
+    ['heat four two நிலை?', 'heat 42 status'],
+    ['heat ten fifty one நிலை.', 'heat 1051 status'],
+    ['FESI stock எவ்வளவு?', 'fesi stock evvalavu'],
+    ['Spectrometer காட்டு.', 'spectrometer kaattu'],
+    ['So dashboard.', 'so dashboard'],
+    ['show dashboard', 'show dashboard'],
+    ['ஏன் hold?', 'yen hold'],
+    ['HEAT, one-zero-five-one. என்ன?', 'heat 1051 enna'],
+    ['heat zero zero four two status', 'heat 0042 status'],
+    ['எப்படி\t இருக்கு?', 'epdi irukku'],
+    ['என்னுடைய dashboard', 'என்னுடைய dashboard'],
+  ])('normalizes %s', (text, normalized) => {
+    expect(normalizeTranscript(text)).toBe(normalized);
+    expect(normalizeTranscript(normalized)).toBe(normalized);
   });
 });
 

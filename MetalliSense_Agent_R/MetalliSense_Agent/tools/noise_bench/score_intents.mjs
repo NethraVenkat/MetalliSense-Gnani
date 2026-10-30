@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mapIntent } from '../../../../MetalliSense_Frontend_R/MetalliSense_Frontend/src/services/voiceIntents.js';
+import { mapIntent, normalizeTranscript } from '../../../../MetalliSense_Frontend_R/MetalliSense_Frontend/src/services/voiceIntents.js';
 
 function heatNumber(value) {
   if (value == null || String(value).trim() === '') return null;
@@ -35,7 +35,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     const rows = JSON.parse(readFileSync(0, 'utf8').replace(/^\uFEFF/, ''));
     if (!Array.isArray(rows)) throw new Error('Expected a JSON array on stdin');
-    process.stdout.write(JSON.stringify(scoreIntents(rows)));
+    process.stdout.write(JSON.stringify(process.argv.includes('--normalize')
+      ? rows.map(normalizeTranscript) : scoreIntents(rows)));
   } catch (error) {
     console.error(`Intent scoring failed: ${error.message}`);
     process.exitCode = 1;

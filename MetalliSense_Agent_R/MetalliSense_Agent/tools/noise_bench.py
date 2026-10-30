@@ -35,18 +35,11 @@ ELEMENTS = {
     "P": ("phosphorus", "p"),
     "S": ("sulfur", "sulphur", "s"),
 }
-SMALL = dict(zip(
-    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(),
-    range(20),
-))
-SMALL.update(dict(zip("twenty thirty forty fifty sixty seventy eighty ninety".split(), range(20, 100, 10))))
-NUMBER_TOKEN = "(?:" + "|".join(SMALL) + "|hundred|thousand)"
-NUMBER_PHRASE = re.compile(r"\b" + NUMBER_TOKEN + r"(?:(?:[\s-]+(?:and[\s-]+)?)" + NUMBER_TOKEN + r")*\b")
 
 
 def tokens(text):
-    """Case/punctuation-insensitive WER; preserve Tamil combining marks."""
-    return "".join(c if c.isalnum() or c.isspace() or "\u0300" <= c <= "\u036f" or "\u0b80" <= c <= "\u0bff" else " " for c in text.casefold()).split()
+    """Tokenize text already normalized by the actual frontend normalizer."""
+    return text.split()
 
 
 def word_errors(expected, actual):
@@ -60,25 +53,9 @@ def word_errors(expected, actual):
     return previous[-1], len(reference)
 
 
-def number_value(match):
-    words = [w for w in re.split(r"[\s-]+", match.group()) if w != "and"]
-    if not {"hundred", "thousand"}.intersection(words) and len(words) > 1 and SMALL[words[0]] >= 10 and SMALL[words[1]] >= 20:
-        return str(SMALL[words[0]] * 100 + sum(SMALL[w] for w in words[1:]))
-    total = group = 0
-    for word in words:
-        if word == "hundred":
-            group = (group or 1) * 100
-        elif word == "thousand":
-            total += (group or 1) * 1000
-            group = 0
-        else:
-            group += SMALL[word]
-    return str(total + group)
-
-
-def slots(text):
-    normalized = NUMBER_PHRASE.sub(number_value, text.casefold())
-    heat = re.search(r"\b(?:heat|heath|sheet|hit|hate|eat|heet|he['’]t|h)[\s-]*(\d+)\b", normalized)
+def slots(normalized):
+    """Read lexical slots after the same number normalization used by mapIntent."""
+    heat = re.search(r"\b(?:heat|heath|sheet|hit|hate|eat|heet|he\s+t|h)[\s-]*(\d+)\b", normalized)
     if not heat:
         heat = re.search(r"\b(\d{3,4})\b", normalized)
     words = set(tokens(normalized))
@@ -227,21 +204,23 @@ def plan(root, phrases, cache):
     return jobs, len(clean), len(noise)
 
 
-def score(job, result, source):
+def score(job, result, source, normalized):
     phrase = job["phrase"]
-    expected, expected_elements = slots(phrase["expected_text"])
-    actual, actual_elements = slots(result.get("text", ""))
+    success = bool(result.get("success"))
+    reference = normalized[phrase["expected_text"]]
+    hypothesis = normalized[result.get("text", "") if success else ""]
+    expected, expected_elements = slots(reference)
+    actual, actual_elements = slots(hypothesis)
     # A bare "42" still preserves the digits even without a recognized heat prefix.
     if expected and not actual:
-        digits = {str(int(value)) for value in re.findall(r"\b\d+\b", NUMBER_PHRASE.sub(number_value, result.get("text", "").casefold()))}
+        digits = {str(int(value)) for value in re.findall(r"\b\d+\b", hypothesis)}
         if expected in digits:
             actual = expected
-    errors, count = word_errors(phrase["expected_text"], result.get("text", ""))
-    success = bool(result.get("success"))
+    errors, count = word_errors(reference, hypothesis)
     return {"file": phrase["file"], "noise": job["noise"], "snr": job["snr"], **phrase,
             "source": source, "success": success, "transcript": result.get("text", ""),
             "wer": errors / max(count, 1), "word_errors": errors, "reference_words": count,
-            "exact_match": success and tokens(phrase["expected_text"]) == tokens(result.get("text", "")),
+            "exact_match": success and tokens(reference) == tokens(hypothesis),
             "expected_heat": expected, "actual_heat": actual,
             "heat_ok": success and expected == actual if expected else "",
             "expected_elements": " ".join(sorted(expected_elements)), "actual_elements": " ".join(sorted(actual_elements)),
@@ -252,10 +231,11 @@ def score(job, result, source):
             "stt_format": job.get("config", {}).get("format", "")}
 
 
-def score_intents(root, rows):
-    """Use the actual frontend mapper, with no copied intent rules or network calls."""
+def frontend_score(payload, normalize_only=False):
+    """Use the actual frontend normalizer/mapper in one local batch; no STT calls."""
     completed = subprocess.run(
-        ["node", str(root / "score_intents.mjs")], input=json.dumps(rows, ensure_ascii=False),
+        ["node", str(BENCH / "score_intents.mjs"), *(["--normalize"] if normalize_only else [])],
+        input=json.dumps(payload, ensure_ascii=False),
         capture_output=True, text=True, encoding="utf-8", timeout=30,
     )
     if completed.returncode:
@@ -263,8 +243,19 @@ def score_intents(root, rows):
     return json.loads(completed.stdout)
 
 
-def rescore_saved(root, filters=None):
+def score_attempts(attempts):
+    texts = list(dict.fromkeys(
+        text for job, result, _ in attempts
+        for text in (job["phrase"]["expected_text"], result.get("text", "") if result.get("success") else "")
+    ))
+    normalized = dict(zip(texts, frontend_score(texts, normalize_only=True), strict=True))
+    return [score(job, result, source, normalized) for job, result, source in attempts]
+
+
+def rescore_saved(root, filters=None, include_legacy=False, output_dir=None):
     """Re-score recorded attempts using CSV reference labels and cached transcripts only."""
+    if include_legacy and set(filters or {}) != {"model", "language", "format"}:
+        raise ValueError("--include-legacy requires explicit --stt-model, --stt-language and --stt-format")
     with (root / "runs.csv").open(encoding="utf-8-sig", newline="") as handle:
         records = list(csv.DictReader(handle))
     if not records:
@@ -282,6 +273,9 @@ def rescore_saved(root, filters=None):
         references[phrase["file"]] = phrase
         config = {field: record[f"stt_{field}"] for field in ("model", "language", "format")} if record.get("stt_language") else None
         key = cache_key(phrase["file"], record["noise"], record["snr"], config)
+        legacy_key = cache_key(phrase["file"], record["noise"], record["snr"])
+        if include_legacy and config == filters and key not in cache and legacy_key in cache:
+            key = legacy_key
         if key in jobs:
             raise ValueError(f"Duplicate saved condition: {key}")
         jobs[key] = {"phrase": phrase, "noise": record["noise"], "snr": record["snr"], "record": record}
@@ -299,6 +293,11 @@ def rescore_saved(root, filters=None):
             jobs[key] = {"phrase": references[file], "noise": noise, "snr": snr}
             if len(parts) == 6:
                 jobs[key]["config"] = dict(zip(("model", "language", "format"), parts[3:]))
+    if include_legacy:
+        # Historical keys have no metadata. Assign it only at the caller's explicit request.
+        for job in jobs.values():
+            if "config" not in job:
+                job["config"] = dict(filters)
     if filters:
         jobs = {key: job for key, job in jobs.items() if all(job.get("config", {}).get(field) == value for field, value in filters.items())}
     if not jobs:
@@ -306,7 +305,7 @@ def rescore_saved(root, filters=None):
     variants = {tuple(job.get("config", {}).get(field) for field in ("model", "language", "format")) for job in jobs.values()}
     if len(variants) > 1:
         raise ValueError("Multiple STT configurations are cached; select one using --stt-model, --stt-language and --stt-format")
-    rows = []
+    attempts = []
     ordered = sorted(jobs.items(), key=lambda item: (SNRS.index(item[1]["snr"]), item[1]["phrase"]["file"], item[1]["noise"]))
     for key, job in ordered:
         result = cache.get(key)
@@ -315,14 +314,16 @@ def rescore_saved(root, filters=None):
             saved = job["record"]
             result = {"text": saved["transcript"], "success": saved["success"].lower() == "true", "error": saved.get("error", "")}
             source = "runs.csv"
-        rows.append(score(job, result, source))
-    write_reports(root, rows, list(jobs.values()), missing=None, calls=0)
+        attempts.append((job, result, source))
+    rows = score_attempts(attempts)
+    write_reports(output_dir or root, rows, list(jobs.values()), missing=None, calls=0)
     print(f"Re-scored {len(rows)} saved conditions with the real frontend mapper. New STT calls: 0.")
-    print("Wrote report.md, report.csv and runs.csv. Transcript cache was not modified.")
+    print(f"Wrote report.md, report.csv and runs.csv in {output_dir or root}. Transcript cache was not modified.")
 
 
 def write_reports(root, rows, jobs, missing, calls):
-    rows = score_intents(root, rows)
+    rows = frontend_score(rows)
+    root.mkdir(parents=True, exist_ok=True)
     fields = list(rows[0]) if rows else [
         "file", "noise", "snr", "expected_text", "expected_intent", "source", "success", "transcript",
         "wer", "word_errors", "reference_words", "exact_match", "expected_heat", "actual_heat", "heat_ok",
@@ -367,10 +368,11 @@ def write_reports(root, rows, jobs, missing, calls):
                      f"{percentage([r['heat_ok'] for r in group if r['heat_ok'] != ''])} | "
                      f"{percentage([r['elements_ok'] for r in group if r['elements_ok'] != ''])} | "
                      f"{percentage([r['intent_correct'] for r in group])} | {percentage([r['intent_heat_correct'] for r in group])} |")
-    lines += ["", "WER is micro-averaged edit distance / reference words; it may exceed 100%. Word accuracy is max(0, 1 - WER).",
+    lines += ["", "WER and exact text use the frontend's shared normalization: lowercase, punctuation removal, English number words (including digit-by-digit IDs), and Tamil question/action words mapped to Tanglish. Raw transcripts are preserved in runs.csv.",
+              "WER is micro-averaged edit distance / reference words; it may exceed 100%. Word accuracy is max(0, 1 - WER).",
               "Failed STT attempts count as empty transcripts; unattempted jobs are excluded from scores and remain visible in planned counts.",
               "Clean is measured once per phrase, not repeated for every noise. SNR uses full-clip RMS including pauses.",
-              "Slot scoring normalizes English number words and checks heat digits and element aliases; extra elements do not erase a surviving expected slot.",
+              "Slot scoring uses that same number normalization and checks heat digits and element aliases; extra elements do not erase a surviving expected slot.",
               "Intent correct compares the real frontend mapIntent result with expected_intent. Intent + heat correct also requires the expected heat number when present; prompts without a heat use intent correctness alone.",
               "Failed STT attempts count as incorrect for both intent metrics. All scored attempts are included in their denominators.",
               "Element slots remains the original lexical alias metric; frontend aliases such as magnus -> Mn affect intent scoring, not the literal transcript or WER. Intent correctness alone does not guarantee the element or alloy parameter is correct; inspect predicted_params in runs.csv.",
@@ -387,6 +389,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Prepare/validate noise and count calls; never import/call the Gnani client")
     parser.add_argument("--rescore-only", action="store_true", help="Use results_cache.json/runs.csv only; no audio, client initialization or STT calls")
+    parser.add_argument("--include-legacy", action="store_true", help="Explicitly identify historical three-part cache keys with all three --stt-* selections; requires --rescore-only")
+    parser.add_argument("--output-dir", type=Path, help="Write rescored reports here, preserving the source reports; requires --rescore-only")
     parser.add_argument("--max-calls", type=int, default=60, help="Maximum new STT attempts per invocation (default: 60)")
     parser.add_argument("--stt-model", choices=("prisma-v3.0", "prisma-v2.5", "v2.5", ""), help="Override model; v2.5 (or empty) omits the model field")
     parser.add_argument("--stt-language", help="Override locale, comma list of up to four locales, or indic-auto")
@@ -394,10 +398,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.max_calls < 0:
         parser.error("--max-calls must be nonnegative")
+    if (args.include_legacy or args.output_dir is not None) and not args.rescore_only:
+        parser.error("--include-legacy and --output-dir require --rescore-only")
     if args.rescore_only:
         if args.dry_run:
             parser.error("Choose --rescore-only or --dry-run")
-        rescore_saved(BENCH, apply_stt_overrides(args))
+        rescore_saved(BENCH, apply_stt_overrides(args), args.include_legacy, args.output_dir)
         return 0
     load_dotenv(AGENT_ROOT / ".env", override=False)
     apply_stt_overrides(args)
@@ -435,7 +441,7 @@ def main(argv=None):
         if client.mock:
             raise ValueError("Gnani is in mock mode. Configure GNANI_API_KEY and GNANI_MOCK=false; use --dry-run to plan without credits.")
     calls = 0
-    rows = []
+    attempts = []
     for index, job in enumerate(jobs, 1):
         result = job["cached"]
         source = "cache"
@@ -454,8 +460,9 @@ def main(argv=None):
             cache[job["key"]] = {**result, "fingerprint": job["fingerprint"], "config": job["config"], "at": datetime.now(timezone.utc).isoformat()}
             atomic_json(cache_path, cache)  # Save after each attempt, even a provider failure.
             source = "live"
-        rows.append(score(job, result, source))
+        attempts.append((job, result, source))
         print(f"[{index}/{len(jobs)}] {job['phrase']['file']} / {job['noise']} / {job['snr']} dB: {source}")
+    rows = score_attempts(attempts)
     write_reports(root, rows, jobs, len(phrases) - present, calls)
     print(f"Wrote report.csv, report.md and runs.csv. New STT calls: {calls}; deferred conditions: {len(jobs) - len(rows)}")
     return 0

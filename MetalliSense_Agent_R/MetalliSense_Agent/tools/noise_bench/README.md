@@ -120,6 +120,21 @@ Re-score the saved transcripts after changing the frontend mapper, with zero STT
 .\.venv\Scripts\python.exe tools\noise_bench.py --rescore-only
 ```
 
+With both benchmark caches present, select each configuration explicitly:
+
+```powershell
+.\.venv\Scripts\python.exe tools\noise_bench.py --rescore-only --stt-model v2.5 --stt-language en-IN --stt-format transcribe --include-legacy --output-dir tools\noise_bench\v25_en
+.\.venv\Scripts\python.exe tools\noise_bench.py --rescore-only --stt-model prisma-v3.0 --stt-language "ta-IN,en-IN" --stt-format codemix
+```
+
+`--include-legacy` explicitly assigns the selected model/language/format to historical
+three-part keys for scoring only. Use it only when their original configuration is
+known; all three `--stt-*` selections are required. The cache is never relabeled or
+modified. `--output-dir` preserves the source reports and writes a separate report
+and raw `runs.csv` for that selection. Both options require `--rescore-only`.
+The saved comparison is in [compare_v25_v30.md](compare_v25_v30.md); compare matching
+conditions, since the v3.0 cache currently covers only the ten clean recordings.
+
 This path reads only `runs.csv` for reference labels and `results_cache.json` for
 transcripts (falling back to a saved CSV transcript when its cache entry is absent).
 It does not load `.env`, read audio, generate mixtures, initialize Gnani or modify the
@@ -134,20 +149,29 @@ JSON on stdout; it contains no STT or network code. Optional local scoring check
 
 ```powershell
 node --test tools/noise_bench/score_intents.test.mjs
+.\.venv\Scripts\python.exe -m unittest discover -s tools\noise_bench -p test_scoring.py -v
 ```
 
 Live/cache-only runs produce `report.csv` and `report.md` (per-SNR accuracy summaries),
-plus `runs.csv` (one row per completed condition). WER uses case/punctuation-normalized token edit distance;
-number words remain words for WER. It may exceed 100% with insertions. Word accuracy
-is `max(0, 1 - aggregate WER)`, and exact-text accuracy is also reported.
+plus `runs.csv` (one row per completed condition). WER and exact-text scoring normalize
+both reference and hypothesis using the frontend's exported `normalizeTranscript`:
+lowercase, remove punctuation, convert English number words (including digit-by-digit
+IDs such as “one zero five one” and grouped IDs such as “ten fifty one”) to digits,
+and map என்ன/எவ்வளவு/எப்படி இருக்கு/காட்டு/நிலை/ஏன் to
+enna/evvalavu/epdi irukku/kaattu/status/yen. Node performs this normalization once per
+batch; Python does not maintain a separate number parser. Raw transcripts remain
+unchanged in `runs.csv`. WER may exceed 100% with insertions. Word accuracy is
+`max(0, 1 - aggregate WER)`.
 
-Slot scoring separately normalizes English number words (including “ten fifty one”)
-and heat aliases, then checks heat digits and C/Si/Mn/P/S names/symbols, including Tamil
+Slot scoring uses the same normalized text for heat digits and heat aliases, then
+checks C/Si/Mn/P/S names/symbols, including Tamil
 aliases. N/A means that phrase does not ask for that slot. Missing/failed STT counts
 as a failed slot and empty transcript; unattempted conditions are excluded from
 accuracy denominators and remain visible in coverage counts. The summary is pooled
 across noise tracks, with per-track results in `runs.csv`. The original lexical element
-metric and WER remain unchanged by frontend speech-alias fixes, preserving comparability.
+metric does not include the mapper's extra speech aliases. WER also excludes those
+aliases: “So dashboard” still differs from “Show dashboard” even though both navigate
+correctly, and “manganese” still differs from the reference symbol “Mn”.
 
 `Intent correct` requires a successful STT result and a mapper intent equal to
 `expected_intent`. `Intent + heat correct` also requires the reference heat number
