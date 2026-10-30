@@ -1,3 +1,4 @@
+import { tryRealCopilot } from './copilotTransport.js';
 import { sha1 } from './sha1.js';
 import axios from 'axios';
 import { trainingSeed } from './seed.js';
@@ -116,6 +117,10 @@ export async function startMock(){
  const originalFetch=window.fetch.bind(window);
  const intercepted=async(input,init={})=>{
   const url=typeof input==='string'?input:input.url;const u=new URL(url,location.href);
+  const requestInit = typeof input === 'object' && input instanceof Request
+   ? { method: input.method, headers: input.headers, signal: input.signal, body: ['GET', 'HEAD'].includes(input.method) ? undefined : await input.clone().blob(), ...init } : init;
+  const real = await tryRealCopilot(originalFetch, u.href, requestInit, init.timeout);
+  if (real) return real;
   const api=/^\/(api\/|copilot\/|rl\/|vector\/|premelt\/|anomaly\/|alloy\/|agents\/|mechanical\/|semantic-search|health|reindex|__mock\/|analyze-with-explanation)/.test(u.pathname);
   if(!api && u.origin===location.origin)return originalFetch(input,init);
   if(!api)throw new TypeError('Demo mode blocks external request: '+u.pathname);
@@ -130,7 +135,7 @@ export async function startMock(){
  axios.defaults.adapter=async config=>{
   const base=(config.baseURL||'').replace(/\/$/,'');let url=/^https?:/.test(config.url)?config.url:base+'/'+config.url.replace(/^\//,'');
   const u=new URL(url,location.href);for(const [k,v]of Object.entries(config.params||{}))if(v!=null)u.searchParams.set(k,v);
-  const response=await intercepted(u.href,{method:config.method,body:config.data,signal:config.signal});
+  const response=await intercepted(u.href,{method:config.method,body:config.data,headers:config.headers,signal:config.signal,timeout:config.timeout});
   const data=response.status===204?null:config.responseType==='blob'?await response.blob():await response.json();
   const result={data,status:response.status,statusText:response.statusText,headers:Object.fromEntries(response.headers),config,request:{mock:true}};
   if(!(config.validateStatus||((s)=>s>=200&&s<300))(result.status))throw new axios.AxiosError(data.message||data.detail||'Mock request failed',null,config,result.request,result);

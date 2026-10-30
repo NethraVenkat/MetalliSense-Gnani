@@ -94,7 +94,10 @@ export default function PushToTalk({ heatId }) {
           const response = await transcribeAudio(new File([blob], rec.mimeType.includes('mp4') ? 'voice.mp4' : 'voice.webm', { type: blob.type }), null);
           const text = response.data.text?.trim();
           if (!text) throw new Error('No speech');
-          if (alive.current) { await respond(text); if (alive.current) setState('idle'); }
+          if (alive.current) {
+            try { await respond(text); if (alive.current) setState('idle'); }
+            catch { if (alive.current) { setState('error'); say(choose('????? ?????????????. ???? ???? ?????????? ???????.', 'Unable to get information. Tap a suggestion below.')); } }
+          }
         } catch { if (alive.current) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }
         finally { busy.current = false; }
       };

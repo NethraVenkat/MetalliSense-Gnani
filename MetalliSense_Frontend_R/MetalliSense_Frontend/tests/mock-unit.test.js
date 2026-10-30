@@ -1,5 +1,5 @@
 import modelFixtures from './model-fixtures.json';
-import { beforeAll,afterAll,beforeEach,describe,it,expect } from 'vitest';
+import { beforeAll,afterAll,beforeEach,describe,it,expect,vi } from 'vitest';
 import { createRequire } from 'node:module';
 import { startMock,dispatch,requirePort,reset } from '../src/mock/server.js';
 import { solveCharge } from '../src/mock/handlers/optimizer.js';
@@ -88,4 +88,48 @@ it('feedback changes persisted reward weights and candidate scores',async()=>{
  const after=(await dispatch('POST','http://local/rl/optimize',b)).data;
  expect(after.candidates.map(c=>c.predicted_reward)).not.toEqual(before.candidates.map(c=>c.predicted_reward));
  expect(JSON.parse(saved.get('metallisense.browser-demo.v1')).extra.reward.n_updates).toBe(updates+1);
+});
+
+
+describe('real Agent transport in factory mock mode', () => {
+ it('sends voice status and chat to the Agent', async () => {
+  const {tryRealCopilot}=await import('../src/mock/copilotTransport.js');
+  const fetchAgent=vi.fn(async()=>new Response('{"ok":true}'));
+  for(const path of ['/copilot/voice/status','/copilot/chat','/copilot/chat/history']) {
+   const response=await tryRealCopilot(fetchAgent,'http://localhost:8001'+path);
+   expect(response.status).toBe(200);
+  }
+  expect(fetchAgent).toHaveBeenCalledTimes(3);
+ });
+ it('keeps factory APIs and other external origins mocked', async () => {
+  const {tryRealCopilot}=await import('../src/mock/copilotTransport.js');
+  const fetchAgent=vi.fn();
+  for(const url of ['http://localhost:8001/api/v2/premelt/heats','http://localhost:8001/copilot/explain','https://elsewhere.test/copilot/chat']) expect(await tryRealCopilot(fetchAgent,url)).toBeNull();
+  expect(fetchAgent).not.toHaveBeenCalled();
+ });
+ it('preserves multipart audio and lets fetch set the boundary', async () => {
+  const {tryRealCopilot}=await import('../src/mock/copilotTransport.js');
+  const body=new FormData();body.append('audio',new Blob(['audio']));
+  const fetchAgent=vi.fn(async()=>new Response('{"text":"heat 42"}'));
+  await tryRealCopilot(fetchAgent,'http://localhost:8001/copilot/voice/transcribe',{method:'POST',body,headers:{'Content-Type':'multipart/form-data'}});
+  expect(fetchAgent.mock.lastCall[1].body).toBe(body);
+  expect(fetchAgent.mock.lastCall[1].headers.has('Content-Type')).toBe(false);
+ });
+ it('preserves binary synthesis responses and provider headers', async () => {
+  const {tryRealCopilot}=await import('../src/mock/copilotTransport.js');
+  const response=await tryRealCopilot(async()=>new Response(new Uint8Array([82,73,70,70]),{headers:{'Content-Type':'audio/wav','X-TTS-Provider':'gnani'}}),'http://localhost:8001/copilot/voice/synthesize');
+  expect(response.headers.get('X-TTS-Provider')).toBe('gnani');
+  expect((await response.blob()).size).toBe(4);
+ });
+ it('falls back on connection failure but preserves reachable Agent errors', async () => {
+  const {tryRealCopilot}=await import('../src/mock/copilotTransport.js');
+  expect(await tryRealCopilot(async()=>{throw new TypeError('Failed to fetch');},'http://localhost:8001/copilot/chat')).toBeNull();
+  const response=await tryRealCopilot(async()=>new Response('Provider error',{status:504}),'http://localhost:8001/copilot/chat');
+  expect(response.status).toBe(504);
+ });
+ it('does not fall back when the caller cancels', async () => {
+  const {tryRealCopilot}=await import('../src/mock/copilotTransport.js');
+  const controller=new AbortController();controller.abort();
+  await expect(tryRealCopilot(vi.fn(),'http://localhost:8001/copilot/chat',{signal:controller.signal})).rejects.toHaveProperty('name','AbortError');
+ });
 });
