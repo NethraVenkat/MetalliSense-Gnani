@@ -1,0 +1,6 @@
+MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/
+__pycache__/
+*.pyc
+
+.env
+**/.env

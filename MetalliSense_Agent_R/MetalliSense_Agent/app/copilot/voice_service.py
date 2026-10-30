@@ -25,6 +25,9 @@ from groq import Groq
 # Text-to-Speech: gTTS (Google Text-to-Speech - Free, default)
 from gtts import gTTS
 
+# Gnani Prisma (STT) / Timbre (TTS) — opt-in via STT_PROVIDER / TTS_PROVIDER=gnani
+from .gnani_client import get_gnani_client, INDIAN_LANGUAGES
+
 ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech"
 # Default voice: "Rachel", a standard premade ElevenLabs voice. Override
 # with ELEVENLABS_VOICE_ID for a different one (see elevenlabs.io/app/voice-library).
@@ -63,6 +66,13 @@ class VoiceService:
         self.elevenlabs_model = os.getenv("ELEVENLABS_MODEL", DEFAULT_ELEVENLABS_MODEL).strip()
         self.last_provider_used = None
         self.last_error = None
+        self.last_media_type = "audio/mpeg"
+
+        self.stt_provider = os.getenv("STT_PROVIDER", "groq").strip().lower()
+        self.gnani = None
+        if self.stt_provider == "gnani" or self.tts_provider == "gnani":
+            self.gnani = get_gnani_client()
+        print(f"🎤 STT provider: {self.stt_provider}")
 
         if self.tts_provider == "elevenlabs" and not self.elevenlabs_api_key:
             print("⚠️  TTS_PROVIDER=elevenlabs but ELEVENLABS_API_KEY is not set — "
@@ -76,7 +86,19 @@ class VoiceService:
         audio_file: BinaryIO,
         language: str = "en"
     ) -> Dict[str, str]:
-        """Convert speech to text using Groq Whisper."""
+        """Convert speech to text using Groq Whisper (or Gnani Prisma when STT_PROVIDER=gnani)."""
+        if self.stt_provider == "gnani":
+            try:
+                # main.py passes a temp-file path; other callers may pass a file object.
+                if isinstance(audio_file, (str, Path)):
+                    with open(audio_file, "rb") as f:
+                        audio_bytes = f.read()
+                else:
+                    audio_bytes = audio_file.read()
+            except Exception as e:
+                return {"text": "", "language": language or "", "error": str(e), "success": False}
+            return self.gnani.transcribe(audio_bytes, language)
+
         if not self.client:
             return {"text": "", "error": "GROQ_API_KEY not configured", "success": False}
         try:
@@ -100,15 +122,27 @@ class VoiceService:
         Convert text to speech. Uses ElevenLabs if configured and available,
         otherwise gTTS (default, already-working behavior).
         """
+        if self.tts_provider == "gnani":
+            audio = self.gnani.synthesize(text, language)
+            if audio:
+                self.last_provider_used = "gnani"
+                self.last_media_type = "audio/wav"
+                return audio
+            self.last_error = self.gnani.last_error
+            print("Gnani TTS failed — falling back to gTTS for this request.")
+
         if self.tts_provider == "elevenlabs":
             audio = self._elevenlabs_tts(text)
             if audio:
                 self.last_provider_used = "elevenlabs"
+                self.last_media_type = "audio/mpeg"
                 return audio
             print("ElevenLabs TTS failed — falling back to gTTS for this request.")
 
         self.last_provider_used = "gtts"
-        return self._gtts_tts(text, language, slow)
+        self.last_media_type = "audio/mpeg"
+        # gTTS wants short codes ("ta"), Gnani-style callers may send "ta-IN".
+        return self._gtts_tts(text, (language or "en").split("-")[0], slow)
 
     def _gtts_tts(self, text: str, language: str = "en", slow: bool = False) -> bytes:
         try:
@@ -159,9 +193,12 @@ class VoiceService:
             "elevenlabs_configured": bool(self.elevenlabs_api_key),
             "elevenlabs_voice_id": self.elevenlabs_voice_id,
             "elevenlabs_model": self.elevenlabs_model,
-            "stt_available": self.client is not None,
+            "stt_provider": self.stt_provider,
+            "stt_available": self.client is not None or self.stt_provider == "gnani",
             "last_provider_used": self.last_provider_used,
+            "last_media_type": self.last_media_type,
             "last_error": self.last_error,
+            "gnani": self.gnani.status() if self.gnani else None,
         }
 
     def text_to_speech_file(
@@ -186,7 +223,10 @@ class VoiceService:
     def get_supported_languages(self) -> Dict[str, str]:
         """Language support depends on the active TTS provider — this list
         reflects gTTS's common languages; ElevenLabs supports a similar
-        but not identical set (multilingual_v2 model covers ~29 languages)."""
+        but not identical set (multilingual_v2 model covers ~29 languages).
+        When Gnani is active, its Indian-language list is returned instead."""
+        if self.gnani:
+            return dict(INDIAN_LANGUAGES)
         return {
             "en": "English", "es": "Spanish", "fr": "French", "de": "German",
             "it": "Italian", "pt": "Portuguese", "ru": "Russian", "ja": "Japanese",

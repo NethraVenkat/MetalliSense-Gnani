@@ -812,13 +812,15 @@ async def synthesize_speech(request: TTSRequest):
         if not audio_bytes:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"No audio produced (ElevenLabs: {voice_service.last_error or 'n/a'})"
+                detail=f"No audio produced by TTS provider (last error: {voice_service.last_error or 'n/a'})"
             )
+        media_type = voice_service.last_media_type or "audio/mpeg"
+        extension = "wav" if media_type == "audio/wav" else "mp3"
         return Response(
             content=audio_bytes,
-            media_type="audio/mpeg",
+            media_type=media_type,
             headers={
-                "Content-Disposition": "inline; filename=speech.mp3",
+                "Content-Disposition": f"inline; filename=speech.{extension}",
                 "X-TTS-Provider": voice_service.last_provider_used or "unknown",
             }
         )

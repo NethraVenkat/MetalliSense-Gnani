@@ -26,6 +26,9 @@ def get_copilot():
     if _PROVIDER == "gemini":
         from .gemini_explainer import get_gemini_copilot
         return get_gemini_copilot()
+    if _PROVIDER == "evon":
+        from .evon_explainer import get_evon_copilot
+        return get_evon_copilot()
     return get_groq_copilot()
 
 
