@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import sys
 import wave
 from collections import defaultdict
@@ -225,11 +226,67 @@ def score(job, result, source):
             "error": result.get("error", "")}
 
 
+def score_intents(root, rows):
+    """Use the actual frontend mapper, with no copied intent rules or network calls."""
+    completed = subprocess.run(
+        ["node", str(root / "score_intents.mjs")], input=json.dumps(rows, ensure_ascii=False),
+        capture_output=True, text=True, encoding="utf-8", timeout=30,
+    )
+    if completed.returncode:
+        raise ValueError(completed.stderr.strip() or "Frontend intent scorer failed")
+    return json.loads(completed.stdout)
+
+
+def rescore_saved(root):
+    """Re-score recorded attempts using CSV reference labels and cached transcripts only."""
+    with (root / "runs.csv").open(encoding="utf-8-sig", newline="") as handle:
+        records = list(csv.DictReader(handle))
+    if not records:
+        raise ValueError("runs.csv contains no saved attempts to score")
+    cache_path = root / "results_cache.json"
+    cache = json.loads(cache_path.read_text(encoding="utf-8")) if cache_path.exists() else {}
+    if not isinstance(cache, dict):
+        raise ValueError("results_cache.json must contain a JSON object")
+    references = {}
+    jobs = {}
+    for record in records:
+        phrase = {field: record[field] for field in ("file", "expected_text", "expected_intent")}
+        if phrase["file"] in references and references[phrase["file"]] != phrase:
+            raise ValueError(f"Conflicting CSV reference labels: {phrase['file']}")
+        references[phrase["file"]] = phrase
+        key = json.dumps([phrase["file"], record["noise"], record["snr"]], separators=(",", ":"))
+        if key in jobs:
+            raise ValueError(f"Duplicate saved condition: {key}")
+        jobs[key] = {"phrase": phrase, "noise": record["noise"], "snr": record["snr"], "record": record}
+    # Include cached conditions missing from runs.csv, provided independent labels exist.
+    for key in cache:
+        file, noise, snr = json.loads(key)
+        if file not in references:
+            raise ValueError(f"No CSV reference labels for cached recording: {file}")
+        if key not in jobs:
+            jobs[key] = {"phrase": references[file], "noise": noise, "snr": snr}
+    rows = []
+    ordered = sorted(jobs.items(), key=lambda item: (SNRS.index(item[1]["snr"]), item[1]["phrase"]["file"], item[1]["noise"]))
+    for key, job in ordered:
+        result = cache.get(key)
+        source = "cache"
+        if result is None:
+            saved = job["record"]
+            result = {"text": saved["transcript"], "success": saved["success"].lower() == "true", "error": saved.get("error", "")}
+            source = "runs.csv"
+        rows.append(score(job, result, source))
+    write_reports(root, rows, list(jobs.values()), missing=None, calls=0)
+    print(f"Re-scored {len(rows)} saved conditions with the real frontend mapper. New STT calls: 0.")
+    print("Wrote report.md, report.csv and runs.csv. Transcript cache was not modified.")
+
+
 def write_reports(root, rows, jobs, missing, calls):
+    rows = score_intents(root, rows)
     fields = list(rows[0]) if rows else [
         "file", "noise", "snr", "expected_text", "expected_intent", "source", "success", "transcript",
         "wer", "word_errors", "reference_words", "exact_match", "expected_heat", "actual_heat", "heat_ok",
-        "expected_elements", "actual_elements", "elements_ok", "error",
+        "expected_elements", "actual_elements", "elements_ok", "error", "predicted_intent", "predicted_params",
+        "intent_correct", "intent_heat_correct",
     ]
     with (root / "runs.csv").open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -239,9 +296,10 @@ def write_reports(root, rows, jobs, missing, calls):
     for row in rows:
         groups[row["snr"]].append(row)
     lines = ["# Gnani Prisma noise benchmark", "", f"Generated: {datetime.now(timezone.utc).isoformat()}", "",
-             f"New STT calls: {calls}. Cached results: {sum(r['source'] == 'cache' for r in rows)}. Missing recordings: {missing}.", "",
-             "| SNR (dB) | Scored / planned | STT success | WER | Word accuracy | Exact text | Heat slot | Element slots |",
-             "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+             f"New STT calls: {calls}. Cached results: {sum(r['source'] == 'cache' for r in rows)}. "
+             + (f"Missing recordings: {missing}." if missing is not None else "Re-scored from saved attempts; audio availability was not checked."), "",
+             "| SNR (dB) | Scored / planned | STT success | WER | Word accuracy | Exact text | Heat slot | Element slots | Intent correct | Intent + heat correct |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     def percentage(values):
         return f"{sum(values) / len(values):.1%}" if values else "N/A"
     summaries = []
@@ -257,17 +315,23 @@ def write_reports(root, rows, jobs, missing, calls):
             "exact_text_accuracy": percentage([r["exact_match"] for r in group]),
             "heat_slot_accuracy": percentage([r["heat_ok"] for r in group if r["heat_ok"] != ""]),
             "element_slot_accuracy": percentage([r["elements_ok"] for r in group if r["elements_ok"] != ""]),
+            "intent_accuracy": percentage([r["intent_correct"] for r in group]),
+            "intent_heat_accuracy": percentage([r["intent_heat_correct"] for r in group]),
         })
         lines.append(f"| {snr} | {len(group)} / {sum(j['snr'] == snr for j in jobs)} | "
                      f"{percentage([r['success'] for r in group])} | {f'{wer:.1%}' if wer is not None else 'N/A'} | "
                      f"{f'{max(0, 1 - wer):.1%}' if wer is not None else 'N/A'} | {percentage([r['exact_match'] for r in group])} | "
                      f"{percentage([r['heat_ok'] for r in group if r['heat_ok'] != ''])} | "
-                     f"{percentage([r['elements_ok'] for r in group if r['elements_ok'] != ''])} |")
+                     f"{percentage([r['elements_ok'] for r in group if r['elements_ok'] != ''])} | "
+                     f"{percentage([r['intent_correct'] for r in group])} | {percentage([r['intent_heat_correct'] for r in group])} |")
     lines += ["", "WER is micro-averaged edit distance / reference words; it may exceed 100%. Word accuracy is max(0, 1 - WER).",
               "Failed STT attempts count as empty transcripts; unattempted jobs are excluded from scores and remain visible in planned counts.",
               "Clean is measured once per phrase, not repeated for every noise. SNR uses full-clip RMS including pauses.",
               "Slot scoring normalizes English number words and checks heat digits and element aliases; extra elements do not erase a surviving expected slot.",
-              "expected_intent is a dataset label, not measured intent accuracy. No frontend intent mapper is invoked.",
+              "Intent correct compares the real frontend mapIntent result with expected_intent. Intent + heat correct also requires the expected heat number when present; prompts without a heat use intent correctness alone.",
+              "Failed STT attempts count as incorrect for both intent metrics. All scored attempts are included in their denominators.",
+              "Element slots remains the original lexical alias metric; frontend aliases such as magnus -> Mn affect intent scoring, not the literal transcript or WER. Intent correctness alone does not guarantee the element or alloy parameter is correct; inspect predicted_params in runs.csv.",
+              "For a saved-only re-score, planned counts describe saved conditions, not recordings or unattempted conditions that might exist on disk.",
               "Synthetic noise is a repeatable stress test, not proof of performance in a foundry. See runs.csv for individual outcomes.", ""]
     with (root / "report.csv").open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(summaries[0]))
@@ -279,10 +343,16 @@ def write_reports(root, rows, jobs, missing, calls):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Prepare/validate noise and count calls; never import/call the Gnani client")
+    parser.add_argument("--rescore-only", action="store_true", help="Use results_cache.json/runs.csv only; no audio, client initialization or STT calls")
     parser.add_argument("--max-calls", type=int, default=60, help="Maximum new STT attempts per invocation (default: 60)")
     args = parser.parse_args(argv)
     if args.max_calls < 0:
         parser.error("--max-calls must be nonnegative")
+    if args.rescore_only:
+        if args.dry_run:
+            parser.error("Choose --rescore-only or --dry-run")
+        rescore_saved(BENCH)
+        return 0
     load_dotenv(AGENT_ROOT / ".env", override=False)
     root = BENCH
     phrases = load_phrases(root)

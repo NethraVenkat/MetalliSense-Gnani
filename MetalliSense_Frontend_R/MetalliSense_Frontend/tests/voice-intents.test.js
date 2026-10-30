@@ -53,6 +53,21 @@ describe('read-only voice intents', () => {
   it('still blocks unsafe commands with misheard heat names', () => {
     expect(mapIntent('release sheet 1051 status')).toMatchObject({ intent: 'blocked' });
   });
+  it.each(['magnus', 'magnes', 'magnis'])('recognizes cached Prisma Mn alias %s', alias => {
+    expect(mapIntent(`1051 ${alias} in a`)).toEqual({ intent: 'element_value', params: { heatNumber: 1051, element: 'Mn' } });
+  });
+  it('preserves a misheard heat number instead of guessing the intended heat', () => {
+    expect(mapIntent('81051 magnes in')).toEqual({ intent: 'element_value', params: { heatNumber: 81051, element: 'Mn' } });
+  });
+  it('recognizes the cached Prisma FeSi stock alias', () => {
+    expect(mapIntent('fpsi stock evolve')).toEqual({ intent: 'stock_check', params: { alloy: 'FeSi' } });
+  });
+  it('matches Mn aliases as complete tokens', () => {
+    expect(mapIntent('tell me about magnusson')).toEqual({ intent: 'ask_copilot', params: {} });
+  });
+  it.each(['deduct fpsi stock', 'approve 1051 magnus in a'])('keeps unsafe alias request blocked: %s', text => {
+    expect(mapIntent(text)).toMatchObject({ intent: 'blocked' });
+  });
   it.each(['inna', 'ena', 'yenna', 'anna', 'in a'])('understands phrase-ending %s', word => {
     expect(mapIntent(`heat forty two status ${word}.`)).toEqual({ intent: 'heat_status', params: { heatNumber: 42 } });
   });

@@ -11,8 +11,8 @@ It does not go through the frontend mock server or require a running FastAPI ser
 The supplied `phrases.csv` contains ten Tanglish/English prompts. Read each aloud once
 and save it under the exact `file` name in `clean/`. Edit `expected_text` to match what
 you actually said, preserving the spoken heat number and element. Remove unused rows
-if recording only eight or nine prompts. `expected_intent` is a dataset label, not an
-intent prediction; this bench measures transcription and slot retention only.
+if recording only eight or nine prompts. `expected_intent` is the independent reference
+label used to measure the frontend mapper's intent accuracy.
 
 Use a quiet room and the same microphone/distance operators will use, with a consistent
 normal speaking volume. Allow roughly half a second of silence before and after the
@@ -93,6 +93,28 @@ that request may need to be repeated and can incur credits again.
 
 ## Reports and scoring
 
+Re-score the saved transcripts after changing the frontend mapper, with zero STT calls:
+
+```powershell
+.\.venv\Scripts\python.exe tools\noise_bench.py --rescore-only
+```
+
+This path reads only `runs.csv` for reference labels and `results_cache.json` for
+transcripts (falling back to a saved CSV transcript when its cache entry is absent).
+It does not load `.env`, read audio, generate mixtures, initialize Gnani or modify the
+transcript cache. It updates `runs.csv`, `report.csv` and `report.md`; its planned counts
+refer to saved conditions only. A cache entry without a CSV reference label is an error,
+so unlabeled attempts are not silently dropped. Keep the saved CSV and cache together.
+
+Reporting requires Node on PATH. Python sends rows as JSON to `score_intents.mjs`,
+which imports the actual frontend `src/services/voiceIntents.js` and calls `mapIntent`
+for every transcript. The script also accepts a JSON array on stdin and emits scored
+JSON on stdout; it contains no STT or network code. Optional local scoring checks:
+
+```powershell
+node --test tools/noise_bench/score_intents.test.mjs
+```
+
 Live/cache-only runs produce `report.csv` and `report.md` (per-SNR accuracy summaries),
 plus `runs.csv` (one row per completed condition). WER uses case/punctuation-normalized token edit distance;
 number words remain words for WER. It may exceed 100% with insertions. Word accuracy
@@ -103,7 +125,15 @@ and heat aliases, then checks heat digits and C/Si/Mn/P/S names/symbols, includi
 aliases. N/A means that phrase does not ask for that slot. Missing/failed STT counts
 as a failed slot and empty transcript; unattempted conditions are excluded from
 accuracy denominators and remain visible in coverage counts. The summary is pooled
-across noise tracks, with per-track results in `runs.csv`. Expected intent is not scored.
+across noise tracks, with per-track results in `runs.csv`. The original lexical element
+metric and WER remain unchanged by frontend speech-alias fixes, preserving comparability.
+
+`Intent correct` requires a successful STT result and a mapper intent equal to
+`expected_intent`. `Intent + heat correct` also requires the reference heat number
+when present; prompts without a heat are scored on intent alone. Failed attempts
+count as incorrect. `runs.csv` includes `predicted_intent`, `predicted_params`,
+`intent_correct`, and `intent_heat_correct` for inspection. These two metrics do not
+check element/alloy parameters; an intent match alone is not complete command accuracy.
 
 WAVs and `results_cache.json` are ignored by Git. `phrases.csv`, this README and
 `report.md` remain trackable; reports and CSVs contain your phrase text and transcripts,

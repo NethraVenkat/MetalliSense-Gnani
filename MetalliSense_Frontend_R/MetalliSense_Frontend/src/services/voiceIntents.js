@@ -30,7 +30,8 @@ function normalizeTranscript(transcript) {
     .replace(/\b(?:kattu|cut too|show)\b/g, 'kaattu')
     .replace(/\b(?:en|why)\b/g, 'yen');
 }
-const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
+// Mn spellings observed in cached Prisma en-IN transcripts of the benchmark phrases.
+const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு', 'magnus', 'magnes', 'magnis'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
 const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
 export function mapIntent(transcript) {
   const text = normalizeTranscript(transcript);
@@ -42,7 +43,7 @@ export function mapIntent(transcript) {
     || (hasStatusWord ? text.match(/\b(\d{3,4})\b/) : null);
   if (heat) params.heatNumber = Number(heat[1]);
   if (/stock|இருப்பு/u.test(text) && !/open|kaattu|காட்டு|திற/u.test(text)) {
-    if (/fesi|ferro\s*silicon/i.test(text)) params.alloy = 'FeSi';
+    if (/fesi|ferro\s*silicon/i.test(text) || has(text, 'fpsi')) params.alloy = 'FeSi';
     else if (/femn|ferro\s*manganese/i.test(text)) params.alloy = 'FeMn';
     else if (/recarburiser|recarburizer/i.test(text)) params.alloy = 'Recarburiser';
     return { intent: 'stock_check', params };
