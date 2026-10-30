@@ -24,3 +24,14 @@ playwright-report/
 
 # TTS voice auditions are local audio artifacts.
 MetalliSense_Agent_R/MetalliSense_Agent/tools/tts_audition/*.wav
+
+# Phone recordings/caches stay local; keep report CSV/MD and phrase templates tracked.
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/real_calls/*.m4a
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/real_calls/*.wav
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/real_calls/*.mp3
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/real_calls/*.ogg
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/real_calls/*.aac
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/telephony_8k/*.wav
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/telephony_8k/**/*.wav
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/telephony_8k/results_cache.json*
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/real_calls/results_cache.json*

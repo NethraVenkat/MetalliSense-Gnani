@@ -1,0 +1,21 @@
+file,expected_text,expected_intent
+real_manish_01.m4a,Heat 1053 status enna,heat_status
+real_manish_02.m4a,Heat 1052 status enna,heat_status
+real_manish_03.m4a,Yen HOLD,gate_reason
+real_manish_04.m4a,Why hold heat 1053,gate_reason
+real_manish_05.m4a,Heat 1052 carbon evvalavu,element_value
+real_manish_06.m4a,Heat 1052 silicon level enna,element_value
+real_manish_07.m4a,FeSi stock evvalavu,stock_check
+real_manish_08.m4a,Spectrometer kaattu,open_screen
+real_manish_09.m4a,Show dashboard,open_screen
+real_manish_10.m4a,Start melting,blocked
+real_nethra_01.m4a,Heat 1053 status enna,heat_status
+real_nethra_02.m4a,Heat 1052 status enna,heat_status
+real_nethra_03.m4a,Yen HOLD,gate_reason
+real_nethra_04.m4a,Why hold heat 1053,gate_reason
+real_nethra_05.m4a,Heat 1052 carbon evvalavu,element_value
+real_nethra_06.m4a,Heat 1052 silicon level enna,element_value
+real_nethra_07.m4a,FeSi stock evvalavu,stock_check
+real_nethra_08.m4a,Spectrometer kaattu,open_screen
+real_nethra_09.m4a,Show dashboard,open_screen
+real_nethra_10.m4a,Start melting,blocked

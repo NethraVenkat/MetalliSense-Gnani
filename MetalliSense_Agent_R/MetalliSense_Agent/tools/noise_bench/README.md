@@ -1,5 +1,10 @@
 # Gnani Prisma noise robustness bench
 
+Separate phone tracks are available with `--telephony` and `--real-calls`.
+See [telephony_8k/README.md](telephony_8k/README.md) for the 8 kHz processing,
+isolated caches/reports, real-call template and recording instructions.
+These modes never overwrite or pool with the original 16 kHz results.
+
 Run from `MetalliSense_Agent_R/MetalliSense_Agent` using the existing `.venv`.
 The bench uses installed NumPy and SciPy for audio and resampling; it installs nothing.
 It calls the existing `get_gnani_client().transcribe(audio_bytes, language=None)` directly,

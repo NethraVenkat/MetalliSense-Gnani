@@ -166,6 +166,9 @@ def cache_key(file, noise, snr, config=None):
     parts = [file, noise, snr]
     if config is not None:
         parts.extend(config[field] for field in ("model", "language", "format"))
+        if config.get("telephony"):
+            parts.append(f"telephony={config['telephony']}")
+            parts.append(f"track={config.get('track', 'synthetic_telephony_8k')}")
     return json.dumps(parts, separators=(",", ":"))
 
 
@@ -388,6 +391,9 @@ def write_reports(root, rows, jobs, missing, calls):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Prepare/validate noise and count calls; never import/call the Gnani client")
+    tracks = parser.add_mutually_exclusive_group()
+    tracks.add_argument("--telephony", action="store_true", help="Separate synthetic phone-band/G.711 track uploaded as 8 kHz WAV")
+    tracks.add_argument("--real-calls", action="store_true", help="Separate real_calls/ recordings and speaker reports; no added synthetic noise")
     parser.add_argument("--rescore-only", action="store_true", help="Use results_cache.json/runs.csv only; no audio, client initialization or STT calls")
     parser.add_argument("--include-legacy", action="store_true", help="Explicitly identify historical three-part cache keys with all three --stt-* selections; requires --rescore-only")
     parser.add_argument("--output-dir", type=Path, help="Write rescored reports here, preserving the source reports; requires --rescore-only")
@@ -398,6 +404,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.max_calls < 0:
         parser.error("--max-calls must be nonnegative")
+    if (args.telephony or args.real_calls) and args.rescore_only:
+        parser.error("Phone tracks use --max-calls 0 for cache-only scoring, not --rescore-only")
     if (args.include_legacy or args.output_dir is not None) and not args.rescore_only:
         parser.error("--include-legacy and --output-dir require --rescore-only")
     if args.rescore_only:
@@ -408,6 +416,9 @@ def main(argv=None):
     load_dotenv(AGENT_ROOT / ".env", override=False)
     apply_stt_overrides(args)
     config = get_stt_config()
+    if args.telephony or args.real_calls:
+        from tools.telephony_bench import run_track
+        return run_track(sys.modules[__name__], args, config)
     root = BENCH
     phrases = load_phrases(root)
     cache_path = root / "results_cache.json"
@@ -469,6 +480,9 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     try:
         raise SystemExit(main())
     except (OSError, ValueError, csv.Error) as error:
