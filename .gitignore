@@ -12,3 +12,9 @@ node_modules/
 
 *.wav
 .venv/
+
+# Gnani noise bench: keep phrases.csv and report.md; exclude audio and transcript cache.
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/*.wav
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/**/*.wav
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/results_cache.json
+MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/results_cache.json.tmp

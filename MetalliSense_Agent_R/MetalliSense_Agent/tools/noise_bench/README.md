@@ -1,0 +1,110 @@
+# Gnani Prisma noise robustness bench
+
+Run from `MetalliSense_Agent_R/MetalliSense_Agent` using the existing `.venv`.
+The bench uses installed NumPy and SciPy for audio and resampling; it installs nothing.
+It calls the existing `get_gnani_client().transcribe(audio_bytes, language=None)` directly,
+so `GNANI_STT_LANGUAGE` from the Agent environment controls STT (currently use `en-IN`).
+It does not go through the frontend mock server or require a running FastAPI server.
+
+## Record 8–10 clean phrases
+
+The supplied `phrases.csv` contains ten Tanglish/English prompts. Read each aloud once
+and save it under the exact `file` name in `clean/`. Edit `expected_text` to match what
+you actually said, preserving the spoken heat number and element. Remove unused rows
+if recording only eight or nine prompts. `expected_intent` is a dataset label, not an
+intent prediction; this bench measures transcription and slot retention only.
+
+Use a quiet room and the same microphone/distance operators will use, with a consistent
+normal speaking volume. Allow roughly half a second of silence before and after the
+phrase, avoid clipping and long pauses, and do not enable recorder noise suppression
+or automatic level adjustment if it can be disabled. Save real WAV audio, preferably
+16-bit PCM, at the recorder's native sample rate (16, 44.1 or 48 kHz is fine). Stereo
+and PCM/float WAVs are supported; audio is downmixed and anti-alias resampled to
+16 kHz mono before mixing. Do not simply rename MP3/M4A files to `.wav`.
+
+Prompts cover heat 42/1051 status, C/Si/Mn quantities, HOLD reason, FeSi stock, and screen
+navigation. To compare operators or microphones, use distinct filenames and CSV rows.
+Missing recordings are listed and skipped; no synthetic speech is substituted.
+
+## Noise and replay
+
+Put foundry/machine WAV recordings directly in `noise/`, preferably at least 10–15
+seconds long with varied machine activity. The bench uses every WAV there; shorter
+clips are deterministically repeated to match each speech clip. Only record where
+allowed and retain the original recordings for listening comparisons.
+
+If no noise WAV exists, the bench generates three 12-second WAVs with fixed seed 1051:
+`synthetic_brown.wav`, `synthetic_hum.wav` (50/100 Hz and harmonics), and
+`synthetic_clanks.wav` (random decaying metallic bursts). These are replayable even
+after a dry run. Remove the generated WAVs when switching exclusively to real noise;
+otherwise all existing WAVs are included. Clean speech is tested once per phrase,
+then every noise at 20, 10, 5, and 0 dB SNR. Ten phrases with three noises = 130
+conditions, not 150 (the clean baseline is not duplicated).
+
+SNR is defined using RMS over the entire speech/noise clip, including pauses.
+The mixture is scaled as a whole to avoid clipping while preserving the ratio.
+Live runs save submitted 16 kHz mono WAVs under `mixed/<phrase>/` for replay.
+This controlled additive-noise test does not reproduce reverberation, microphone
+overload, moving sources or every property of a real foundry.
+
+## Plan without spending credits
+
+PowerShell, from the Agent directory:
+
+```powershell
+.\.venv\Scripts\python.exe tools\noise_bench.py --dry-run
+.\.venv\Scripts\python.exe tools\noise_bench.py --dry-run --max-calls 10
+```
+
+Dry run loads and validates available audio, prepares missing synthetic noise, and
+prints cached/uncached counts and the number of calls allowed by the limit. It never
+initializes the Gnani client or sends STT requests, and never writes mixtures, reports
+or the transcript cache. With the starter CSV and no speech recordings, it reports
+130 potential conditions but zero runnable conditions and zero calls.
+
+## Run later, when credits are authorized
+
+The following commands make real paid STT calls; they were **not** run during setup:
+
+```powershell
+# Existing Agent .env is loaded; process environment variables take precedence.
+$env:GNANI_STT_LANGUAGE = 'en-IN'
+$env:GNANI_MOCK = 'false'
+.\.venv\Scripts\python.exe tools\noise_bench.py --max-calls 10
+```
+
+Configure `GNANI_API_KEY` through the existing Agent environment or `.env`; do not put
+it in recordings, CSVs or reports. A live run refuses mock-mode clients so placeholder
+transcripts cannot be mistaken for Prisma performance. The default limit is 60 new
+attempts per invocation, including failed requests; there are no automatic retries.
+Jobs run in clean, 20, 10, 5, 0 dB order; reports show scored/planned coverage when
+the limit stops a run. Limits apply per invocation, not per day or for all reruns.
+
+`results_cache.json` keys are JSON tuples `[file, noise, snr]`. Each entry includes a
+fingerprint of submitted audio, mixing version, STT locale, format and service URL.
+Unchanged completed reruns cost zero calls; partially completed runs spend credits
+only on uncached conditions, subject to the limit. With `--max-calls 0`, only cached
+results are scored. Changing recordings/noise/config invalidates affected entries.
+Failed attempts are also cached to prevent accidental repeated spending; delete only
+their entries if you deliberately want to retry. Stop other benchmark processes before
+editing or running: the cache is designed for a single writer, with atomic saves after
+each request. If interrupted while a request is in flight before its result is saved,
+that request may need to be repeated and can incur credits again.
+
+## Reports and scoring
+
+Live/cache-only runs produce `report.csv` and `report.md` (per-SNR accuracy summaries),
+plus `runs.csv` (one row per completed condition). WER uses case/punctuation-normalized token edit distance;
+number words remain words for WER. It may exceed 100% with insertions. Word accuracy
+is `max(0, 1 - aggregate WER)`, and exact-text accuracy is also reported.
+
+Slot scoring separately normalizes English number words (including “ten fifty one”)
+and heat aliases, then checks heat digits and C/Si/Mn/P/S names/symbols, including Tamil
+aliases. N/A means that phrase does not ask for that slot. Missing/failed STT counts
+as a failed slot and empty transcript; unattempted conditions are excluded from
+accuracy denominators and remain visible in coverage counts. The summary is pooled
+across noise tracks, with per-track results in `runs.csv`. Expected intent is not scored.
+
+WAVs and `results_cache.json` are ignored by Git. `phrases.csv`, this README and
+`report.md` remain trackable; reports and CSVs contain your phrase text and transcripts,
+so review their contents before committing. No recordings ship with this bench.

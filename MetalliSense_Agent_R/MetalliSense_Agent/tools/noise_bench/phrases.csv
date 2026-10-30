@@ -1,0 +1,11 @@
+file,expected_text,expected_intent
+heat_1051_tanglish.wav,Heat 1051 status enna,heat_status
+heat_1051_english.wav,What is the status of heat 1051,heat_status
+heat_42_tanglish.wav,Heat 42 epdi irukku,heat_status
+carbon_tanglish.wav,Heat 1051 carbon evvalavu,element_value
+silicon_english.wav,What is the silicon level in heat 1051,element_value
+manganese_tanglish.wav,Heat 1051 Mn enna,element_value
+hold_reason.wav,Why hold heat 1051,gate_reason
+stock_tanglish.wav,FeSi stock evvalavu,stock_check
+spectrometer_tanglish.wav,Spectrometer kaattu,open_screen
+dashboard_english.wav,Show dashboard,open_screen
