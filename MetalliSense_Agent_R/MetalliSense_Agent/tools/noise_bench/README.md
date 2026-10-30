@@ -76,12 +76,33 @@ $env:GNANI_MOCK = 'false'
 Configure `GNANI_API_KEY` through the existing Agent environment or `.env`; do not put
 it in recordings, CSVs or reports. A live run refuses mock-mode clients so placeholder
 transcripts cannot be mistaken for Prisma performance. The default limit is 60 new
-attempts per invocation, including failed requests; there are no automatic retries.
+attempts per invocation, including failed requests and retries. The client retries a
+429 once after one second and a 504 once immediately; a single remaining call in the
+budget disables the retry. Dry-run counts initial attempts, before possible retries.
 Jobs run in clean, 20, 10, 5, 0 dB order; reports show scored/planned coverage when
 the limit stops a run. Limits apply per invocation, not per day or for all reruns.
 
-`results_cache.json` keys are JSON tuples `[file, noise, snr]`. Each entry includes a
-fingerprint of submitted audio, mixing version, STT locale, format and service URL.
+Compare models without editing `.env` (these examples are dry runs):
+
+```powershell
+.\.venv\Scripts\python.exe tools\noise_bench.py --dry-run --stt-model v2.5 --stt-language en-IN --stt-format transcribe
+.\.venv\Scripts\python.exe tools\noise_bench.py --dry-run --stt-model prisma-v3.0 --stt-language "ta-IN,en-IN" --stt-format codemix
+```
+
+Remove `--dry-run` only when ready to spend credits. Overrides affect only the process
+environment; `.env` is never written. `v2.5`/`prisma-v2.5` (or an empty model argument)
+omits the model field; the default is `prisma-v3.0`. v2.5 supports a single language
+and `verbatim`/`transcribe`; v3.0 also supports up to four comma-separated language
+hints, `indic-auto`, `codemix`, and `transliterate`. `GNANI_STT_KEYTERMS` comes from the
+environment; an empty value disables it. Keyterms are a v3.0 feature.
+
+`results_cache.json` keys are JSON tuples `[file, noise, snr, model, language, format]`,
+so v2.5/v3.0 and language/format variants coexist. Each entry also fingerprints the
+submitted audio, keyterms, mixing version and service URL. Historical three-part keys
+remain intact and can be re-scored, but are not reused for new calls because they do
+not record a known model configuration. Saved runs/reports identify model, language
+and format. With multiple configurations cached, use the three `--stt-*` options with
+`--rescore-only` to select a comparison rather than pooling incompatible conditions.
 Unchanged completed reruns cost zero calls; partially completed runs spend credits
 only on uncached conditions, subject to the limit. With `--max-calls 0`, only cached
 results are scored. Changing recordings/noise/config invalidates affected entries.

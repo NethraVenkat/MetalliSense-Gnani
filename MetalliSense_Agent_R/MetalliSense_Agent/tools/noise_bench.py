@@ -22,6 +22,9 @@ from scipy.io import wavfile
 from scipy.signal import resample_poly
 
 AGENT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(AGENT_ROOT))
+from app.copilot.gnani_client import get_stt_config, stt_language
+
 BENCH = Path(__file__).resolve().parent / "noise_bench"
 RATE = 16000
 SNRS = ("clean", "20", "10", "5", "0")
@@ -182,11 +185,31 @@ def load_phrases(root):
     return phrases
 
 
+def cache_key(file, noise, snr, config=None):
+    parts = [file, noise, snr]
+    if config is not None:
+        parts.extend(config[field] for field in ("model", "language", "format"))
+    return json.dumps(parts, separators=(",", ":"))
+
+
+def apply_stt_overrides(args):
+    overrides = {}
+    for field in ("model", "language", "format"):
+        value = getattr(args, f"stt_{field}")
+        if value is not None:
+            if field == "model" and value in ("v2.5", "prisma-v2.5"):
+                value = ""
+            if field == "language":
+                value = stt_language(value)
+            os.environ[f"GNANI_STT_{field.upper()}"] = value
+            overrides[field] = value
+    return overrides
+
+
 def plan(root, phrases, cache):
     noise = {p.name: read_audio(p) for p in sorted((root / "noise").glob("*.wav"))}
     clean = {p["file"]: read_audio(root / "clean" / p["file"]) for p in phrases if (root / "clean" / p["file"]).is_file()}
-    config = {"language": os.getenv("GNANI_STT_LANGUAGE", "ta-IN"), "format": os.getenv("GNANI_STT_FORMAT", "transcribe"),
-              "base_url": os.getenv("GNANI_BASE_URL", "https://api.vachana.ai"), "mix_version": 1}
+    config = {**get_stt_config(), "base_url": os.getenv("GNANI_BASE_URL", "https://api.vachana.ai").strip().rstrip("/"), "mix_version": 1}
     jobs = []
     for snr in SNRS:
         for phrase in phrases:
@@ -194,13 +217,13 @@ def plan(root, phrases, cache):
                 continue
             for name in (["none"] if snr == "clean" else noise):
                 audio = mix(clean[phrase["file"]], noise.get(name), snr)
-                key = json.dumps([phrase["file"], name, snr], separators=(",", ":"))
+                key = cache_key(phrase["file"], name, snr, config)
                 fingerprint = hashlib.sha256(audio + json.dumps(config, sort_keys=True).encode()).hexdigest()
                 cached = cache.get(key)
                 if not isinstance(cached, dict) or cached.get("fingerprint") != fingerprint:
                     cached = None
                 jobs.append({"phrase": phrase, "noise": name, "snr": snr, "audio": audio,
-                             "key": key, "fingerprint": fingerprint, "cached": cached})
+                             "key": key, "fingerprint": fingerprint, "cached": cached, "config": config})
     return jobs, len(clean), len(noise)
 
 
@@ -223,7 +246,10 @@ def score(job, result, source):
             "heat_ok": success and expected == actual if expected else "",
             "expected_elements": " ".join(sorted(expected_elements)), "actual_elements": " ".join(sorted(actual_elements)),
             "elements_ok": success and expected_elements.issubset(actual_elements) if expected_elements else "",
-            "error": result.get("error", "")}
+            "error": result.get("error", ""),
+            "stt_model": job.get("config", {}).get("model", "legacy-unknown"),
+            "stt_language": job.get("config", {}).get("language", ""),
+            "stt_format": job.get("config", {}).get("format", "")}
 
 
 def score_intents(root, rows):
@@ -237,7 +263,7 @@ def score_intents(root, rows):
     return json.loads(completed.stdout)
 
 
-def rescore_saved(root):
+def rescore_saved(root, filters=None):
     """Re-score recorded attempts using CSV reference labels and cached transcripts only."""
     with (root / "runs.csv").open(encoding="utf-8-sig", newline="") as handle:
         records = list(csv.DictReader(handle))
@@ -254,17 +280,32 @@ def rescore_saved(root):
         if phrase["file"] in references and references[phrase["file"]] != phrase:
             raise ValueError(f"Conflicting CSV reference labels: {phrase['file']}")
         references[phrase["file"]] = phrase
-        key = json.dumps([phrase["file"], record["noise"], record["snr"]], separators=(",", ":"))
+        config = {field: record[f"stt_{field}"] for field in ("model", "language", "format")} if record.get("stt_language") else None
+        key = cache_key(phrase["file"], record["noise"], record["snr"], config)
         if key in jobs:
             raise ValueError(f"Duplicate saved condition: {key}")
         jobs[key] = {"phrase": phrase, "noise": record["noise"], "snr": record["snr"], "record": record}
+        if config is not None:
+            jobs[key]["config"] = config
     # Include cached conditions missing from runs.csv, provided independent labels exist.
     for key in cache:
-        file, noise, snr = json.loads(key)
+        parts = json.loads(key)
+        if len(parts) not in (3, 6):
+            raise ValueError(f"Invalid cache key: {key}")
+        file, noise, snr = parts[:3]
         if file not in references:
             raise ValueError(f"No CSV reference labels for cached recording: {file}")
         if key not in jobs:
             jobs[key] = {"phrase": references[file], "noise": noise, "snr": snr}
+            if len(parts) == 6:
+                jobs[key]["config"] = dict(zip(("model", "language", "format"), parts[3:]))
+    if filters:
+        jobs = {key: job for key, job in jobs.items() if all(job.get("config", {}).get(field) == value for field, value in filters.items())}
+    if not jobs:
+        raise ValueError("No saved results match the requested STT configuration")
+    variants = {tuple(job.get("config", {}).get(field) for field in ("model", "language", "format")) for job in jobs.values()}
+    if len(variants) > 1:
+        raise ValueError("Multiple STT configurations are cached; select one using --stt-model, --stt-language and --stt-format")
     rows = []
     ordered = sorted(jobs.items(), key=lambda item: (SNRS.index(item[1]["snr"]), item[1]["phrase"]["file"], item[1]["noise"]))
     for key, job in ordered:
@@ -286,7 +327,7 @@ def write_reports(root, rows, jobs, missing, calls):
         "file", "noise", "snr", "expected_text", "expected_intent", "source", "success", "transcript",
         "wer", "word_errors", "reference_words", "exact_match", "expected_heat", "actual_heat", "heat_ok",
         "expected_elements", "actual_elements", "elements_ok", "error", "predicted_intent", "predicted_params",
-        "intent_correct", "intent_heat_correct",
+        "intent_correct", "intent_heat_correct", "stt_model", "stt_language", "stt_format",
     ]
     with (root / "runs.csv").open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -300,6 +341,8 @@ def write_reports(root, rows, jobs, missing, calls):
              + (f"Missing recordings: {missing}." if missing is not None else "Re-scored from saved attempts; audio availability was not checked."), "",
              "| SNR (dB) | Scored / planned | STT success | WER | Word accuracy | Exact text | Heat slot | Element slots | Intent correct | Intent + heat correct |",
              "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    if rows:
+        lines[4:4] = [f"STT model: {rows[0]['stt_model'] or 'prisma-v2.5 (model omitted)'}. Language: {rows[0]['stt_language'] or 'legacy/unknown'}. Format: {rows[0]['stt_format'] or 'legacy/unknown'}.", ""]
     def percentage(values):
         return f"{sum(values) / len(values):.1%}" if values else "N/A"
     summaries = []
@@ -345,15 +388,20 @@ def main(argv=None):
     parser.add_argument("--dry-run", action="store_true", help="Prepare/validate noise and count calls; never import/call the Gnani client")
     parser.add_argument("--rescore-only", action="store_true", help="Use results_cache.json/runs.csv only; no audio, client initialization or STT calls")
     parser.add_argument("--max-calls", type=int, default=60, help="Maximum new STT attempts per invocation (default: 60)")
+    parser.add_argument("--stt-model", choices=("prisma-v3.0", "prisma-v2.5", "v2.5", ""), help="Override model; v2.5 (or empty) omits the model field")
+    parser.add_argument("--stt-language", help="Override locale, comma list of up to four locales, or indic-auto")
+    parser.add_argument("--stt-format", choices=("verbatim", "transcribe", "codemix", "transliterate"), help="Override STT output format")
     args = parser.parse_args(argv)
     if args.max_calls < 0:
         parser.error("--max-calls must be nonnegative")
     if args.rescore_only:
         if args.dry_run:
             parser.error("Choose --rescore-only or --dry-run")
-        rescore_saved(BENCH)
+        rescore_saved(BENCH, apply_stt_overrides(args))
         return 0
     load_dotenv(AGENT_ROOT / ".env", override=False)
+    apply_stt_overrides(args)
+    config = get_stt_config()
     root = BENCH
     phrases = load_phrases(root)
     cache_path = root / "results_cache.json"
@@ -364,7 +412,7 @@ def main(argv=None):
     jobs, present, noises = plan(root, phrases, cache)
     cached = sum(j["cached"] is not None for j in jobs)
     pending = len(jobs) - cached
-    print(f"STT language: {os.getenv('GNANI_STT_LANGUAGE', 'ta-IN')} (backend environment; no override)")
+    print(f"STT model: {config['model'] or 'prisma-v2.5 (model omitted)'}; language: {config['language']}; format: {config['format']}")
     print(f"Phrases: {len(phrases)}; clean WAVs present: {present}; missing: {len(phrases) - present}; noise WAVs: {noises}")
     for phrase in phrases:
         if not (root / "clean" / phrase["file"]).is_file():
@@ -372,6 +420,7 @@ def main(argv=None):
     print(f"Full dataset plan when all recordings exist: {len(phrases) * (1 + 4 * noises)} conditions")
     print(f"Runnable conditions: {len(jobs)}; cache hits: {cached}; uncached: {pending}")
     print(f"STT calls this invocation would make: {min(pending, args.max_calls)} (limit {args.max_calls}); deferred: {max(0, pending - args.max_calls)}")
+    print("Call estimate excludes retries; retries share the same --max-calls budget.")
     if args.dry_run:
         print("DRY RUN: 0 STT calls made. No client initialized; no mixtures, cache, or reports written.")
         return 0
@@ -396,12 +445,13 @@ def main(argv=None):
             mixed = root / "mixed" / Path(job["phrase"]["file"]).stem
             mixed.mkdir(parents=True, exist_ok=True)
             (mixed / f"{Path(job['noise']).stem}_{job['snr']}dB.wav").write_bytes(job["audio"])
-            calls += 1  # Count every attempt, including failures; never auto-retry.
+            before = client.stats["stt_calls"]
             try:
-                result = client.transcribe(job["audio"], language=None)
+                result = client.transcribe(job["audio"], language=None, max_attempts=min(2, args.max_calls - calls))
             except Exception as error:
                 result = {"text": "", "success": False, "error": str(error)}
-            cache[job["key"]] = {**result, "fingerprint": job["fingerprint"], "at": datetime.now(timezone.utc).isoformat()}
+            calls += max(1, client.stats["stt_calls"] - before)
+            cache[job["key"]] = {**result, "fingerprint": job["fingerprint"], "config": job["config"], "at": datetime.now(timezone.utc).isoformat()}
             atomic_json(cache_path, cache)  # Save after each attempt, even a provider failure.
             source = "live"
         rows.append(score(job, result, source))

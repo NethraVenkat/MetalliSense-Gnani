@@ -15,6 +15,7 @@ import io
 import os
 import shutil
 import subprocess
+import time
 import wave
 from pathlib import Path
 from typing import Dict, Optional
@@ -22,6 +23,7 @@ from typing import Dict, Optional
 import requests
 
 DEFAULT_BASE_URL = "https://api.vachana.ai"
+DEFAULT_STT_KEYTERMS = "heat,carbon,silicon,manganese,phosphorus,sulphur,FeSi,FeMn,spectrometer,dashboard,premelt,status,stock,hold"
 # Relative cache paths are resolved against the MetalliSense_Agent folder,
 # so the cache lands in the same place no matter where the server starts from.
 _AGENT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -59,6 +61,33 @@ def to_gnani_language(code: Optional[str], default: str = "ta-IN") -> str:
     return _SHORT_TO_LOCALE.get(code.lower(), default)
 
 
+def stt_language(code: Optional[str]) -> str:
+    """Normalize one locale, up to four locale hints, or indic-auto for Prisma."""
+    parts = (code or "ta-IN").strip().split(",")
+    if not 1 <= len(parts) <= 4 or any(not part.strip() for part in parts):
+        raise ValueError("GNANI_STT_LANGUAGE needs one to four nonempty language codes")
+    languages = [to_gnani_language(part.strip()) for part in parts]
+    if "indic-auto" in languages and len(languages) != 1:
+        raise ValueError("Use indic-auto alone, not in a language list")
+    return ",".join(languages)
+
+
+def get_stt_config() -> Dict[str, str]:
+    """Shared request/cache configuration; reading it never initializes a client."""
+    terms = ",".join(term.strip() for term in os.getenv("GNANI_STT_KEYTERMS", DEFAULT_STT_KEYTERMS).split(",") if term.strip())
+    if terms and len(terms.split(",")) > 200:
+        raise ValueError("GNANI_STT_KEYTERMS supports at most 200 comma-separated terms")
+    output_format = os.getenv("GNANI_STT_FORMAT", "transcribe").strip() or "transcribe"
+    if output_format not in {"verbatim", "transcribe", "codemix", "transliterate"}:
+        raise ValueError("GNANI_STT_FORMAT must be verbatim, transcribe, codemix or transliterate")
+    return {
+        "model": os.getenv("GNANI_STT_MODEL", "prisma-v3.0").strip(),
+        "language": stt_language(os.getenv("GNANI_STT_LANGUAGE", "ta-IN").strip() or "ta-IN"),
+        "format": output_format,
+        "keyterms": terms,
+    }
+
+
 def _is_wav(data: bytes) -> bool:
     return len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WAVE"
 
@@ -81,8 +110,12 @@ class GnaniClient:
         self.base_url = (os.getenv("GNANI_BASE_URL") or DEFAULT_BASE_URL).strip().rstrip("/")
         self.mock = _env_bool("GNANI_MOCK") or not self.api_key
 
-        self.stt_language = os.getenv("GNANI_STT_LANGUAGE", "ta-IN").strip() or "ta-IN"
-        self.stt_format = os.getenv("GNANI_STT_FORMAT", "transcribe").strip() or "transcribe"
+        stt = get_stt_config()
+        self.stt_language = stt["language"]
+        self.stt_format = stt["format"]
+        self.stt_model = stt["model"]
+        self.stt_keyterms = stt["keyterms"]
+        self.detected_language_code: Optional[str] = None
 
         self.tts_model = os.getenv("GNANI_TTS_MODEL", "timbre-v2.5").strip() or "timbre-v2.5"
         self.tts_voice = (os.getenv("GNANI_TTS_VOICE") or "").strip()
@@ -128,29 +161,46 @@ class GnaniClient:
             raise RuntimeError(f"ffmpeg conversion failed: {proc.stderr.decode(errors='ignore')[:300]}")
         return proc.stdout
 
-    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None) -> Dict:
-        lang = to_gnani_language(language, self.stt_language)
+    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None, *, max_attempts: int = 2) -> Dict:
+        """Retry 429/504 once; callers with a strict credit budget may allow one attempt."""
+        if max_attempts not in (1, 2):
+            raise ValueError("max_attempts must be 1 or 2")
+        lang = stt_language(language.strip() if language and language.strip() else self.stt_language)
+        self.detected_language_code = None
         if self.mock:
-            return {"text": MOCK_TRANSCRIPT, "language": lang, "success": True}
+            self.last_error = None
+            return {"text": MOCK_TRANSCRIPT, "language": lang, "detected_language_code": None, "success": True}
         try:
             wav = self._to_wav_16k(audio_bytes)
-            self.stats["stt_calls"] += 1
-            response = requests.post(
-                f"{self.base_url}/stt/v3",
-                headers=self._headers(),
-                files={"audio_file": ("audio.wav", wav, "audio/wav")},
-                data={"language_code": lang, "format": self.stt_format},
-                timeout=60,
-            )
+            data = {"language_code": lang, "format": self.stt_format}
+            if self.stt_model:
+                data["model"] = self.stt_model
+            if self.stt_keyterms:
+                data["keyterms"] = self.stt_keyterms
+            for attempt in range(max_attempts):
+                self.stats["stt_calls"] += 1
+                response = requests.post(
+                    f"{self.base_url}/stt/v3",
+                    headers=self._headers(),
+                    files={"audio_file": ("audio.wav", wav, "audio/wav")},
+                    data=data,
+                    timeout=60,
+                )
+                if response.status_code not in (429, 504) or attempt + 1 == max_attempts:
+                    break
+                if response.status_code == 429:
+                    time.sleep(1)
             if response.status_code != 200:
                 self.last_error = f"STT {response.status_code}: {response.text[:300]}"
-                return {"text": "", "language": lang, "success": False, "error": self.last_error}
-            text = (response.json().get("transcript") or "").strip()
+                return {"text": "", "language": lang, "detected_language_code": None, "success": False, "error": self.last_error}
+            payload = response.json()
+            text = (payload.get("transcript") or "").strip()
+            self.detected_language_code = payload.get("detected_language_code")
             self.last_error = None
-            return {"text": text, "language": lang, "success": True}
+            return {"text": text, "language": lang, "detected_language_code": self.detected_language_code, "success": True}
         except Exception as e:
             self.last_error = f"STT: {e}"
-            return {"text": "", "language": lang, "success": False, "error": str(e)}
+            return {"text": "", "language": lang, "detected_language_code": None, "success": False, "error": str(e)}
 
     # ------------------------------------------------------------------ TTS
 
@@ -222,6 +272,9 @@ class GnaniClient:
             "base_url": self.base_url,
             "stt_language": self.stt_language,
             "stt_format": self.stt_format,
+            "stt_model": self.stt_model,
+            "stt_keyterms": self.stt_keyterms,
+            "detected_language_code": self.detected_language_code,
             "tts_model": self.tts_model,
             "tts_voice": self.tts_voice or "(API default)",
             "tts_language": self.tts_language,
