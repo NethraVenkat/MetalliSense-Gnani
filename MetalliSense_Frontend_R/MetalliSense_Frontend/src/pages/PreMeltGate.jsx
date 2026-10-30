@@ -1,3 +1,4 @@
+import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import useSpeak, { useVoiceLanguage } from "../hooks/useSpeak";
 import PushToTalk from "../components/voice/PushToTalk";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -414,7 +415,7 @@ export default function PreMeltGate() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <PushToTalk heatId={heatId} />
+      <VoiceErrorBoundary><PushToTalk heatId={heatId} /></VoiceErrorBoundary>
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-metal-950 via-metal-900 to-primary-950 text-white p-6 md:p-8 shadow-metal-xl">
         <div className="pointer-events-none absolute -top-24 -right-16 w-80 h-80 rounded-full bg-primary-500/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-emerald-400/10 blur-3xl" />
@@ -577,13 +578,13 @@ export default function PreMeltGate() {
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-metal-700 mb-1">What drives the risk</p>
-                        {gate.ai.before_correction.drivers.filter((d) => (d.impact ?? d.risk_drop_if_normal) > 0.1).slice(0, 3).map((d) => (
+                        {(gate.ai.before_correction?.drivers ?? []).filter((d) => (d.impact ?? d.risk_drop_if_normal) > 0.1).slice(0, 3).map((d) => (
                           <p key={d.element} className="text-sm text-metal-700">
                             <strong className="font-mono">{d.element}</strong> {Number(d.value).toFixed(3)}% vs {Number(d.normal_mean).toFixed(3)}% in normal heats
                             <span className="text-metal-500"> · alone would give {pct(d.risk_if_only_this ?? 0)} risk</span>
                           </p>
                         ))}
-                        {!gate.ai.before_correction.drivers.some((d) => (d.impact ?? d.risk_drop_if_normal) > 0.1) && <p className="text-sm text-metal-600">No element stands out.</p>}
+                        {!(gate.ai.before_correction?.drivers ?? []).some((d) => (d.impact ?? d.risk_drop_if_normal) > 0.1) && <p className="text-sm text-metal-600">No element stands out.</p>}
                       </div>
                       {gate.suggestedAdditions.length > 0 && (
                         <div>
@@ -605,7 +606,7 @@ export default function PreMeltGate() {
                           )}
                         </div>
                       )}
-                      <p className="text-[11px] text-metal-500">Model: {gate.ai.model.type} · holdout AUC {gate.ai.model.metrics?.holdout_auc ?? "—"} for {gate.spec.grade}. Advisory — the gate combines it with the lot, QA and inspection checks.</p>
+                      <p className="text-[11px] text-metal-500">Model: {gate.ai.model?.type ?? "unknown"} · holdout AUC {gate.ai.model?.metrics?.holdout_auc ?? "—"} for {gate.spec.grade}. Advisory — the gate combines it with the lot, QA and inspection checks.</p>
                     </div>
                   )}
                 </Card>

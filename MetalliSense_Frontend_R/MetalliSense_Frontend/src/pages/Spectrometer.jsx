@@ -1,3 +1,4 @@
+import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import PushToTalk from "../components/voice/PushToTalk";
 import React, { useState, useEffect, useContext } from "react";
 import { OPCContext } from "../context/OPCContext";
@@ -131,7 +132,7 @@ const Spectrometer = () => {
 
   return (
     <div className="space-y-6">
-      <PushToTalk />
+      <VoiceErrorBoundary><PushToTalk /></VoiceErrorBoundary>
       {/* Control Panel */}
       <Card title="OPC Control Panel">
         <div className="flex items-center justify-between">

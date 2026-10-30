@@ -1,3 +1,4 @@
+import VoiceErrorBoundary from "../voice/VoiceErrorBoundary";
 import PushToTalk from "../voice/PushToTalk";
 import { useState, useRef, useEffect } from "react";
 import Card from "./Card";
@@ -162,7 +163,7 @@ const AIChatInterface = ({ isOpen, onClose }) => {
         </div>
       </div>
 
-      <div className="px-3 pt-2 max-h-60 overflow-y-auto shrink-0"><PushToTalk /></div>
+      <div className="px-3 pt-2 max-h-60 overflow-y-auto shrink-0"><VoiceErrorBoundary><PushToTalk /></VoiceErrorBoundary></div>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (

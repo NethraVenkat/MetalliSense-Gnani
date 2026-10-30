@@ -1,3 +1,4 @@
+import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import PushToTalk from "../components/voice/PushToTalk";
 import React, { useState, useEffect, useContext } from "react";
 import { OPCContext } from "../context/OPCContext";
@@ -120,7 +121,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 ">
       <div className="max-w-7xl mx-auto px-4">
-      <PushToTalk />
+      <VoiceErrorBoundary><PushToTalk /></VoiceErrorBoundary>
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-4">
