@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import useSpeak, { useVoiceLanguage } from "../hooks/useSpeak";
+import PushToTalk from "../components/voice/PushToTalk";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, Lock, LockOpen, Flame, Plus, Trash2, Sparkles, ChevronDown, Microscope, RotateCcw, ArrowRight, Boxes, ScanLine, FlaskConical, BrainCircuit, Clock, Check, Zap } from "lucide-react";
 import ReadAloud from "../components/common/ReadAloud";
@@ -12,6 +14,8 @@ import {
 import { useMeltFlow } from "../context/MeltFlowContext";
 import { StatusPill, CheckPill, ChemBar, Field, inputCls, kg, errMsg, SOURCE_LABEL } from "../components/premelt/premeltUi";
 import { MeltSpinner } from "../components/common/FurnaceLoader";
+
+const announcedHolds = new Set();
 
 const DECISION = {
   GO: { title: "GO", text: "Charge cleared", slab: "bg-primary-600 text-white", ring: "border-primary-600", icon: LockOpen },
@@ -327,6 +331,21 @@ export default function PreMeltGate() {
   const lotById = useMemo(() => Object.fromEntries(lots.map((l) => [l.lotId, l])), [lots]);
   const chargeKg = charge.reduce((s, l) => s + (Number(l.kg) || 0), 0);
   const gate = heat?.gateResult;
+  const { speak } = useSpeak();
+  const [voiceLang] = useVoiceLanguage();
+  const spokenHolds = useRef(announcedHolds);
+  useEffect(() => {
+    if (!heat?.heatId || gate?.decision !== "HOLD") return;
+    const key = `${heat.heatId}:HOLD`;
+    if (spokenHolds.current.has(key)) return;
+    spokenHolds.current.add(key);
+    const failedCheck = gate.checks?.find(c => c.status === "FAIL");
+    const failedElement = gate.checks?.find(c => c.id === "spec_prediction")?.details?.find(d => d.status === "FAIL");
+    const item = failedElement?.element || failedCheck?.title || failedCheck?.id || gate.blocking?.[0] || "Gate check";
+    void speak(voiceLang === "ta"
+      ? `Heat ${heat.heatId}-?? ${item} limit ?????????????. Correction ????.`
+      : `Heat ${heat.heatId}: ${item} is above the limit. Correction needed.`, voiceLang);
+  }, [heat?.heatId, gate, speak, voiceLang]);
   const planned = heat?.status === "PLANNED";
 
   const editLine = (i, patch) => { setCharge((c) => c.map((l, j) => (j === i ? { ...l, ...patch } : l))); setDirty(true); };
@@ -395,6 +414,7 @@ export default function PreMeltGate() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      <PushToTalk heatId={heatId} />
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-metal-950 via-metal-900 to-primary-950 text-white p-6 md:p-8 shadow-metal-xl">
         <div className="pointer-events-none absolute -top-24 -right-16 w-80 h-80 rounded-full bg-primary-500/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-emerald-400/10 blur-3xl" />

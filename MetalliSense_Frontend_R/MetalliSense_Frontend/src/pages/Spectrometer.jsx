@@ -1,3 +1,4 @@
+import PushToTalk from "../components/voice/PushToTalk";
 import React, { useState, useEffect, useContext } from "react";
 import { OPCContext } from "../context/OPCContext";
 import Card from "../components/common/Card";
@@ -130,6 +131,7 @@ const Spectrometer = () => {
 
   return (
     <div className="space-y-6">
+      <PushToTalk />
       {/* Control Panel */}
       <Card title="OPC Control Panel">
         <div className="flex items-center justify-between">
