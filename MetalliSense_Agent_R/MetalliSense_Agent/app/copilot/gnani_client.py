@@ -12,7 +12,9 @@ mono WAV. Windows: winget install ffmpeg
 """
 import hashlib
 import io
+import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -24,6 +26,28 @@ import requests
 
 DEFAULT_BASE_URL = "https://api.vachana.ai"
 DEFAULT_STT_KEYTERMS = "heat,carbon,silicon,manganese,phosphorus,sulphur,FeSi,FeMn,spectrometer,dashboard,premelt,status,stock,hold"
+# https://docs.gnani.ai/api/TTS/available-voices.md (checked 2026-10-30).
+V3_VOICES = frozenset("Shivani Lakshmi Kalpana Chetana Vasudha Riyaa Tarika Avinash Shubham Prakash Devansh Yashraj Harshad".split())
+V25_VOICES = frozenset((
+    "Ambuja Asmita Bhavna Brinda Chitra Deepak Devika Dhruva Falak Girish Hemraj Ishaan Jalaj Jwala "
+    "Kaveri Kavin Kirra Lavanya Lehara Mehuli Nalini Noopur Omkar Poorvi Pranav Reshma Riyaan Roopesh "
+    "Saanvi Shlok Suhana Trisha Trupti Urmila Varuni Vedika Veera Vikrant Yashvi Yukti Zahira Zayan "
+    "Kamakshi"  # Existing deployment's legacy v2.5 voice; absent from today's public catalog.
+).split())
+
+
+def valid_tts_pair(model: str, voice: str) -> bool:
+    return voice in {"timbre-v2.5": V25_VOICES, "timbre-v3.0": V3_VOICES}.get(model, ())
+
+
+def tts_text(text: str, model: str, style: str, tags_enabled: bool) -> str:
+    """Tags belong only to the provider payload, never to the frontend's text."""
+    plain = re.sub(r"<[^>]+>", "", text).strip()
+    if model.startswith("timbre-v3") and tags_enabled and style == "alert":
+        # Tags have no closing form. Reapply slow after the pause changes scope.
+        paused = re.sub(r"^(Heat\s+[^:]+:)\s*", r"\1 <pauses> <slow> ", plain, count=1)
+        return f"<slow> {paused}"
+    return plain
 # Relative cache paths are resolved against the MetalliSense_Agent folder,
 # so the cache lands in the same place no matter where the server starts from.
 _AGENT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -102,6 +126,22 @@ def _silent_wav(seconds: float = 0.4, sample_rate: int = 22050) -> bytes:
     return buf.getvalue()
 
 
+def _finalize_wav(data: bytes) -> bytes:
+    """Finalize streaming RIFF/data lengths without changing any PCM samples."""
+    with wave.open(io.BytesIO(data), "rb") as source:
+        channels, width, rate = source.getnchannels(), source.getsampwidth(), source.getframerate()
+        frames = source.readframes(source.getnframes())
+    if not frames or len(frames) % (channels * width):
+        raise ValueError("TTS returned empty or incomplete PCM frames")
+    output = io.BytesIO()
+    with wave.open(output, "wb") as target:
+        target.setnchannels(channels)
+        target.setsampwidth(width)
+        target.setframerate(rate)
+        target.writeframes(frames)
+    return output.getvalue()
+
+
 class GnaniClient:
     """Thin REST client for Gnani Prisma (STT) and Timbre (TTS)."""
 
@@ -118,7 +158,10 @@ class GnaniClient:
         self.detected_language_code: Optional[str] = None
 
         self.tts_model = os.getenv("GNANI_TTS_MODEL", "timbre-v2.5").strip() or "timbre-v2.5"
-        self.tts_voice = (os.getenv("GNANI_TTS_VOICE") or "").strip()
+        self.tts_voice = (os.getenv("GNANI_TTS_VOICE") or ("Shivani" if self.tts_model.startswith("timbre-v3") else "Kamakshi")).strip()
+        self.tts_tags = _env_bool("GNANI_TTS_TAGS")
+        self.tts_fallback_model = os.getenv("GNANI_TTS_FALLBACK_MODEL", "timbre-v2.5").strip()
+        self.tts_fallback_voice = os.getenv("GNANI_TTS_FALLBACK_VOICE", "Kamakshi").strip()
         self.tts_language = os.getenv("GNANI_TTS_LANGUAGE", "ta-IN").strip() or "ta-IN"
         try:
             self.tts_sample_rate = int(os.getenv("GNANI_TTS_SAMPLE_RATE", "22050"))
@@ -130,6 +173,9 @@ class GnaniClient:
 
         self.stats = {"stt_calls": 0, "tts_calls": 0, "tts_cache_hits": 0}
         self.last_error: Optional[str] = None
+        self.last_provider_used: Optional[str] = None
+        self.last_tts_source: Optional[str] = None
+        self.last_tts_fallback_reason: Optional[str] = None
 
         print(f"🗣️  Gnani client: {'MOCK (no network calls)' if self.mock else self.base_url}"
               f" | STT {self.stt_language} | TTS {self.tts_model} {self.tts_language}")
@@ -204,28 +250,75 @@ class GnaniClient:
 
     # ------------------------------------------------------------------ TTS
 
-    def _cache_path(self, text: str, lang: str, voice: str) -> Path:
-        key = f"{self.tts_model}|{voice}|{lang}|{self.tts_sample_rate}|{text}"
+    def _cache_path(self, text: str, lang: str, voice: str, style: str = "normal", *, model: Optional[str] = None) -> Path:
+        key = json.dumps({"version": 2, "model": model or self.tts_model, "voice": voice,
+                          "language": lang, "sample_rate": self.tts_sample_rate,
+                          "style": style, "text": text}, sort_keys=True, ensure_ascii=False)
         return self.tts_cache_dir / f"{hashlib.sha256(key.encode('utf-8')).hexdigest()}.wav"
 
     def synthesize(self, text: str, language: Optional[str] = None,
-                   voice: Optional[str] = None) -> Optional[bytes]:
-        """Returns WAV bytes, or None on failure."""
+                   voice: Optional[str] = None, style: str = "normal", *,
+                   allow_fallback: bool = True, max_calls: Optional[int] = None) -> Optional[bytes]:
+        """Primary -> configured fallback; VoiceService handles gTTS after both fail.
+
+        Auditions disable fallback so files cannot be mislabeled, and pass a shared
+        remaining call budget. Each HTTP attempt consumes exactly one budget unit.
+        """
+        if style not in ("normal", "alert"):
+            raise ValueError("style must be normal or alert")
+        if max_calls is not None and max_calls < 0:
+            raise ValueError("max_calls must be nonnegative")
+        self.last_provider_used = self.last_tts_source = self.last_tts_fallback_reason = None
         if not text or not text.strip():
             return None
-        if self.mock:
-            return _silent_wav(0.4, self.tts_sample_rate)
-
         lang = to_gnani_language(language, self.tts_language)
-        voice = (voice or self.tts_voice or "").strip()
-        cache_file = self._cache_path(text, lang, voice)
-        if cache_file.exists():
-            self.stats["tts_cache_hits"] += 1
-            return cache_file.read_bytes()
+        pairs = [(self.tts_model, (voice or self.tts_voice).strip())]
+        if allow_fallback:
+            pairs.append((self.tts_fallback_model, self.tts_fallback_voice))
+        before = self.stats["tts_calls"]
+        errors = []
+        for model, selected_voice in dict.fromkeys(pairs):
+            if not valid_tts_pair(model, selected_voice):
+                errors.append(f"Invalid TTS model/voice pair: {model}/{selected_voice}")
+                continue
+            final_text = tts_text(text, model, style, self.tts_tags)
+            if not final_text:
+                errors.append("TTS text is empty after removing tags")
+                break
+            audio = self._synthesize_variant(final_text, lang, selected_voice, model, style,
+                max_calls is None or self.stats["tts_calls"] - before < max_calls)
+            if audio:
+                self.last_provider_used = f"gnani:{model}:{selected_voice}"
+                self.last_tts_fallback_reason = "; ".join(errors) or None
+                self.last_error = None
+                return audio
+            errors.append(self.last_error or "TTS produced no audio")
+        self.last_error = "; ".join(errors)
+        return None
 
+    def _synthesize_variant(self, text, lang, voice, model, style, can_call):
+        if self.mock:
+            self.last_tts_source = "mock"
+            return _silent_wav(0.4, self.tts_sample_rate)
+        cache_file = self._cache_path(text, lang, voice, style, model=model)
+        try:
+            if cache_file.exists():
+                audio = cache_file.read_bytes()
+                if _is_wav(audio):
+                    audio = _finalize_wav(audio)
+                    self.stats["tts_cache_hits"] += 1
+                    self.last_tts_source = "cache"
+                    return audio
+        except (OSError, EOFError, ValueError, wave.Error):
+            pass  # A cache read failure must not disable synthesis/fallback.
+        if not can_call:
+            self.last_error = "TTS call budget exhausted"
+            return None
         payload = {
             "text": text,
-            "model": self.tts_model,
+            "model": model,
+            "voice": voice,
+            "language": lang,
             "audio_config": {
                 "sample_rate": self.tts_sample_rate,
                 "encoding": "linear_pcm",
@@ -234,11 +327,6 @@ class GnaniClient:
                 "container": "wav",
             },
         }
-        if voice:
-            payload["voice"] = voice
-        if self.tts_model == "timbre-v2.5":
-            payload["language"] = lang
-
         try:
             self.stats["tts_calls"] += 1
             response = requests.post(
@@ -251,13 +339,17 @@ class GnaniClient:
                 self.last_error = f"TTS {response.status_code}: {response.text[:300]}"
                 print(f"Gnani TTS error: {self.last_error}")
                 return None
-            audio = response.content
+            if not _is_wav(response.content):
+                self.last_error = "TTS returned non-WAV audio for a WAV request"
+                return None
+            audio = _finalize_wav(response.content)
             try:
                 self.tts_cache_dir.mkdir(parents=True, exist_ok=True)
                 cache_file.write_bytes(audio)
             except OSError as e:
                 print(f"Gnani TTS cache write failed (continuing): {e}")
             self.last_error = None
+            self.last_tts_source = "live"
             return audio
         except Exception as e:
             self.last_error = f"TTS: {e}"
@@ -279,6 +371,12 @@ class GnaniClient:
             "tts_voice": self.tts_voice or "(API default)",
             "tts_language": self.tts_language,
             "tts_sample_rate": self.tts_sample_rate,
+            "tts_tags": self.tts_tags,
+            "tts_fallback_model": self.tts_fallback_model,
+            "tts_fallback_voice": self.tts_fallback_voice,
+            "last_provider_used": self.last_provider_used,
+            "last_tts_source": self.last_tts_source,
+            "last_tts_fallback_reason": self.last_tts_fallback_reason,
             "ffmpeg_available": shutil.which("ffmpeg") is not None,
             "stats": dict(self.stats),
             "last_error": self.last_error,

@@ -21,3 +21,6 @@ MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/results_cache.json.tmp
 
 test-results/
 playwright-report/
+
+# TTS voice auditions are local audio artifacts.
+MetalliSense_Agent_R/MetalliSense_Agent/tools/tts_audition/*.wav

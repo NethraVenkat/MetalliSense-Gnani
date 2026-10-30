@@ -2,7 +2,7 @@
 Pydantic Schemas for Copilot API
 """
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 
 class ExplainAnalysisRequest(BaseModel):
@@ -51,6 +51,7 @@ class ChatResponse(BaseModel):
 
 class TTSRequest(BaseModel):
     """Text-to-Speech request"""
+    style: Literal["normal", "alert"] = Field(default="normal", description="Delivery style; audio tags are applied server-side only")
     text: str = Field(
         ...,
         description="Text to convert to speech",

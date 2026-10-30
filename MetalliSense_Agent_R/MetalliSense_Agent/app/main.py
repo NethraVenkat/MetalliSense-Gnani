@@ -806,7 +806,8 @@ async def synthesize_speech(request: TTSRequest):
         audio_bytes = voice_service.text_to_speech(
             text=request.text,
             language=request.language,
-            slow=request.slow
+            slow=request.slow,
+            style=request.style
         )
         
         if not audio_bytes:

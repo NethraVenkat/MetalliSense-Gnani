@@ -111,7 +111,39 @@ describe('shared transcript normalization', () => {
 
 const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock('axios', () => ({ default: { create: () => ({ post }) } }));
-import { transcribeAudio } from '../src/services/copilotService';
+import { transcribeAudio, synthesizeSpeechWithMeta } from '../src/services/copilotService';
+import { speakText } from '../src/hooks/useSpeak';
+import { createHoldAnnouncer } from '../src/services/voiceGateAnswers';
+
+describe('TTS delivery style', () => {
+  const audio = () => {
+    post.mockResolvedValue({ data: new Blob(['audio']), headers: { 'x-tts-provider': 'gnani:timbre-v3.0:Shivani' } });
+    vi.stubGlobal('Audio', class { play() { this.onended?.(); return Promise.resolve(); } pause() {} });
+  };
+  it('HOLD alert speech requests style alert', async () => {
+    audio();
+    try {
+      await createHoldAnnouncer().announce('H-1053', { decision: 'HOLD', checks: [] }, speakText, 'ta');
+      expect(post.mock.lastCall[1]).toMatchObject({ language: 'ta', style: 'alert', slow: false });
+      expect(post.mock.lastCall[1].text).not.toMatch(/<[^>]+>/);
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it('normal answers use style normal', async () => {
+    audio();
+    try {
+      await speakText('Heat H-1053: நிலை PLANNED. Gate HOLD', 'ta');
+      expect(post.mock.lastCall[1]).toEqual({ text: 'Heat H-1053: நிலை PLANNED. Gate HOLD', language: 'ta', slow: false, style: 'normal' });
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it('metadata synthesis supports alert style and model/voice provider headers', async () => {
+    audio();
+    try {
+      const response = await synthesizeSpeechWithMeta('HOLD', 'ta', 'alert');
+      expect(post.mock.lastCall[1].style).toBe('alert');
+      expect(response.provider).toBe('gnani:timbre-v3.0:Shivani');
+    } finally { vi.unstubAllGlobals(); }
+  });
+});
 describe('STT language delegation', () => {
   it.each([null, '', undefined, '   '])('omits language for %s', language => {
     transcribeAudio(new Blob(['audio']), language);

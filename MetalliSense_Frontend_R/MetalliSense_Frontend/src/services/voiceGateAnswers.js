@@ -92,6 +92,12 @@ export function heatVoiceAnswer(intent, heat, params = {}, lang = 'ta') {
     : lang === 'ta' ? 'தனிம அளவு கிடைக்கவில்லை' : 'Element value unavailable';
 }
 
+export function buildHoldAlert(heatId, gate, lang = 'ta') {
+  return lang === 'ta'
+    ? `Heat ${heatId}: Gate HOLD. உருக்கத் தொடங்க முடியாது. ${spokenGateReasonAnswer(gate, lang)}`
+    : `Heat ${heatId}: Gate HOLD. Furnace start is locked. ${spokenGateReasonAnswer(gate, lang)}`;
+}
+
 export function createHoldAnnouncer() {
   const decisions = new Map();
   return {
@@ -102,10 +108,7 @@ export function createHoldAnnouncer() {
       if (gate?.decision === 'HOLD' && muted) return;
       decisions.set(heatId, gate?.decision);
       if (gate?.decision !== 'HOLD' || previous === 'HOLD') return;
-      const message = lang === 'ta'
-        ? `Heat ${heatId}: Gate HOLD. உருக்கத் தொடங்க முடியாது. ${spokenGateReasonAnswer(gate, lang)}`
-        : `Heat ${heatId}: Gate HOLD. Furnace start is locked. ${spokenGateReasonAnswer(gate, lang)}`;
-      return speak(message, lang);
+      return speak(buildHoldAlert(heatId, gate, lang), lang, 'alert');
     },
   };
 }

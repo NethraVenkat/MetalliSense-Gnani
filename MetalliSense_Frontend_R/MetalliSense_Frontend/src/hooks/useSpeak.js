@@ -14,6 +14,29 @@ export function useVoiceLanguage() {
   const setLang = useCallback(value => { language = value === 'en' ? 'en' : 'ta'; persist('metallisense.voice.language', language); }, []);
   return [lang, setLang];
 }
+export function speakText(text, lang = 'ta', style = 'normal') {
+  if (muted || !text) return Promise.resolve();
+  const ticket = generation;
+  queue = queue.then(async () => {
+    if (muted || ticket !== generation) return;
+    const blob = await synthesizeSpeech(text, lang, false, style);
+    if (muted || ticket !== generation) return;
+    const url = URL.createObjectURL(blob);
+    try {
+      await new Promise(resolve => {
+        const audio = new Audio(url);
+        let timer;
+        const finish = () => { clearTimeout(timer); audio.pause(); audio.onended = null; audio.onerror = null; cancelPlayback = undefined; resolve(); };
+        cancelPlayback = finish;
+        audio.onended = finish;
+        audio.onerror = finish;
+        timer = setTimeout(finish, 120000);
+        Promise.resolve(audio.play()).catch(finish);
+      });
+    } finally { URL.revokeObjectURL(url); }
+  }).catch(() => {});
+  return queue;
+}
 export default function useSpeak() {
   const isMuted = useSyncExternalStore(subscribe, () => muted);
   const toggleMute = useCallback(() => {
@@ -22,28 +45,6 @@ export default function useSpeak() {
     if (muted) cancelPlayback?.();
     persist('metallisense.voice.muted', String(muted));
   }, []);
-  const speak = useCallback((text, lang = 'ta') => {
-    if (muted || !text) return Promise.resolve();
-    const ticket = generation;
-    queue = queue.then(async () => {
-      if (muted || ticket !== generation) return;
-      const blob = await synthesizeSpeech(text, lang);
-      if (muted || ticket !== generation) return;
-      const url = URL.createObjectURL(blob);
-      try {
-        await new Promise(resolve => {
-          const audio = new Audio(url);
-          let timer;
-          const finish = () => { clearTimeout(timer); audio.pause(); audio.onended = null; audio.onerror = null; cancelPlayback = undefined; resolve(); };
-          cancelPlayback = finish;
-          audio.onended = finish;
-          audio.onerror = finish;
-          timer = setTimeout(finish, 120000);
-          Promise.resolve(audio.play()).catch(finish);
-        });
-      } finally { URL.revokeObjectURL(url); }
-    }).catch(() => {});
-    return queue;
-  }, []);
+  const speak = useCallback(speakText, []);
   return { speak, muted: isMuted, toggleMute };
 }

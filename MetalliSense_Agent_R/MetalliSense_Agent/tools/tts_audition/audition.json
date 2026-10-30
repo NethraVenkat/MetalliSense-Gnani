@@ -1,0 +1,107 @@
+{
+  "text": "Heat H-1053: Gate HOLD. உருக்கத் தொடங்க முடியாது. PIG-1053: தனிமைப்படுத்தப்பட்டுள்ளது. செம்பு 0.50 சதவீதம், அதிகம்",
+  "live_calls": 9,
+  "max_calls": 10,
+  "variants": [
+    {
+      "file": "timbre-v3.0_Shivani_plain.wav",
+      "voice": "Shivani",
+      "model": "timbre-v3.0",
+      "tags": false,
+      "bytes": 557468,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Shivani",
+      "error": null,
+      "duration_seconds": 12.64
+    },
+    {
+      "file": "timbre-v3.0_Shivani_tags.wav",
+      "voice": "Shivani",
+      "model": "timbre-v3.0",
+      "tags": true,
+      "bytes": 612812,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Shivani",
+      "error": null,
+      "duration_seconds": 13.89
+    },
+    {
+      "file": "timbre-v3.0_Kalpana_plain.wav",
+      "voice": "Kalpana",
+      "model": "timbre-v3.0",
+      "tags": false,
+      "bytes": 610388,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Kalpana",
+      "error": null,
+      "duration_seconds": 13.84
+    },
+    {
+      "file": "timbre-v3.0_Kalpana_tags.wav",
+      "voice": "Kalpana",
+      "model": "timbre-v3.0",
+      "tags": true,
+      "bytes": 617776,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Kalpana",
+      "error": null,
+      "duration_seconds": 14.01
+    },
+    {
+      "file": "timbre-v3.0_Avinash_plain.wav",
+      "voice": "Avinash",
+      "model": "timbre-v3.0",
+      "tags": false,
+      "bytes": 550412,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Avinash",
+      "error": null,
+      "duration_seconds": 12.48
+    },
+    {
+      "file": "timbre-v3.0_Avinash_tags.wav",
+      "voice": "Avinash",
+      "model": "timbre-v3.0",
+      "tags": true,
+      "bytes": 564172,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Avinash",
+      "error": null,
+      "duration_seconds": 12.79
+    },
+    {
+      "file": "timbre-v3.0_Harshad_plain.wav",
+      "voice": "Harshad",
+      "model": "timbre-v3.0",
+      "tags": false,
+      "bytes": 575108,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Harshad",
+      "error": null,
+      "duration_seconds": 13.04
+    },
+    {
+      "file": "timbre-v3.0_Harshad_tags.wav",
+      "voice": "Harshad",
+      "model": "timbre-v3.0",
+      "tags": true,
+      "bytes": 620042,
+      "source": "live",
+      "provider": "gnani:timbre-v3.0:Harshad",
+      "error": null,
+      "duration_seconds": 14.06
+    },
+    {
+      "file": "timbre-v2.5_Kamakshi_plain.wav",
+      "voice": "Kamakshi",
+      "model": "timbre-v2.5",
+      "tags": false,
+      "bytes": 585692,
+      "source": "live",
+      "provider": "gnani:timbre-v2.5:Kamakshi",
+      "error": null,
+      "duration_seconds": 13.28
+    }
+  ],
+  "wav_headers_finalized": true
+}

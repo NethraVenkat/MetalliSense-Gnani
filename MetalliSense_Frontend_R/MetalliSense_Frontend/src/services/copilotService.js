@@ -63,13 +63,14 @@ export const transcribeAudio = (audioFile, language = null) => {
  * @param {boolean} slow - Speak slowly
  * @returns {Promise} Audio blob
  */
-export const synthesizeSpeech = async (text, language = "en", slow = false) => {
+export const synthesizeSpeech = async (text, language = "en", slow = false, style = "normal") => {
   const response = await copilotApi.post(
     "/copilot/voice/synthesize",
     {
       text,
       language,
       slow,
+      style,
     },
     {
       responseType: "blob",
@@ -95,10 +96,10 @@ export const checkCopilotHealth = () => copilotApi.get("/health");
  * TTS that also reports which provider actually spoke (elevenlabs | gtts).
  * @returns {Promise<{ blob: Blob, provider: string }>}
  */
-export const synthesizeSpeechWithMeta = async (text, language = "en") => {
+export const synthesizeSpeechWithMeta = async (text, language = "en", style = "normal") => {
   const response = await copilotApi.post(
     "/copilot/voice/synthesize",
-    { text, language, slow: false },
+    { text, language, slow: false, style },
     { responseType: "blob", timeout: 45000 }
   );
   return { blob: response.data, provider: response.headers?.["x-tts-provider"] || "unknown" };
