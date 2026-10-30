@@ -1,11 +1,43 @@
-﻿const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
+const numberWords = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+  sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+};
+const numberToken = `(?:${Object.keys(numberWords).join('|')}|hundred|thousand)`;
+const spokenNumbers = new RegExp(`\\b${numberToken}(?:(?:[\\s-]+(?:and[\\s-]+)?)${numberToken})*\\b`, 'g');
+function numberValue(phrase) {
+  const words = phrase.split(/[\s-]+/).filter(word => word !== 'and');
+  // Furnace IDs may be dictated as two groups: "ten fifty one" = 10 / 51.
+  if (!words.includes('hundred') && !words.includes('thousand') && words.length > 1
+      && numberWords[words[0]] >= 10 && numberWords[words[1]] >= 20) {
+    return numberWords[words[0]] * 100 + words.slice(1).reduce((sum, word) => sum + numberWords[word], 0);
+  }
+  let total = 0;
+  let group = 0;
+  for (const word of words) {
+    if (word === 'hundred') group = (group || 1) * 100;
+    else if (word === 'thousand') { total += (group || 1) * 1000; group = 0; }
+    else group += numberWords[word];
+  }
+  return total + group;
+}
+function normalizeTranscript(transcript) {
+  return String(transcript ?? '').normalize('NFKC').toLowerCase().trim()
+    .replace(spokenNumbers, phrase => String(numberValue(phrase)))
+    .replace(/\b(?:in a|inna|ena|yenna|anna)(?=\s*(?:[.!?,;:]|$))/g, 'enna')
+    .replace(/\b(?:evalavu|evolve|evalu|how much)\b/g, 'evvalavu')
+    .replace(/\b(?:kattu|cut too|show)\b/g, 'kaattu')
+    .replace(/\b(?:en|why)\b/g, 'yen');
+}
+const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
 const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
 export function mapIntent(transcript) {
-  const text = String(transcript ?? '').normalize('NFKC').toLowerCase().trim();
+  const text = normalizeTranscript(transcript);
   const params = {};
   if (/approve|confirm|release|deduct|start\s+melt|invoice|delete|அனுமதி|ஒப்புதல்/u.test(text)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
   const heat = text.match(/(?:\bheat\s*|\bh[\s-]*)(\d+)\b/i) || text.match(/^\s*(\d+)\b/);
-  if (heat) params.heatNumber = heat[1];
+  if (heat) params.heatNumber = Number(heat[1]);
   if (/stock|இருப்பு/u.test(text) && !/open|kaattu|காட்டு|திற/u.test(text)) {
     if (/fesi|ferro\s*silicon/i.test(text)) params.alloy = 'FeSi';
     else if (/femn|ferro\s*manganese/i.test(text)) params.alloy = 'FeMn';

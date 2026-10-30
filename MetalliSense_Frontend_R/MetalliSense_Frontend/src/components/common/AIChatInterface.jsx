@@ -119,7 +119,7 @@ const AIChatInterface = ({ isOpen, onClose }) => {
       const audioFile = new File([audioBlob], "recording.webm", {
         type: "audio/webm",
       });
-      const response = await transcribeAudio(audioFile);
+      const response = await transcribeAudio(audioFile, null);
       const transcribedText = response.data.text;
       setInputMessage(transcribedText);
       toast.success("Voice transcribed successfully");

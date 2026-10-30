@@ -27,10 +27,10 @@ export default function PushToTalk({ heatId }) {
   const choose = (ta, en) => lang === 'ta' ? ta : en;
   const say = text => { if (!alive.current) return; setAnswer(text); void speak(text, lang); };
   async function resolveHeat(params) {
-    if (!params.heatNumber && (heatId || flow.heatId)) return unwrap(await getHeat(heatId || flow.heatId));
+    if (params.heatNumber == null && (heatId || flow.heatId)) return unwrap(await getHeat(heatId || flow.heatId));
     const heats = unwrap(await getHeats());
-    const selected = params.heatNumber
-      ? heats.find(h => String(h.heatId).match(/\d+$/)?.[0].replace(/^0+/, '') === params.heatNumber.replace(/^0+/, ''))
+    const selected = params.heatNumber != null
+      ? heats.find(h => String(h.heatId).match(/\d+$/)?.[0].replace(/^0+/, '') === String(params.heatNumber).replace(/^0+/, ''))
       : [...heats].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')) || Number(String(b.heatId).match(/\d+$/)?.[0] || 0) - Number(String(a.heatId).match(/\d+$/)?.[0] || 0))[0];
     if (!selected) throw new Error('Heat not found');
     return unwrap(await getHeat(selected.heatId));
@@ -74,7 +74,6 @@ export default function PushToTalk({ heatId }) {
   async function start() {
     if (busy.current || held.current) return;
     owner = panel.current; held.current = true; busy.current = true;
-    const recordingLang = lang;
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Microphone unavailable');
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -92,7 +91,7 @@ export default function PushToTalk({ heatId }) {
         setState('processing');
         try {
           const blob = new Blob(chunks, { type: rec.mimeType });
-          const response = await transcribeAudio(new File([blob], rec.mimeType.includes('mp4') ? 'voice.mp4' : 'voice.webm', { type: blob.type }), recordingLang);
+          const response = await transcribeAudio(new File([blob], rec.mimeType.includes('mp4') ? 'voice.mp4' : 'voice.webm', { type: blob.type }), null);
           const text = response.data.text?.trim();
           if (!text) throw new Error('No speech');
           if (alive.current) { await respond(text); if (alive.current) setState('idle'); }

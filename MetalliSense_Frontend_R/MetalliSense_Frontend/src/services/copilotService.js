@@ -39,13 +39,13 @@ export const clearChatHistory = () =>
 /**
  * Transcribe audio to text (Speech-to-Text)
  * @param {File} audioFile - Audio file to transcribe
- * @param {string} language - Language code (e.g., "en")
+ * @param {string|null} language - Optional override; null uses the backend STT language
  * @returns {Promise} Transcription response
  */
-export const transcribeAudio = (audioFile, language = "en") => {
+export const transcribeAudio = (audioFile, language = null) => {
   const formData = new FormData();
   formData.append("audio", audioFile);
-  if (language) {
+  if (language != null && language.trim() !== "") {
     formData.append("language", language);
   }
 
