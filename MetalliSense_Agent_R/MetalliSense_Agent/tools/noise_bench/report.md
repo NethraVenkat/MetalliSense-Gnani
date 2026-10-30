@@ -1,18 +1,18 @@
 # Gnani Prisma noise benchmark
 
-Generated: 2026-10-30T16:07:40.989063+00:00
+Generated: 2026-10-30T16:14:53.458748+00:00
 
 STT model: prisma-v3.0. Language: ta-IN,en-IN. Format: codemix.
 
-New STT calls: 0. Cached results: 10. Re-scored from saved attempts; audio availability was not checked.
+New STT calls: 120. Cached results: 10. Missing recordings: 0.
 
 | SNR (dB) | Scored / planned | STT success | WER | Word accuracy | Exact text | Heat slot | Element slots | Intent correct | Intent + heat correct |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | clean | 10 / 10 | 100.0% | 4.8% | 95.2% | 80.0% | 100.0% | 100.0% | 100.0% | 100.0% |
-| 20 | 0 / 0 | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
-| 10 | 0 / 0 | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
-| 5 | 0 / 0 | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
-| 0 | 0 / 0 | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
+| 20 | 30 / 30 | 100.0% | 4.8% | 95.2% | 80.0% | 100.0% | 100.0% | 100.0% | 100.0% |
+| 10 | 30 / 30 | 100.0% | 7.1% | 92.9% | 80.0% | 95.2% | 88.9% | 96.7% | 96.7% |
+| 5 | 30 / 30 | 96.7% | 8.7% | 91.3% | 76.7% | 95.2% | 88.9% | 93.3% | 93.3% |
+| 0 | 30 / 30 | 100.0% | 10.3% | 89.7% | 73.3% | 90.5% | 88.9% | 96.7% | 93.3% |
 
 WER and exact text use the frontend's shared normalization: lowercase, punctuation removal, English number words (including digit-by-digit IDs), and Tamil question/action words mapped to Tanglish. Raw transcripts are preserved in runs.csv.
 WER is micro-averaged edit distance / reference words; it may exceed 100%. Word accuracy is max(0, 1 - WER).
