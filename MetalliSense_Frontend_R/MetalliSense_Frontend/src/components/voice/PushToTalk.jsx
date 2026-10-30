@@ -4,6 +4,7 @@ import { Mic, Volume2, VolumeX } from 'lucide-react';
 import { transcribeAudio, sendChatMessage } from '../../services/copilotService';
 import { getHeat, getHeats, getAdditives } from '../../services/premeltService';
 import { mapIntent } from '../../services/voiceIntents';
+import { heatVoiceAnswer } from '../../services/voiceGateAnswers';
 import { useMeltFlow } from '../../context/MeltFlowContext';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 const unwrap = response => response.data?.data ?? response.data;
@@ -50,14 +51,7 @@ export default function PushToTalk({ heatId }) {
       return say(response.data.response || choose('பதில் கிடைக்கவில்லை', 'No answer available'));
     }
     const heat = await resolveHeat(params);
-    const gate = heat.gateResult;
-    if (intent === 'heat_status') return say(choose(`Heat ${heat.heatId}: நிலை ${heat.status}. Gate ${gate?.decision || 'தகவல் இல்லை'}`, `Heat ${heat.heatId}: ${heat.status}. Gate ${gate?.decision || 'not checked'}`));
-    if (intent === 'gate_reason') {
-      const reasons = (gate?.blocking || []).map(item => typeof item === 'string' ? item : item.title || item.message || item.text || item.id).filter(Boolean);
-      return say(reasons.join('. ') || gate?.headline || choose('Gate காரணம் கிடைக்கவில்லை', 'No gate reason available'));
-    }
-    const detail = gate?.checks?.find(c => c.id === 'spec_prediction')?.details?.find(d => d.element === params.element);
-    say(detail ? `Heat ${heat.heatId}: ${params.element} ${detail.value}%. ${choose('வரம்பு', 'Range')} ${detail.min ?? '—'} ${choose('முதல்', 'to')} ${detail.max ?? '—'}%. ${detail.status || ''}` : choose('தனிம அளவு கிடைக்கவில்லை', 'Element value unavailable'));
+    say(heatVoiceAnswer(intent, heat, params, lang));
   }
   async function run(text) {
     if (busy.current) return;
@@ -96,7 +90,7 @@ export default function PushToTalk({ heatId }) {
           if (!text) throw new Error('No speech');
           if (alive.current) {
             try { await respond(text); if (alive.current) setState('idle'); }
-            catch { if (alive.current) { setState('error'); say(choose('????? ?????????????. ???? ???? ?????????? ???????.', 'Unable to get information. Tap a suggestion below.')); } }
+            catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
           }
         } catch { if (alive.current) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }
         finally { busy.current = false; }
@@ -141,6 +135,13 @@ export default function PushToTalk({ heatId }) {
       <span role="status" className="text-xs">{state}</span>
     </div>
     <div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}{answer && <p>{answer}</p>}</div>
+    {import.meta.env.VITE_MOCK_MODE === 'true' && <details className="text-sm">
+      <summary className="cursor-pointer">Demo transcripts</summary>
+      <p className="my-2 text-xs text-slate-600">Try the voice flow without recording audio. Replies use the selected voice language.</p>
+      <div className="flex flex-wrap gap-2">{[`Heat ${String(heatId || flow.heatId || 'H-1053').replace(/^H-/, '')} status என்ன`, 'ஏன் HOLD', 'why hold heat 1053', 'approve', 'start melting'].map(text =>
+        <button type="button" key={text} disabled={state === 'processing' || state === 'listening'} onClick={() => run(text)} className="rounded-full bg-emerald-50 px-3 py-2 text-sm text-emerald-900 disabled:opacity-50">{text}</button>
+      )}</div>
+    </details>}
     {state === 'error' && <div className="flex flex-wrap gap-2">{['Heat status', 'carbon evvalavu', 'why hold', 'stock evvalavu', 'spectrometer kaattu'].map(text => <button type="button" key={text} onClick={() => run(text)} className="rounded-full bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{text}</button>)}</div>}
   </section>;
 }

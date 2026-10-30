@@ -203,6 +203,20 @@ function seed() {
   supplierHistory.seedHistory({ addLot, lots, movements, qaResults, gunSessions, heats, counters, nextId });
   audit.splice(0, audit.length - auditBefore); // keep the audit log for today's demo only
   supplierHistory.decorateLots([...lots.values()]);
+
+  // Resettable HOLD demo: core chemistry is in spec; quarantine and Cu each
+  // fail a real gate check. No gate result is precomputed or forced.
+  addLot({ lotId: 'PIG-1053', materialType: 'PIG_IRON', description: 'Segregated pig iron — excess copper',
+    supplier: 'Demo segregated stock', receivedKg: 1500, costPerKg: 45, bay: 'Quarantine bay',
+    status: 'QUARANTINED', statusReason: 'Copper 0.50% exceeds the SG-IRON residual limit 0.30%; do not charge',
+    declared: { C: 3.6, Si: 2.4, Mn: 0.65, P: 0.035, S: 0.015, Cu: 0.5, Cr: 0.02, Ni: 0.02, Mo: 0.005, Sn: 0.002 },
+  }, 'demo seed');
+  heats.set('H-1053', {
+    heatId: 'H-1053', grade: 'SG-IRON', targetKg: 1000, status: 'PLANNED',
+    plannedBy: 'HOLD voice demo', createdAt: new Date(),
+    charge: [{ lotId: 'PIG-1053', kg: 1000 }], gate: null, gateHistory: [],
+  });
+  counters.heat = 1053;
 }
 
 // Modules that keep their own demo state (e.g. purchase requests) register

@@ -83,7 +83,7 @@ describe('read-only voice intents', () => {
   it.each(['evalavu', 'evalu', 'how much'])('understands quantity %s', word => {
     expect(mapIntent(`silicon ${word}`)).toEqual({ intent: 'element_value', params: { element: 'Si' } });
   });
-  it.each(['approve heat 42', 'confirm', 'release', 'deduct stock', 'start melt', 'invoice', 'delete', 'அனுமதி', 'ஒப்புதல்'])('blocks %s', text => {
+  it.each(['approve', 'approve heat 42', 'approve heat 1053', 'start melting', 'start melting heat 1053', 'override HOLD', 'confirm', 'release', 'deduct stock', 'start melt', 'invoice', 'delete', 'அனுமதி', 'ஒப்புதல்'])('blocks %s', text => {
     expect(mapIntent(text)).toMatchObject({ intent: 'blocked', reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } });
   });
 });

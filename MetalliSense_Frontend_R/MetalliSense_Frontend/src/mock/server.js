@@ -1,4 +1,5 @@
 import { tryRealCopilot } from './copilotTransport.js';
+import { holdAnnouncer } from '../services/voiceGateAnswers.js';
 import { sha1 } from './sha1.js';
 import axios from 'axios';
 import { trainingSeed } from './seed.js';
@@ -104,6 +105,7 @@ export async function persist(){
  window.dispatchEvent(new Event('mock-state'));
 }
 export async function reset(){
+ holdAnnouncer.reset();
  instruments?.stop();await clearState();cache.clear();extra={outbox:[],notifiedLots:[],memory:[],chat:[],feedback:[],reward:null,activeHeat:null,readings:[],orders:[{id:'SO-1001',customerId:'CUST-01',grade:'SG-IRON',qtyKg:650,status:'OPEN'}]};
  instruments=createInstruments(requirePort,()=>extra,persist,outbox);ai=await createAI(requirePort,()=>extra,outbox);application=requirePort('server');instruments.start();
  sessionStorage.removeItem('metallisense.meltFlow.v1');localStorage.removeItem('metallisense.demo.chat');await persist();

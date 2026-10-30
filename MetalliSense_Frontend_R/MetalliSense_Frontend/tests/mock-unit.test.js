@@ -4,6 +4,8 @@ import { createRequire } from 'node:module';
 import { startMock,dispatch,requirePort,reset } from '../src/mock/server.js';
 import { solveCharge } from '../src/mock/handlers/optimizer.js';
 import { alloy,anomaly } from '../src/mock/handlers/ai.js';
+import { mapIntent } from '../src/services/voiceIntents.js';
+import { createHoldAnnouncer, heatVoiceAnswer } from '../src/services/voiceGateAnswers.js';
 const saved=new Map();
 globalThis.localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)};
 globalThis.sessionStorage={removeItem:()=>{}};
@@ -16,6 +18,94 @@ const middle={C:3.5,Si:2.3,Mn:.65,P:.02,S:.01,Cu:.05};
 const lot=(id,cost=30,kg=1000,comp=middle,status='RELEASED')=>({lotId:id,costPerKg:cost,availableKg:kg,declared:comp,status,chemistrySource:'LAB'});
 const chem={lotChemistry:l=>({yield:1,composition:l.declared}),predictMeltdown:lines=>({metalKg:lines.reduce((s,l)=>s+l.kg,0),composition:Object.fromEntries(Object.keys(middle).map(e=>[e,lines.reduce((s,l)=>s+l.kg*l.lot.declared[e],0)/lines.reduce((s,l)=>s+l.kg,0)]))})};
 const solve=(lots,options={})=>solveCharge({grade,targetKg:1000,...options},lots,config,chem);
+
+describe('resettable H-1053 HOLD voice demo', () => {
+ beforeEach(async () => { await reset(); });
+ const check = async () => {
+  const response = await dispatch('POST', 'http://local/api/v2/premelt/heats/H-1053/gate-check', { by: 'Demo operator' });
+  expect(response.status).toBe(200);
+  return response.data.data;
+ };
+ const heatView = async () => (await dispatch('GET', 'http://local/api/v2/premelt/heats/H-1053')).data.data;
+ it('seeds a 1000 kg planned charge and repeatedly gets exactly two real blocking checks without using stock', async () => {
+  const store = requirePort('premeltGate/store'), heat = store.heats.get('H-1053');
+  expect(heat).toMatchObject({ grade: 'SG-IRON', targetKg: 1000, status: 'PLANNED', gate: null });
+  expect(heat.charge.reduce((sum, line) => sum + line.kg, 0)).toBe(1000);
+  const before = store.availableKg('PIG-1053');
+  for (let i = 0; i < 2; i++) {
+   const gate = await check();
+   expect(gate.decision).toBe('HOLD');
+   expect(gate.blocking).toHaveLength(2);
+   expect(gate.checks.filter(c => c.status === 'FAIL').map(c => c.id)).toEqual(['lot_status', 'residuals']);
+   expect(gate.prediction.composition.Cu).toBeGreaterThan(.3);
+  }
+  expect(store.availableKg('PIG-1053')).toBe(before);
+  expect(heat.status).toBe('PLANNED');
+  expect(() => requirePort('premeltGate/gateEngine').startMelting('H-1053', { operator: 'Demo operator' })).toThrow(/Furnace start is locked/);
+  await reset();
+  expect(requirePort('premeltGate/store').heats.get('H-1053').gate).toBeNull();
+  expect((await check()).blocking).toHaveLength(2);
+ });
+ it('answers the supplied Tamil status and HOLD reason commands from the real gate in the selected language', async () => {
+  await check();
+  const heat = await heatView();
+  const status = mapIntent('Heat 1053 status என்ன');
+  expect(status).toEqual({ intent: 'heat_status', params: { heatNumber: 1053 } });
+  expect(heatVoiceAnswer(status.intent, heat, status.params, 'ta')).toBe('Heat H-1053: நிலை PLANNED. Gate HOLD');
+  for (const transcript of ['ஏன் HOLD', 'why hold heat 1053']) {
+   const mapped = mapIntent(transcript);
+   expect(mapped.intent).toBe('gate_reason');
+   const tamil = heatVoiceAnswer(mapped.intent, heat, mapped.params, 'ta');
+   expect(tamil).toContain('PIG-1053 தனிமைப்படுத்தப்பட்டுள்ளது');
+   expect(tamil).toContain('செம்பு (Cu) 0.5 சதவீதம்');
+   expect(tamil).toContain('0.3 சதவீதத்தை மீறுகிறது');
+   expect(tamil).not.toContain('Cannot be charged');
+   expect(heatVoiceAnswer(mapped.intent, heat, mapped.params, 'en')).toBe(heat.gateResult.blocking.join('. '));
+  }
+ });
+ it('uses warnings rather than blocking/headline for a real WARN heat, including Tamil', async () => {
+  const store = requirePort('premeltGate/store'), lot = store.getLot('PIG-1053');
+  lot.declared.Cu = .27;
+  store.setStatus(lot, 'RELEASED', 'Released for warning regression', 'test');
+  const gate = await check();
+  expect(gate.decision).toBe('WARN');
+  expect(gate.blocking).toEqual([]);
+  const heat = await heatView();
+  for (const transcript of ['ஏன் HOLD', 'why hold heat 1053', 'why warn heat 1053', 'ஏன் எச்சரிக்கை']) {
+   const mapped = mapIntent(transcript);
+   expect(mapped.intent).toBe('gate_reason');
+   expect(heatVoiceAnswer(mapped.intent, heat, mapped.params, 'en')).toBe(gate.warnings.join('. '));
+   const tamil = heatVoiceAnswer(mapped.intent, heat, mapped.params, 'ta');
+   expect(tamil).toContain('செம்பு (Cu) 0.27 சதவீதம்');
+   expect(tamil).toContain('அபாயம்');
+   expect(tamil).not.toBe(gate.headline);
+  }
+ });
+ it('announces HOLD once across reruns, rerenders and language changes, then rearms after Reset', async () => {
+  const gate = await check(), announcer = createHoldAnnouncer(), speak = vi.fn();
+  announcer.announce('H-1053', null, speak, 'ta');
+  announcer.announce('H-1053', gate, speak, 'ta');
+  announcer.announce('H-1053', gate, speak, 'ta');
+  announcer.announce('H-1053', await check(), speak, 'en');
+  expect(speak).toHaveBeenCalledTimes(1);
+  expect(speak.mock.calls[0][0]).toContain('Heat H-1053: Gate HOLD. உருக்கத் தொடங்க முடியாது');
+  expect(speak.mock.calls[0][0]).toContain('செம்பு (Cu)');
+  expect(speak.mock.calls[0][1]).toBe('ta');
+  announcer.reset();
+  announcer.announce('H-1053', gate, speak, 'ta');
+  expect(speak).toHaveBeenCalledTimes(2);
+  announcer.announce('H-1053', { decision: 'WARN' }, speak, 'ta');
+  announcer.announce('H-1053', gate, speak, 'ta');
+  expect(speak).toHaveBeenCalledTimes(3);
+ });
+ it('does not consume the HOLD announcement while muted', async () => {
+  const gate = await check(), announcer = createHoldAnnouncer(), speak = vi.fn();
+  announcer.announce('H-1053', gate, speak, 'ta', true);
+  expect(speak).not.toHaveBeenCalled();
+  announcer.announce('H-1053', gate, speak, 'ta', false);
+  expect(speak).toHaveBeenCalledTimes(1);
+ });
+});
 describe('charge optimizer: 12 constraint and input cases',()=>{
  it('finds the cheapest feasible mix',()=>{const r=solve([lot('A'),lot('B',50)]);expect(r.feasible).toBe(true);expect(r.candidates[0].charge[0].lotId).toBe('A');});
  it('preserves exact target mass',()=>expect(solve([lot('A')]).candidates[0].charge.reduce((s,l)=>s+l.kg,0)).toBeCloseTo(1000));

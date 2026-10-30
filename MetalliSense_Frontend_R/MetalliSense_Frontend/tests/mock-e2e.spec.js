@@ -3,6 +3,66 @@ const routes=['dashboard','anomaly','recommendation','rl-optimizer','agent','gra
 async function call(page,path,body,method=body?'POST':'GET'){
  return page.evaluate(async({path,body,method})=>{const r=await fetch(path,{method,body:body?JSON.stringify(body):undefined});const j=await r.json();if(!r.ok)throw new Error(path+': '+JSON.stringify(j));return j;},{path,body,method});
 }
+
+test('H-1053 HOLD voice demo uses real checks and read-only transcript actions', async ({ page }) => {
+ const speech = [], unexpected = [];
+ const wav = Buffer.alloc(44 + 3200);
+ wav.write('RIFF'); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8);
+ wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+ wav.writeUInt32LE(16000, 24); wav.writeUInt32LE(32000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34);
+ wav.write('data', 36); wav.writeUInt32LE(3200, 40);
+ await page.route('**/*', route => {
+  const url = new URL(route.request().url());
+  if (url.pathname === '/copilot/voice/synthesize') {
+   if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: {
+    'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type',
+   } });
+   speech.push(route.request().postDataJSON());
+   return route.fulfill({ status: 200, contentType: 'audio/wav', body: wav, headers: { 'Access-Control-Allow-Origin': '*' } });
+  }
+  if (url.origin === 'http://127.0.0.1:4179' || ['data:', 'blob:'].includes(url.protocol)) return route.continue();
+  unexpected.push(url.href); return route.abort();
+ });
+ await page.addInitScript(() => {
+  localStorage.setItem('metallisense.voice.language', 'ta');
+  localStorage.setItem('metallisense.voice.muted', 'false');
+ });
+ page.on('dialog', dialog => dialog.accept());
+ await page.goto('/#/premelt-gate');
+ await page.getByRole('button', { name: 'Reset', exact: true }).click();
+ await expect(page.getByText('Reset complete', { exact: true })).toBeVisible();
+ await page.getByRole('button', { name: /H-1053/ }).click();
+ await page.getByRole('button', { name: 'Run pre-melt check', exact: true }).click();
+ const panel = page.locator('section[aria-label="Shop floor voice"]');
+ await expect.poll(() => speech.filter(s => s.text.startsWith('Heat H-1053: Gate HOLD.')).length).toBe(1);
+ await expect(page.getByRole('button', { name: 'Start melting — locked', exact: true })).toBeDisabled();
+ await page.getByRole('button', { name: 'Run pre-melt check', exact: true }).click();
+ await expect(page.getByRole('button', { name: 'Run pre-melt check', exact: true })).toBeEnabled();
+ await panel.getByText('Demo transcripts', { exact: true }).click();
+ await panel.getByRole('button', { name: 'Heat 1053 status என்ன', exact: true }).click();
+ await expect(panel.getByText('Heat H-1053: நிலை PLANNED. Gate HOLD', { exact: true })).toBeVisible();
+ for (const transcript of ['ஏன் HOLD', 'why hold heat 1053']) {
+  await panel.getByRole('button', { name: transcript, exact: true }).click();
+  await expect(panel.locator('div[aria-live]')).toContainText('PIG-1053 தனிமைப்படுத்தப்பட்டுள்ளது');
+  await expect(panel.locator('div[aria-live]')).toContainText('செம்பு (Cu) 0.5 சதவீதம்');
+ }
+ await panel.getByRole('combobox', { name: 'Voice language' }).selectOption('en');
+ await panel.getByRole('button', { name: 'why hold heat 1053', exact: true }).click();
+ await expect(panel.locator('div[aria-live]')).toContainText('Cannot be charged');
+ await panel.getByRole('combobox', { name: 'Voice language' }).selectOption('ta');
+ for (const transcript of ['approve', 'start melting']) {
+  await panel.getByRole('button', { name: transcript, exact: true }).click();
+  await expect(panel.getByText('திரையில் approve செய்யவும்', { exact: true })).toBeVisible();
+ }
+ await expect.poll(() => speech.filter(s => s.text === 'திரையில் approve செய்யவும்').length).toBe(2);
+ expect(speech.filter(s => s.text.startsWith('Heat H-1053: Gate HOLD.'))).toHaveLength(1);
+ expect(speech.filter(s => s.text.startsWith('Heat H-1053: Gate HOLD.'))[0].language).toBe('ta');
+ const heat = (await call(page, '/api/v2/premelt/heats/H-1053')).data;
+ expect(heat.status).toBe('PLANNED');
+ expect(heat.gateResult.decision).toBe('HOLD');
+ expect(heat.gateResult.blocking).toHaveLength(2);
+ expect(unexpected).toEqual([]);
+});
 test('every route and full browser-only workflow, persistence and reset',async({page})=>{
  const errors=[],blocked=[],failed=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});page.on('requestfailed',r=>failed.push(r.url()));

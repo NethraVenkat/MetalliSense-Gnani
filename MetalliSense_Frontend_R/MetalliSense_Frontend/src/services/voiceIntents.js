@@ -53,7 +53,7 @@ const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
 export function mapIntent(transcript) {
   const text = normalizeIntentTranscript(transcript);
   const params = {};
-  if (/approve|confirm|release|deduct|start\s+melt|invoice|delete|அனுமதி|ஒப்புதல்/u.test(text)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
+  if (/approve|confirm|release|deduct|start\s+melt|override|invoice|delete|அனுமதி|ஒப்புதல்/u.test(text)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
   const hasStatusWord = /\b(?:status|epdi|enna|in\s+a|nilai)\b/u.test(text) || has(text, 'நிலை');
   const heat = text.match(/\b(?:heat|heath|sheet|hit|hate|eat|heet|he\s+t|h)[\s-]*(\d+)\b/i)
     || text.match(/^\s*(\d+)\b/)
@@ -65,7 +65,7 @@ export function mapIntent(transcript) {
     else if (/recarburiser|recarburizer/i.test(text)) params.alloy = 'Recarburiser';
     return { intent: 'stock_check', params };
   }
-  if (/hold|தடை/u.test(text) && /why|yen|ஏன்|reason|காரண/u.test(text)) return { intent: 'gate_reason', params };
+  if (/\b(?:hold|warn|warning|warnings)\b|தடை|எச்சரிக்கை/u.test(text) && /\b(?:why|yen|reason)\b|ஏன்|காரண/u.test(text)) return { intent: 'gate_reason', params };
   for (const [element, aliases] of Object.entries(elements)) if (aliases.some(alias => has(text, alias))) return { intent: 'element_value', params: { ...params, element } };
   for (const [pattern, route] of [[/dashboard|டாஷ்போர்டு/u, '/dashboard'], [/pre[\s-]*melt|premelt/u, '/premelt-gate'], [/spectrometer|ஸ்பெக்ட்ரோமீட்டர்/u, '/spectrometer'], [/stock|இருப்பு/u, '/raw-material-stock']]) {
     if (pattern.test(text)) return { intent: 'open_screen', params: { ...params, route } };

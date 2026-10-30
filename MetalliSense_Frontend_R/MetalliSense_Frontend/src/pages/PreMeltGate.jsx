@@ -1,7 +1,8 @@
 import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import useSpeak, { useVoiceLanguage } from "../hooks/useSpeak";
 import PushToTalk from "../components/voice/PushToTalk";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { holdAnnouncer } from "../services/voiceGateAnswers";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, Lock, LockOpen, Flame, Plus, Trash2, Sparkles, ChevronDown, Microscope, RotateCcw, ArrowRight, Boxes, ScanLine, FlaskConical, BrainCircuit, Clock, Check, Zap } from "lucide-react";
 import ReadAloud from "../components/common/ReadAloud";
@@ -15,8 +16,6 @@ import {
 import { useMeltFlow } from "../context/MeltFlowContext";
 import { StatusPill, CheckPill, ChemBar, Field, inputCls, kg, errMsg, SOURCE_LABEL } from "../components/premelt/premeltUi";
 import { MeltSpinner } from "../components/common/FurnaceLoader";
-
-const announcedHolds = new Set();
 
 const DECISION = {
   GO: { title: "GO", text: "Charge cleared", slab: "bg-primary-600 text-white", ring: "border-primary-600", icon: LockOpen },
@@ -332,21 +331,11 @@ export default function PreMeltGate() {
   const lotById = useMemo(() => Object.fromEntries(lots.map((l) => [l.lotId, l])), [lots]);
   const chargeKg = charge.reduce((s, l) => s + (Number(l.kg) || 0), 0);
   const gate = heat?.gateResult;
-  const { speak } = useSpeak();
+  const { speak, muted } = useSpeak();
   const [voiceLang] = useVoiceLanguage();
-  const spokenHolds = useRef(announcedHolds);
   useEffect(() => {
-    if (!heat?.heatId || gate?.decision !== "HOLD") return;
-    const key = `${heat.heatId}:HOLD`;
-    if (spokenHolds.current.has(key)) return;
-    spokenHolds.current.add(key);
-    const failedCheck = gate.checks?.find(c => c.status === "FAIL");
-    const failedElement = gate.checks?.find(c => c.id === "spec_prediction")?.details?.find(d => d.status === "FAIL");
-    const item = failedElement?.element || failedCheck?.title || failedCheck?.id || gate.blocking?.[0] || "Gate check";
-    void speak(voiceLang === "ta"
-      ? `Heat ${heat.heatId}-?? ${item} limit ?????????????. Correction ????.`
-      : `Heat ${heat.heatId}: ${item} is above the limit. Correction needed.`, voiceLang);
-  }, [heat?.heatId, gate, speak, voiceLang]);
+    void holdAnnouncer.announce(heat?.heatId, gate, speak, voiceLang, muted);
+  }, [heat?.heatId, gate, speak, voiceLang, muted]);
   const planned = heat?.status === "PLANNED";
 
   const editLine = (i, patch) => { setCharge((c) => c.map((l, j) => (j === i ? { ...l, ...patch } : l))); setDirty(true); };
