@@ -1,6 +1,6 @@
 # Gnani Prisma noise benchmark
 
-Generated: 2026-10-30T16:07:21.287389+00:00
+Generated: 2026-10-30T16:44:28.032722+00:00
 
 STT model: prisma-v2.5 (model omitted). Language: en-IN. Format: transcribe.
 

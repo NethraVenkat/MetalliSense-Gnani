@@ -1,10 +1,10 @@
 # Gnani Prisma noise benchmark
 
-Generated: 2026-10-30T16:14:53.458748+00:00
+Generated: 2026-10-30T16:44:33.180337+00:00
 
 STT model: prisma-v3.0. Language: ta-IN,en-IN. Format: codemix.
 
-New STT calls: 120. Cached results: 10. Missing recordings: 0.
+New STT calls: 0. Cached results: 130. Re-scored from saved attempts; audio availability was not checked.
 
 | SNR (dB) | Scored / planned | STT success | WER | Word accuracy | Exact text | Heat slot | Element slots | Intent correct | Intent + heat correct |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|

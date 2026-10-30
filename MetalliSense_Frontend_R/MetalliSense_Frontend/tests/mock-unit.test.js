@@ -5,7 +5,7 @@ import { startMock,dispatch,requirePort,reset } from '../src/mock/server.js';
 import { solveCharge } from '../src/mock/handlers/optimizer.js';
 import { alloy,anomaly } from '../src/mock/handlers/ai.js';
 import { mapIntent } from '../src/services/voiceIntents.js';
-import { createHoldAnnouncer, heatVoiceAnswer } from '../src/services/voiceGateAnswers.js';
+import { createHoldAnnouncer, heatVoiceAnswer, spokenGateReasonAnswer, gateReasonAnswer } from '../src/services/voiceGateAnswers.js';
 const saved=new Map();
 globalThis.localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)};
 globalThis.sessionStorage={removeItem:()=>{}};
@@ -89,7 +89,7 @@ describe('resettable H-1053 HOLD voice demo', () => {
   announcer.announce('H-1053', await check(), speak, 'en');
   expect(speak).toHaveBeenCalledTimes(1);
   expect(speak.mock.calls[0][0]).toContain('Heat H-1053: Gate HOLD. உருக்கத் தொடங்க முடியாது');
-  expect(speak.mock.calls[0][0]).toContain('செம்பு (Cu)');
+  expect(speak.mock.calls[0][0]).toContain('செம்பு 0.50 சதவீதம், அதிகம்');
   expect(speak.mock.calls[0][1]).toBe('ta');
   announcer.reset();
   announcer.announce('H-1053', gate, speak, 'ta');
@@ -106,6 +106,57 @@ describe('resettable H-1053 HOLD voice demo', () => {
   expect(speak).toHaveBeenCalledTimes(1);
  });
 });
+describe('short gate-reason speech with complete screen text', () => {
+ const warning = {
+  decision: 'WARN', warnings: ['Low carbon, low silicon, high manganese', 'AI risk warning'],
+  checks: [
+   { id: 'spec_prediction', status: 'WARN', details: [
+    { element: 'C', value: 2.567, min: 3, max: 4, status: 'WARN' },
+    { element: 'Si', value: 1.234, min: 1.8, max: 2.8, status: 'WARN' },
+    { element: 'Mn', value: 1.257, min: .3, max: 1, status: 'WARN' },
+   ] },
+   { id: 'ai_assessment', status: 'WARN', summary: 'AI risk warning' },
+  ],
+ };
+ it('caps individual element reasons at two, rounds to two decimals and excludes AI from speech/counts', () => {
+  const original = structuredClone(warning);
+  expect(spokenGateReasonAnswer(warning, 'ta')).toBe('கார்பன் 2.57 சதவீதம், குறைவு. சிலிக்கான் 1.23 சதவீதம், குறைவு. மேலும் 1 விவரங்கள் திரையில்');
+  const screen = heatVoiceAnswer('gate_reason', { gateResult: warning }, {}, 'ta');
+  expect(screen).toBe(gateReasonAnswer(warning, 'ta'));
+  expect(screen).toContain('மாங்கனீசு (Mn)');
+  expect(screen).toContain('செயற்கை நுண்ணறிவு');
+  expect(warning).toEqual(original);
+ });
+ it('prioritizes blocking failures over warnings regardless of their input order', () => {
+  const gate = { ...warning, decision: 'HOLD', checks: [
+   ...warning.checks,
+   { id: 'residuals', status: 'FAIL', details: [{ element: 'Cu', value: .678, max: .3, status: 'FAIL' }] },
+   { id: 'spec_prediction', status: 'FAIL', details: [{ element: 'P', value: .1234, max: .08, status: 'FAIL' }] },
+  ] };
+  expect(spokenGateReasonAnswer(gate, 'ta')).toBe('பாஸ்பரஸ் 0.12 சதவீதம், அதிகம். செம்பு 0.68 சதவீதம், அதிகம். மேலும் 3 விவரங்கள் திரையில்');
+ });
+ it('keeps non-element reasons brief and does not add a remainder for exactly two reasons', () => {
+  const gate = { decision: 'HOLD', checks: [
+   { id: 'lot_status', status: 'FAIL', details: [{ lotId: 'PIG-1053', status: 'FAIL', text: 'QUARANTINED' }] },
+   { id: 'residuals', status: 'FAIL', details: [{ element: 'Cu', value: .5, max: .3, status: 'FAIL' }] },
+  ] };
+  expect(spokenGateReasonAnswer(gate, 'ta')).toBe('PIG-1053: தனிமைப்படுத்தப்பட்டுள்ளது. செம்பு 0.50 சதவீதம், அதிகம்');
+ });
+ it('uses the same cap and rounding in English while retaining all screen warnings', () => {
+  expect(spokenGateReasonAnswer(warning, 'en')).toBe('C 2.57 percent, low. Si 1.23 percent, low. 1 more on screen');
+  expect(gateReasonAnswer(warning, 'en')).toBe(warning.warnings.join('. '));
+ });
+ it('omits AI-only speech and handles unchecked/GO gates', () => {
+  expect(spokenGateReasonAnswer({ decision: 'HOLD', checks: [{ id: 'ai_assessment', status: 'FAIL', summary: 'AI risk high' }] }, 'ta')).toBe('மேலும் விவரங்கள் திரையில்');
+  expect(spokenGateReasonAnswer(null, 'ta')).toBe(gateReasonAnswer(null, 'ta'));
+  expect(spokenGateReasonAnswer({ decision: 'GO' }, 'en')).toBe(gateReasonAnswer({ decision: 'GO' }, 'en'));
+ });
+ it('caps legacy saved reasons and removes their AI-risk sentence', () => {
+  expect(spokenGateReasonAnswer({ decision: 'WARN', warnings: ['Stock low', 'AI off-spec risk high', 'Lab approval needed', 'Inspect scrap'] }, 'en'))
+   .toBe('Stock low. Lab approval needed. 1 more on screen');
+ });
+});
+
 describe('charge optimizer: 12 constraint and input cases',()=>{
  it('finds the cheapest feasible mix',()=>{const r=solve([lot('A'),lot('B',50)]);expect(r.feasible).toBe(true);expect(r.candidates[0].charge[0].lotId).toBe('A');});
  it('preserves exact target mass',()=>expect(solve([lot('A')]).candidates[0].charge.reduce((s,l)=>s+l.kg,0)).toBeCloseTo(1000));

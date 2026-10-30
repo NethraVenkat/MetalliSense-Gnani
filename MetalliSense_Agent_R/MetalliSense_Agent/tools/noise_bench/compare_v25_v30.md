@@ -7,8 +7,8 @@ Rescored on 2026-10-30. New STT calls: **0**. The transcript cache was unchanged
 | Model | Prisma v2.5 (model field omitted) | prisma-v3.0 |
 | Language | en-IN | ta-IN,en-IN |
 | Format | transcribe | codemix |
-| Cached conditions rescored | 130 | 10 |
-| Coverage | 10 clean + 30 each at 20, 10, 5, 0 dB | 10 clean only |
+| Cached conditions rescored | 130 | 130 |
+| Coverage | 10 clean + 30 each at 20, 10, 5, 0 dB | 10 clean + 30 each at 20, 10, 5, 0 dB |
 
 The historical v2.5 cache has three-part keys without configuration metadata.
 `--include-legacy` explicitly identifies those entries as v2.5 / en-IN / transcribe
@@ -30,16 +30,19 @@ same current frontend mapper and normalization for scoring.
 | Intent correct | 100.0% (10/10) | 100.0% (10/10) |
 | Intent + heat correct | 100.0% (10/10) | 100.0% (10/10) |
 
-All saved SNR conditions are shown below. Missing v3.0 noise results are N/A;
-the 130-condition v2.5 aggregate is not compared with the ten-condition v3.0 clean set.
+All 130 cached conditions per configuration are included below: ten clean and
+30 each at 20, 10, 5 and 0 dB. Conditions match by recording, noise track and SNR.
+Every rescored transcript came from results_cache.json; no CSV fallback was used.
 
 | SNR (dB) | v2.5 scored | v3.0 scored | v2.5 WER | v3.0 WER | v2.5 intent | v3.0 intent | v2.5 intent + heat | v3.0 intent + heat |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | clean | 10 | 10 | 28.6% | 4.8% | 100.0% | 100.0% | 100.0% | 100.0% |
-| 20 | 30 | 0 | 28.6% | N/A | 100.0% | N/A | 96.7% | N/A |
-| 10 | 30 | 0 | 29.4% | N/A | 100.0% | N/A | 93.3% | N/A |
-| 5 | 30 | 0 | 30.2% | N/A | 100.0% | N/A | 93.3% | N/A |
-| 0 | 30 | 0 | 33.3% | N/A | 96.7% | N/A | 86.7% | N/A |
+| 20 | 30 | 30 | 28.6% | 4.8% | 100.0% | 100.0% | 96.7% | 100.0% |
+| 10 | 30 | 30 | 29.4% | 7.1% | 100.0% | 96.7% | 93.3% | 96.7% |
+| 5 | 30 | 30 | 30.2% | 8.7% | 100.0% | 93.3% | 93.3% | 93.3% |
+| 0 | 30 | 30 | 33.3% | 10.3% | 96.7% | 96.7% | 86.7% | 93.3% |
+
+At 0 dB, v3.0 command understood: **96.7%**; command + heat: **93.3%**; normalized word accuracy: **89.7%**.
 
 WER normalizes both reference and hypothesis with the actual frontend's exported
 `normalizeTranscript`: lowercase, remove punctuation, convert English number words
@@ -47,7 +50,7 @@ WER normalizes both reference and hypothesis with the actual frontend's exported
 to Tanglish. Heat-slot scoring uses the same normalized numbers. Raw transcripts
 remain verbatim in each `runs.csv`.
 
-The two remaining v3.0 word substitutions are `So` versus `Show` and `manganese`
+On clean recordings, the two remaining v3.0 word substitutions are `So` versus `Show` and `manganese`
 versus `Mn`. Both produce the correct intent and parameters; these lexical differences
 still count toward WER. Intent + heat checks intent and the heat number when present;
 it does not validate element/alloy parameters. Element slots is the separate lexical

@@ -4,7 +4,7 @@ import { Mic, Volume2, VolumeX } from 'lucide-react';
 import { transcribeAudio, sendChatMessage } from '../../services/copilotService';
 import { getHeat, getHeats, getAdditives } from '../../services/premeltService';
 import { mapIntent } from '../../services/voiceIntents';
-import { heatVoiceAnswer } from '../../services/voiceGateAnswers';
+import { heatVoiceAnswer, spokenGateReasonAnswer } from '../../services/voiceGateAnswers';
 import { useMeltFlow } from '../../context/MeltFlowContext';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 const unwrap = response => response.data?.data ?? response.data;
@@ -26,7 +26,7 @@ export default function PushToTalk({ heatId }) {
   const busy = useRef(false);
   const alive = useRef(true);
   const choose = (ta, en) => lang === 'ta' ? ta : en;
-  const say = text => { if (!alive.current) return; setAnswer(text); void speak(text, lang); };
+  const say = (text, spokenText = text) => { if (!alive.current) return; setAnswer(text); void speak(spokenText, lang); };
   async function resolveHeat(params) {
     if (params.heatNumber == null && (heatId || flow.heatId)) return unwrap(await getHeat(heatId || flow.heatId));
     const heats = unwrap(await getHeats());
@@ -51,7 +51,8 @@ export default function PushToTalk({ heatId }) {
       return say(response.data.response || choose('பதில் கிடைக்கவில்லை', 'No answer available'));
     }
     const heat = await resolveHeat(params);
-    say(heatVoiceAnswer(intent, heat, params, lang));
+    const answer = heatVoiceAnswer(intent, heat, params, lang);
+    say(answer, intent === 'gate_reason' ? spokenGateReasonAnswer(heat.gateResult, lang) : answer);
   }
   async function run(text) {
     if (busy.current) return;

@@ -41,6 +41,46 @@ export function gateReasonAnswer(gate, lang = 'ta') {
   return lang === 'ta' ? 'Gate காரணம் கிடைக்கவில்லை. திரையில் விவரங்களைச் சரிபார்க்கவும்' : gate.headline || 'No gate reason available';
 }
 
+// Speech is intentionally separate from the complete on-screen explanation.
+export function spokenGateReasonAnswer(gate, lang = 'ta') {
+  if (!gate || !['HOLD', 'WARN'].includes(gate.decision)) return gateReasonAnswer(gate, lang);
+  const rank = { FAIL: 0, WARN: 1 };
+  const priority = { lot_status: 0, spec_prediction: 1, residuals: 2, stock: 3 };
+  const checks = (gate.checks || []).filter(c => c.id !== 'ai_assessment'
+    && (c.status === 'FAIL' && gate.decision === 'HOLD' || c.status === 'WARN'))
+    .sort((a, b) => rank[a.status] - rank[b.status] || (priority[a.id] ?? 4) - (priority[b.id] ?? 4));
+  const reasons = checks.flatMap(check => {
+    const details = (check.details || []).filter(d => d.status === check.status);
+    if (details.length) return details.map(d => {
+      if (d.element && Number.isFinite(d.value)) {
+        const low = d.value < d.min || (d.value <= d.max && Number.isFinite(d.min)
+          && d.value - d.min < d.max - d.value);
+        const value = d.value.toFixed(2);
+        return lang === 'ta'
+          ? `${names[d.element] || d.element} ${value} சதவீதம், ${low ? 'குறைவு' : 'அதிகம்'}`
+          : `${d.element} ${value} percent, ${low ? 'low' : 'high'}`;
+      }
+      if (check.id === 'lot_status') return lang === 'ta'
+        ? `${d.lotId}: ${/QUARANTINED/.test(d.text || '') ? 'தனிமைப்படுத்தப்பட்டுள்ளது' : check.status === 'WARN' ? 'பயன்பாட்டுக் கட்டுப்பாடு' : 'பயன்படுத்த அனுமதி இல்லை'}`
+        : `${d.lotId}: ${/QUARANTINED/.test(d.text || '') ? 'quarantined' : 'use restricted'}`;
+      return lang === 'ta' ? (tamilChecks[check.id] || 'தரப் பிரச்சினை உள்ளது').split('.')[0]
+        : (textOf(d) || check.title || check.summary).split(/[.!?](?=\s|$)/)[0];
+    });
+    return [lang === 'ta' ? (tamilChecks[check.id] || 'தரப் பிரச்சினை உள்ளது').split('.')[0]
+      : (check.summary || check.title || 'Review gate check').split(/[.!?](?=\s|$)/)[0]];
+  });
+  if (!(gate.checks || []).length) {
+    const saved = gate.decision === 'WARN' ? gate.warnings || [] : gate.blocking || [];
+    reasons.push(...saved.filter(item => item?.id !== 'ai_assessment').map(textOf).filter(Boolean)
+      .filter(text => !/\b(?:AI|off-spec risk|confidence)\b/i.test(text))
+      .map(text => text.split(/[.!?](?=\s|$)/)[0]));
+  }
+  const more = reasons.length - 2;
+  const summary = reasons.slice(0, 2);
+  if (more > 0) summary.push(lang === 'ta' ? `மேலும் ${more} விவரங்கள் திரையில்` : `${more} more on screen`);
+  return summary.join('. ') || (lang === 'ta' ? 'மேலும் விவரங்கள் திரையில்' : 'See details on screen');
+}
+
 export function heatVoiceAnswer(intent, heat, params = {}, lang = 'ta') {
   const gate = heat.gateResult;
   if (intent === 'heat_status') return lang === 'ta'
@@ -63,8 +103,8 @@ export function createHoldAnnouncer() {
       decisions.set(heatId, gate?.decision);
       if (gate?.decision !== 'HOLD' || previous === 'HOLD') return;
       const message = lang === 'ta'
-        ? `Heat ${heatId}: Gate HOLD. உருக்கத் தொடங்க முடியாது. ${gateReasonAnswer(gate, lang)}`
-        : `Heat ${heatId}: Gate HOLD. Furnace start is locked. ${gateReasonAnswer(gate, lang)}`;
+        ? `Heat ${heatId}: Gate HOLD. உருக்கத் தொடங்க முடியாது. ${spokenGateReasonAnswer(gate, lang)}`
+        : `Heat ${heatId}: Gate HOLD. Furnace start is locked. ${spokenGateReasonAnswer(gate, lang)}`;
       return speak(message, lang);
     },
   };
