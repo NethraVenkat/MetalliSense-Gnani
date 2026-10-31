@@ -229,7 +229,7 @@ class GnaniClient:
             raise RuntimeError(f"ffmpeg conversion failed: {proc.stderr.decode(errors='ignore')[:300]}")
         return proc.stdout
 
-    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None, *, max_attempts: int = 2) -> Dict:
+    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None, *, max_attempts: int = 2, context_terms=None) -> Dict:
         """Retry 429/504 once; callers with a strict credit budget may allow one attempt."""
         if max_attempts not in (1, 2):
             raise ValueError("max_attempts must be 1 or 2")
@@ -247,6 +247,9 @@ class GnaniClient:
                 data["model"] = self.stt_model
             if self.stt_keyterms:
                 data["keyterms"] = self.stt_keyterms
+            from .context_bias import enabled,merge_terms
+            if enabled() and context_terms is not None:
+                data['keyterms']=json.dumps(merge_terms(self.stt_keyterms,context_terms))
             for attempt in range(max_attempts):
                 self.stats["stt_calls"] += 1
                 response = requests.post(

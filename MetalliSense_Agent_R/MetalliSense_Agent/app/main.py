@@ -3,7 +3,7 @@
 MetalliSense AI Service - FastAPI Application
 Main entry point for the AI Intelligence Layer
 """
-from fastapi import FastAPI, HTTPException, status, File, UploadFile, WebSocket
+from fastapi import FastAPI, HTTPException, status, File, Form, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
@@ -729,7 +729,7 @@ async def transcribe_handover(audio: UploadFile = File(...)):
 
 
 @app.post("/copilot/voice/transcribe", response_model=TranscriptionResponse, tags=["Voice"])
-async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = None):
+async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = None, context_terms: Optional[str] = Form(None)):
     """
     🎤 SPEECH-TO-TEXT - Convert voice input to text
     
@@ -769,7 +769,9 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
         
         try:
             # Transcribe
-            result = voice_service.transcribe_audio(tmp_path, language)
+            from copilot.context_bias import parse_context
+            terms=parse_context(context_terms)
+            result = voice_service.transcribe_audio(tmp_path, language, **({'context_terms':terms} if terms is not None else {}))
             return TranscriptionResponse(**result)
         finally:
             # Clean up temp file
@@ -873,9 +875,10 @@ async def speak_stream(request: TTSRequest):
 @app.get("/copilot/voice/status", tags=["Voice"])
 async def voice_status():
     """Which TTS/STT providers are active (no secrets returned)."""
+    from copilot.context_bias import bias_status
     if voice_service is None:
-        return {"available": False, **stream_status(), "evon": phrase_status()}
-    return {"available": True, **voice_service.status(), **stream_status(), "evon": phrase_status()}
+        return {"available": False, **stream_status(), "evon": phrase_status(), **bias_status()}
+    return {"available": True, **voice_service.status(), **stream_status(), "evon": phrase_status(), **bias_status()}
 
 
 class EvonPhraseRequest(BaseModel):

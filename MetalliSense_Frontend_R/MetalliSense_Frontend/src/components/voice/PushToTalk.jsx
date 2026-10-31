@@ -9,6 +9,7 @@ import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import useHandsFree from '../../hooks/useHandsFree';
 import { langBridgeEnabled } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
+import useContextTerms from '../../hooks/useContextTerms';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
@@ -23,6 +24,8 @@ export default function PushToTalk(props) {
 function VoicePanel({ heatId }) {
   const navigate = useNavigate();
   const { flow } = useMeltFlow();
+  const contextTerms=useContextTerms(heatId||flow.heatId);
+  const contextRef=useRef(contextTerms);contextRef.current=contextTerms;
   const { speak, muted, toggleMute } = useSpeak();
   const [lang, setLang] = useVoiceLanguage();
   const [state, setState] = useState('idle');
@@ -49,7 +52,7 @@ function VoicePanel({ heatId }) {
   const handleTranscript = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource });
   // REST bridge only: hands-free retains the current single-locale Tamil path.
   const handlePushToTalk = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource, langBridge: langBridgeEnabled() });
-  const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
+  const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current, contextTerms });
   async function run(text) {
     if (busy.current) return;
     busy.current = true; setState('processing');
@@ -83,7 +86,7 @@ function VoicePanel({ heatId }) {
         try {
           const blob = new Blob(chunks, { type: rec.mimeType });
           const sttStarted = performance.now();
-          const response = await transcribeAudio(new File([blob], rec.mimeType.includes('mp4') ? 'voice.mp4' : 'voice.webm', { type: blob.type }), null);
+          const response = await transcribeAudio(new File([blob], rec.mimeType.includes('mp4') ? 'voice.mp4' : 'voice.webm', { type: blob.type }), null, contextRef.current);
           const stt_ms = performance.now() - sttStarted;
           if (response.data.success === false) throw new Error('STT failed');
           const text = response.data.text?.trim() || '';

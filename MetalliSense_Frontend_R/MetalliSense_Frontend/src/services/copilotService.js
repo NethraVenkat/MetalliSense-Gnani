@@ -1,4 +1,5 @@
 import axios from "axios";
+import {contextBiasEnabled} from './contextTerms';
 
 // Separate axios instance for copilot service (different base URL)
 const copilotApi = axios.create({
@@ -42,12 +43,13 @@ export const clearChatHistory = () =>
  * @param {string|null} language - Optional override; null uses the backend STT language
  * @returns {Promise} Transcription response
  */
-export const transcribeAudio = (audioFile, language = null) => {
+export const transcribeAudio = (audioFile, language = null, contextTerms = []) => {
   const formData = new FormData();
   formData.append("audio", audioFile);
   if (language != null && language.trim() !== "") {
     formData.append("language", language);
   }
+  if(contextBiasEnabled())formData.append('context_terms',JSON.stringify(contextTerms));
 
   return copilotApi.post("/copilot/voice/transcribe", formData, {
     headers: {

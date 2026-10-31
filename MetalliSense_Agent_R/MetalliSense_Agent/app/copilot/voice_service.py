@@ -85,7 +85,8 @@ class VoiceService:
     def transcribe_audio(
         self,
         audio_file: BinaryIO,
-        language: str = "en"
+        language: str = "en",
+        context_terms=None
     ) -> Dict[str, str]:
         """Convert speech to text using Groq Whisper (or Gnani Prisma when STT_PROVIDER=gnani)."""
         if self.stt_provider == "gnani":
@@ -98,7 +99,7 @@ class VoiceService:
                     audio_bytes = audio_file.read()
             except Exception as e:
                 return {"text": "", "language": language or "", "error": str(e), "success": False}
-            return self.gnani.transcribe(audio_bytes, language)
+            return self.gnani.transcribe(audio_bytes, language, **({'context_terms':context_terms} if context_terms is not None else {}))
 
         if not self.client:
             return {"text": "", "error": "GROQ_API_KEY not configured", "success": False}

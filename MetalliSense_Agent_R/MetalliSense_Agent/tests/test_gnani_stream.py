@@ -144,7 +144,37 @@ def test_upstream_error_closes_client_cleanly(proxy, caplog):
         messages = finish(socket)
     assert messages[0]["code"] == "upstream_error"
     assert upstream.closed and SECRET not in json.dumps(messages)
-    assert SECRET not in caplog.text and "[redacted]" in caplog.text
+    assert SECRET not in caplog.text and "Gnani stream provider error" in caplog.text
+
+
+def test_context_control_is_rebuilt_debounced_and_ack_is_sanitized(proxy,monkeypatch,caplog):
+    from copilot import context_bias as bias
+    monkeypatch.setenv('GNANI_CONTEXT_BIAS','on');monkeypatch.setattr(bias,'DEBOUNCE_SECONDS',.02)
+    api,upstream,_=proxy
+    original=upstream.send
+    async def send(data):
+        await original(data)
+        if isinstance(data,str) and json.loads(data).get('type')=='update_settings':
+            upstream.queue.put_nowait({'type':'settings_updated','config':{'secret':SECRET,'keyterms':['H-1053']}})
+    monkeypatch.setattr(upstream,'send',send)
+    with api.websocket_connect('/copilot/voice/stream',headers=ORIGIN) as socket:
+        start(socket)
+        socket.send_json({'type':'context_terms','terms':['H-1052']})
+        socket.send_json({'type':'context_terms','terms':['H-1053'],'language_code':'attacker','bias':{'score':2}})
+        reply=socket.receive_json()
+        assert reply=={'type':'settings_updated','term_count':3}
+        socket.send_json({'type':'stop'});finish(socket)
+    updates=[json.loads(data) for data in upstream.sent if isinstance(data,str) and json.loads(data).get('type')=='update_settings']
+    assert updates==[{'type':'update_settings','bias':{'list':['heat','கார்பன்','H-1053'],'score':1.0}}]
+    assert 'H-1053' not in caplog.text and SECRET not in caplog.text
+
+
+def test_raw_settings_frame_is_never_forwarded(proxy):
+    api,upstream,_=proxy
+    with api.websocket_connect('/copilot/voice/stream',headers=ORIGIN) as socket:
+        start(socket);socket.send_json({'type':'update_settings','bias':{'list':['H-1053'],'score':2}})
+        assert finish(socket)[0]['code']=='invalid_audio'
+    assert not any(isinstance(data,str) and 'update_settings' in data for data in upstream.sent)
 
 
 @pytest.mark.parametrize("kind", ["before_start", "audio_idle", "session"])
@@ -231,7 +261,7 @@ def test_status_contains_only_nonsecret_stream_fields(proxy, monkeypatch):
     api, _, _ = proxy
     monkeypatch.setattr(main, "voice_service", None)
     response = api.get("/copilot/voice/status").json()
-    assert {k: v for k, v in response.items() if k != 'evon'} == {"available": False, "stream_enabled": True, "stream_model": "prisma-v3.0", "stream_language": "ta-IN"}
+    assert {k: v for k, v in response.items() if k not in ('evon','context_bias','context_bias_last_term_count')} == {"available": False, "stream_enabled": True, "stream_model": "prisma-v3.0", "stream_language": "ta-IN"}
     assert set(response['evon']) == {'enabled', 'mode', 'last_latency_ms', 'last_reject_reason'}
     monkeypatch.setenv("GNANI_MOCK", "true")
     assert not api.get("/copilot/voice/status").json()["stream_enabled"]

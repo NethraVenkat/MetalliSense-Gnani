@@ -165,9 +165,9 @@ async def _client_message(client):
     return message
 
 
-def _control(message, error):
+def _control(message, error, max_length=4096):
     text = message.get("text")
-    if not isinstance(text, str) or len(text) > 4096:
+    if not isinstance(text, str) or len(text) > max_length:
         raise StreamFailure(error)
     try:
         data = json.loads(text)
@@ -186,11 +186,7 @@ def _provider_message(raw):
     except ValueError:
         raise StreamFailure("upstream_error") from None
     if isinstance(data, dict) and data.get("type") == "error":
-        detail = str(data.get("message", "Unspecified provider error"))
-        key = os.getenv("GNANI_API_KEY", "").strip()
-        if key:
-            detail = detail.replace(key, "[redacted]")
-        logger.warning("Gnani stream provider error: %s", detail[:300])
+        logger.warning("Gnani stream provider error")  # No echoed context or keys.
         raise StreamFailure("upstream_error")
     if not isinstance(data, dict):
         # Never relay provider error strings/handshake headers: they can contain keys.
@@ -199,6 +195,8 @@ def _provider_message(raw):
 
 
 async def _pump(client, upstream, settings):
+    from .context_bias import BiasUpdates,enabled
+    bias=BiasUpdates(upstream,client,get_stt_config()['keyterms'])
     stopped = asyncio.Event()
     open_utterances = set()
     pending_processing = 0
@@ -228,22 +226,26 @@ async def _pump(client, upstream, settings):
                     raise StreamFailure("session_limit")
                 for frame in frames.feed(data):
                     await send_frame(frame)
-            elif _control(message, "invalid_audio").get("type") == "stop":
-                tail = frames.finish()
-                if tail is not None:
-                    await send_frame(tail)
-                await asyncio.sleep(max(0, next_send - asyncio.get_running_loop().time()))
-                stopped.set()
-                await upstream.send(json.dumps({"type": "commit"}))
-                return
             else:
-                raise StreamFailure("invalid_audio")
+                control=_control(message,'invalid_audio',16384 if enabled() else 4096)
+                if control.get('type')=='context_terms':
+                    bias.update(control.get('terms'))
+                    continue
+                if control.get('type')!='stop':raise StreamFailure('invalid_audio')
+                tail=frames.finish()
+                if tail is not None:await send_frame(tail)
+                await asyncio.sleep(max(0,next_send-asyncio.get_running_loop().time()))
+                stopped.set()
+                await upstream.send(json.dumps({'type':'commit'}))
+                return
 
     async def receive_transcripts():
         nonlocal pending_processing, saw_final
         while True:
             event = _provider_message(await upstream.recv())
-            if event.get("type") == "speech_start":
+            if event.get('type')=='settings_updated':
+                await bias.acknowledged()
+            elif event.get("type") == "speech_start":
                 utterance = event.get("utterance_id")
                 open_utterances.add(utterance if isinstance(utterance, str) else "open")
             elif event.get("type") == "processing":
@@ -295,6 +297,7 @@ async def _pump(client, upstream, settings):
                             return
                     await receiver
     finally:
+        await bias.close()
         for task in (sender, receiver):
             task.cancel()
         await asyncio.gather(sender, receiver, return_exceptions=True)

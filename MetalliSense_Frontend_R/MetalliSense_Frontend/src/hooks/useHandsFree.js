@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createMicCapture, streamUrl } from '../services/streamCapture';
 import { isSpeechEchoGuarded } from './useSpeak';
+import {contextBiasEnabled} from '../services/contextTerms';
 
 const STORAGE_KEY = 'metallisense.voice.handsFree';
 let activeSession = null;
@@ -24,12 +25,19 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
   let activation = 0;
   let retryTimer, connectionTimer, started = false, ready = false, failures = 0;
   let lastFinal = '', lastFinalAt = -Infinity, answers = Promise.resolve();
+  let contextTerms=[],lastContext='';
+  const sendContext=()=>{
+    if(!contextBiasEnabled()||!ready||socket?.readyState!==1)return;
+    const key=JSON.stringify(contextTerms);
+    if(key===lastContext)return;
+    try{socket.send(JSON.stringify({type:'context_terms',terms:contextTerms}));lastContext=key;}catch{/* audio path handles connection recovery */}
+  };
   const publish = (state, message = '') => onChange({ state, enabled, message });
   const canSend = () => enabled && ready && !isPaused() && !isEchoGuarded();
   function cleanup(sendStop = true) {
     clearTimer(connectionTimer); connectionTimer = undefined;
     const old = socket;
-    socket = null; ready = false;
+    socket = null; ready = false;lastContext='';
     if (old) {
       old.onopen = old.onmessage = old.onerror = old.onclose = null;
       try { if (sendStop && started && old.readyState === 1) old.send(JSON.stringify({ type: 'stop' })); } catch { /* connection lost */ }
@@ -87,7 +95,7 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
         try { message = JSON.parse(event.data); } catch { stop('protocol'); return; }
         if (message.type === 'connected') {
           clearTimer(connectionTimer); connectionTimer = undefined;
-          ready = true; publish('listening');
+          ready = true; publish('listening');sendContext();
         } else if (message.type === 'partial') {
           publish('processing'); // Processing acknowledgements carry no text.
         } else if (message.type === 'final') {
@@ -131,6 +139,7 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
     }
   }
   const session = {
+    setContextTerms(terms){contextTerms=Array.isArray(terms)?terms:[];sendContext();},
     start() {
       if (enabled) return;
       if (activeSession && activeSession !== session) activeSession.stop();
@@ -143,7 +152,7 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
   return session;
 }
 
-export default function useHandsFree({ onTranscript, lang = 'ta', paused = false }) {
+export default function useHandsFree({ onTranscript, lang = 'ta', paused = false, contextTerms=[] }) {
   const latest = useRef({ onTranscript, paused });
   latest.current = { onTranscript, paused };
   const [status, setStatus] = useState({ state: 'off', enabled: false, message: '' });
@@ -163,6 +172,8 @@ export default function useHandsFree({ onTranscript, lang = 'ta', paused = false
     if (readPreference()) controller.start();
     return () => { alive = false; controller.stop(); session.current = null; };
   }, []);
+  const contextKey=JSON.stringify(contextTerms);
+  useEffect(()=>{session.current?.setContextTerms(contextTerms);},[contextKey]);
   return {
     ...status, note: handsFreeNote(status.message, lang),
     start() { savePreference(true); session.current?.start(); },
