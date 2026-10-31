@@ -1,4 +1,5 @@
 import axios from "axios";
+import {transliterateEnabled} from './transcriptDisplay';
 
 // Separate axios instance for copilot service (different base URL)
 const copilotApi = axios.create({
@@ -8,6 +9,13 @@ const copilotApi = axios.create({
     "Content-Type": "application/json",
   },
 });
+let sttQueue=Promise.resolve();
+function postStt(...args){
+  if(!transliterateEnabled())return copilotApi.post(...args);
+  const pending=sttQueue.then(()=>copilotApi.post(...args));
+  sttQueue=pending.catch(()=>{});
+  return pending;
+}
 
 /**
  * Get explanation for analysis results
@@ -49,10 +57,18 @@ export const transcribeAudio = (audioFile, language = null) => {
     formData.append("language", language);
   }
 
-  return copilotApi.post("/copilot/voice/transcribe", formData, {
+  return postStt("/copilot/voice/transcribe", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
+  });
+};
+
+export const transliterateAudio = (audioFile) => {
+  if(!transliterateEnabled())return Promise.resolve({data:{unavailable:true}});
+  const formData=new FormData();formData.append('audio',audioFile);
+  return postStt('/copilot/voice/transliterate',formData,{
+    headers:{'Content-Type':'multipart/form-data'},timeout:7000,
   });
 };
 

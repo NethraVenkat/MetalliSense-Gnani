@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Volume2, VolumeX } from 'lucide-react';
-import { transcribeAudio } from '../../services/copilotService';
+import { transcribeAudio, transliterateAudio } from '../../services/copilotService';
 import { getHeat, getHeats } from '../../services/premeltService';
 import { createTranscriptHandler } from '../../services/voiceTranscript';
 import { useMeltFlow } from '../../context/MeltFlowContext';
@@ -9,12 +9,19 @@ import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import useHandsFree from '../../hooks/useHandsFree';
 import { langBridgeEnabled } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
+import {transliterateEnabled,readTransliteratePreference,saveTransliteratePreference,createLatinDisplay} from '../../services/transcriptDisplay';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
 const panels = new Set();
 export function VoicePhraseBadge({ source }) {
   return source ? <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{source === 'evon' ? 'Evon v3.3' : 'template'}</span> : null;
+}
+export function TransliterationToggle({enabled,onChange,disabled=false}){
+  return transliterateEnabled()?<label className="text-sm"><input type="checkbox" checked={enabled} disabled={disabled} onChange={event=>onChange(event.target.checked)} /> Show in English letters</label>:null;
+}
+export function TransliterationLine({text,show}){
+  return transliterateEnabled()&&show&&text?<p className="text-xs text-slate-500">Heard (English letters): {text}</p>:null;
 }
 export default function PushToTalk(props) {
   // Keep the inner panel unmounted when hidden: no capture, socket or shortcut.
@@ -27,6 +34,8 @@ function VoicePanel({ heatId }) {
   const [lang, setLang] = useVoiceLanguage();
   const [state, setState] = useState('idle');
   const [heard, setHeard] = useState('');
+  const [showLatin,setShowLatin]=useState(readTransliteratePreference);
+  const [heardLatin,setHeardLatin]=useState('');
   const [answer, setAnswer] = useState('');
   const [phraseSource, setPhraseSource] = useState(null);
   const panel = useRef(null);
@@ -35,8 +44,11 @@ function VoicePanel({ heatId }) {
   const held = useRef(false);
   const busy = useRef(false);
   const alive = useRef(true);
+  const answerSpeech=useRef(Promise.resolve());
+  const latinDisplay=useRef(null);
+  if(!latinDisplay.current)latinDisplay.current=createLatinDisplay({request:transliterateAudio,afterSpeech:()=>answerSpeech.current,onText:text=>{if(alive.current)setHeardLatin(text);}});
   const choose = (ta, en) => lang === 'ta' ? ta : en;
-  const say = (text, spokenText = text, replyLang = lang, timing) => { if (!alive.current) return; setAnswer(text); void speak(spokenText, replyLang, 'normal', timing); };
+  const say = (text, spokenText = text, replyLang = lang, timing) => { if (!alive.current) return; setAnswer(text); answerSpeech.current=Promise.resolve(speak(spokenText, replyLang, 'normal', timing)); };
   async function resolveHeat(params) {
     if (params.heatNumber == null && (heatId || flow.heatId)) return unwrap(await getHeat(heatId || flow.heatId));
     const heats = unwrap(await getHeats());
@@ -46,13 +58,15 @@ function VoicePanel({ heatId }) {
     if (!selected) return null;
     return unwrap(await getHeat(selected.heatId));
   }
-  const handleTranscript = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource });
+  const recordHeard=text=>{setHeard(text);setHeardLatin('');};
+  const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, say, navigate, resolveHeat, setPhraseSource });
   // REST bridge only: hands-free retains the current single-locale Tamil path.
-  const handlePushToTalk = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource, langBridge: langBridgeEnabled() });
+  const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, say, navigate, resolveHeat, setPhraseSource, langBridge: langBridgeEnabled() });
   const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
   async function run(text) {
     if (busy.current) return;
     busy.current = true; setState('processing');
+    latinDisplay.current.invalidate();
     try { await handlePushToTalk(text, { voiceTiming: true }); if (alive.current) setState('idle'); }
     catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
     finally { busy.current = false; }
@@ -65,6 +79,7 @@ function VoicePanel({ heatId }) {
   async function start() {
     if (busy.current || held.current) return;
     owner = panel.current; held.current = true; busy.current = true;
+    const latinTicket=latinDisplay.current.invalidate();
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Microphone unavailable');
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -82,13 +97,15 @@ function VoicePanel({ heatId }) {
         setState('processing');
         try {
           const blob = new Blob(chunks, { type: rec.mimeType });
+          const file=new File([blob],rec.mimeType.includes('mp4')?'voice.mp4':'voice.webm',{type:blob.type});
+          if(transliterateEnabled())await latinDisplay.current.beforeMain();
+          if(!alive.current)return;
           const sttStarted = performance.now();
-          const response = await transcribeAudio(new File([blob], rec.mimeType.includes('mp4') ? 'voice.mp4' : 'voice.webm', { type: blob.type }), null);
+          const response = await transcribeAudio(file, null);
           const stt_ms = performance.now() - sttStarted;
           if (response.data.success === false) throw new Error('STT failed');
-          const text = response.data.text?.trim() || '';
           if (alive.current) {
-            try { await handlePushToTalk(text, { ...response.data, voiceTiming: true, stt_ms }); if (alive.current) setState('idle'); }
+            try { await latinDisplay.current.afterMain(response.data,handlePushToTalk,file,showLatin,latinTicket,{voiceTiming:true,stt_ms}); if (alive.current) setState('idle'); }
             catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
           }
         } catch { if (alive.current) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }
@@ -113,7 +130,7 @@ function VoicePanel({ heatId }) {
     const blur = () => actions.current.stop();
     window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur);
     return () => {
-      alive.current = false; actions.current.stop();
+      alive.current = false; latinDisplay.current.invalidate();actions.current.stop();
       panels.delete(currentPanel);
       if (owner === currentPanel) owner = panels.values().next().value || null;
       window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur);
@@ -140,8 +157,9 @@ function VoicePanel({ heatId }) {
         {handsFree.state}
       </span>}
       <span role="status" className="text-xs">{state}</span>
+      <TransliterationToggle enabled={showLatin} disabled={state==='listening'||state==='processing'} onChange={value=>{setShowLatin(value);saveTransliteratePreference(value);if(!value)latinDisplay.current.invalidate();}} />
     </div>
-    <div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}{answer && <p>{answer}</p>}</div>
+    <div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}<TransliterationLine text={heardLatin} show={showLatin} />{answer && <p>{answer}</p>}</div>
     <VoicePhraseBadge source={phraseSource} />
     {handsFree.note && <p role="status" className="text-sm text-amber-800">{handsFree.note}</p>}
     {import.meta.env.VITE_MOCK_MODE === 'true' && <details className="text-sm">
