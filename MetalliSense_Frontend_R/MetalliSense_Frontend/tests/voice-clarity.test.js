@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { clarityGateSpeech, clarityText, nativeSpeech, clarityHandoverSummary } from '../src/services/voiceClarity';
 import { createTranscriptHandler } from '../src/services/voiceTranscript';
 import { gateReasonAnswer, heatVoiceAnswer, spokenGateReasonAnswer } from '../src/services/voiceGateAnswers';
@@ -6,6 +6,7 @@ import { hindiHeatAnswer } from '../src/services/hindiVoice';
 import { speakText } from '../src/hooks/useSpeak';
 const {post}=vi.hoisted(()=>({post:vi.fn()}));
 vi.mock('axios',()=>({default:{create:()=>({post,interceptors:{response:{use:vi.fn()}}})}}));
+beforeEach(()=>vi.stubEnv('VITE_VOICE_REGISTER','formal'));
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const heat={heatId:'H-1053',status:'PLANNED',gateResult:{decision:'HOLD',checks:[
  {id:'lot_status',status:'FAIL',details:[{lotId:'PIG-1053',text:'QUARANTINED',status:'FAIL'}]},
