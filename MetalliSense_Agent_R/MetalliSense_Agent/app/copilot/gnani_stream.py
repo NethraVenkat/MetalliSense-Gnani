@@ -9,7 +9,7 @@ Reference: https://docs.gnani.ai/api/STT/stt-websocket.md (2026-10-31).
 """
 import asyncio
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import logging
 import math
@@ -42,6 +42,30 @@ class StreamFailure(Exception):
     def __init__(self, code):
         self.code = code
         super().__init__(code)
+
+
+def stream_option_headers(options):
+    """Validate only the three supported overrides; browser never supplies headers.
+
+    Environment and per-session start options use the same validation. Missing
+    options omit the provider header entirely, preserving Gnani defaults.
+    """
+    headers = {}
+    for name, header, low, high, integer in (
+        ("vad_threshold", "x-vad-threshold", 0, 1, False),
+        ("vad_min_silence_ms", "x-min-silence-ms", 100, 2000, True),
+        ("idle_timeout_s", "x-idle-timeout-sec", 5, 900, True),
+    ):
+        raw = options.get(name)
+        if raw is None or isinstance(raw, str) and not raw.strip():
+            continue
+        if isinstance(raw, bool):
+            raise ValueError(f"Invalid {name}")
+        value = float(raw)
+        if not math.isfinite(value) or not low <= value <= high or integer and not value.is_integer():
+            raise ValueError(f"Invalid {name}")
+        headers[header] = str(int(value) if integer else value)
+    return headers
 
 
 def _stream_language():
@@ -96,21 +120,15 @@ class StreamSettings:
             "language_code": _stream_language(),
             "format": stt["format"], "x-format": stt["format"],
             "x-sample-rate": str(rate),
-            "x-idle-timeout-sec": "10",
         }
         if stt["keyterms"]:
             headers["keyterms"] = json.dumps(stt["keyterms"].split(","), ensure_ascii=True)
             headers["x-keyterms"] = headers["keyterms"]
-        if os.getenv("GNANI_STREAM_VAD_THRESHOLD", "").strip():
-            value = float(os.environ["GNANI_STREAM_VAD_THRESHOLD"])
-            if not math.isfinite(value) or not 0 <= value <= 1:
-                raise ValueError("Invalid VAD threshold")
-            headers["x-vad-threshold"] = str(value)
-        if os.getenv("GNANI_STREAM_MIN_SILENCE_MS", "").strip():
-            value = int(os.environ["GNANI_STREAM_MIN_SILENCE_MS"])
-            if not 100 <= value <= 2000:
-                raise ValueError("Invalid minimum silence")
-            headers["x-min-silence-ms"] = str(value)
+        headers.update(stream_option_headers({
+            "vad_threshold": os.getenv("GNANI_STREAM_VAD_THRESHOLD"),
+            "vad_min_silence_ms": os.getenv("GNANI_STREAM_MIN_SILENCE_MS"),
+            "idle_timeout_s": os.getenv("GNANI_STREAM_IDLE_TIMEOUT_S"),
+        }))
         return cls(url, headers, rate)
 
 
@@ -301,6 +319,10 @@ async def proxy_stream(client: WebSocket):
             start = _control(await _client_message(client), "invalid_start")
             if start.get("type") != "start" or type(start.get("sample_rate")) is not int or start["sample_rate"] != settings.sample_rate:
                 raise StreamFailure("invalid_start")
+            try:
+                settings = replace(settings, headers={**settings.headers, **stream_option_headers(start)})
+            except (TypeError, ValueError, OverflowError):
+                raise StreamFailure("invalid_start") from None
             phase = "upstream handshake"
             async with connect(settings.url, additional_headers=settings.headers,
                                open_timeout=IDLE_SECONDS, close_timeout=1,

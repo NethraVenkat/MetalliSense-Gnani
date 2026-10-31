@@ -62,6 +62,7 @@ def proxy(monkeypatch):
         monkeypatch.setenv(key, value)
     monkeypatch.delenv("GNANI_STREAM_VAD_THRESHOLD", raising=False)
     monkeypatch.delenv("GNANI_STREAM_MIN_SILENCE_MS", raising=False)
+    monkeypatch.delenv("GNANI_STREAM_IDLE_TIMEOUT_S", raising=False)
     monkeypatch.delenv("GNANI_STREAM_LANGUAGE", raising=False)
     monkeypatch.setattr("requests.sessions.Session.request", Mock(side_effect=AssertionError("No network")))
     upstream = Upstream()
@@ -176,7 +177,7 @@ def test_api_key_never_in_client_messages(proxy):
     assert headers["x-model"] == headers["model"]
     assert headers["language_code"] == "ta-IN" and headers["format"] == "codemix"
     assert headers["x-format"] == headers["format"]
-    assert headers["x-sample-rate"] == "16000" and headers["x-idle-timeout-sec"] == "10"
+    assert headers["x-sample-rate"] == "16000" and "x-idle-timeout-sec" not in headers
     assert json.loads(headers["keyterms"]) == ["heat", "கார்பன்"]
     assert headers["keyterms"].isascii()
     assert headers["x-keyterms"] == headers["keyterms"]
@@ -236,13 +237,19 @@ def test_status_contains_only_nonsecret_stream_fields(proxy, monkeypatch):
     assert SECRET not in json.dumps(response)
 
 
-def test_vad_headers_are_optional_and_validated(proxy, monkeypatch):
+def test_vad_headers_only_sent_when_set(proxy, monkeypatch):
     assert "x-vad-threshold" not in stream.StreamSettings.from_env().headers
     assert "x-min-silence-ms" not in stream.StreamSettings.from_env().headers
+    assert "x-idle-timeout-sec" not in stream.StreamSettings.from_env().headers
+    for name in ("GNANI_STREAM_VAD_THRESHOLD", "GNANI_STREAM_MIN_SILENCE_MS", "GNANI_STREAM_IDLE_TIMEOUT_S"):
+        monkeypatch.setenv(name, "")
+    assert not {"x-vad-threshold", "x-min-silence-ms", "x-idle-timeout-sec"} & stream.StreamSettings.from_env().headers.keys()
     monkeypatch.setenv("GNANI_STREAM_VAD_THRESHOLD", "0.55")
     monkeypatch.setenv("GNANI_STREAM_MIN_SILENCE_MS", "400")
+    monkeypatch.setenv("GNANI_STREAM_IDLE_TIMEOUT_S", "30")
     headers = stream.StreamSettings.from_env().headers
     assert headers["x-vad-threshold"] == "0.55" and headers["x-min-silence-ms"] == "400"
+    assert headers["x-idle-timeout-sec"] == "30"
     monkeypatch.setenv("GNANI_STREAM_VAD_THRESHOLD", "nan")
     with pytest.raises(ValueError):
         stream.StreamSettings.from_env()
@@ -299,7 +306,8 @@ def test_stop_drains_all_known_pending_utterances(proxy):
 def test_upstream_handshake_timeout_is_not_reported_as_session_limit(proxy, monkeypatch):
     api, upstream, _ = proxy
     upstream.queue.get_nowait()
-    monkeypatch.setattr(stream, "IDLE_SECONDS", .03)
+    # Leave enough time for TestClient's cross-thread start delivery on Windows.
+    monkeypatch.setattr(stream, "IDLE_SECONDS", .2)
     with api.websocket_connect("/copilot/voice/stream", headers=ORIGIN) as socket:
         socket.send_json({"type": "start", "sample_rate": 16000})
         assert finish(socket)[0]["code"] == "upstream_error"
@@ -358,7 +366,7 @@ def test_smoke_two_session_budget_and_latency_output(monkeypatch, capsys):
                 for event in [
                     {"type": "partial", "text": "", "code": "processing"},
                     {"type": "final", "text": "heat 1051", "detected_language_code": "ta-IN"},
-                    {"type": "closed", "text": ""},
+                    {"type": "closed", "text": "", "code": "stopped"},
                 ]:
                     self.queue.put_nowait(event)
 
@@ -372,12 +380,13 @@ def test_smoke_two_session_budget_and_latency_output(monkeypatch, capsys):
             assert await smoke.run_session("ws://localhost:8001/copilot/voice/stream", bytes(1024), index, counts)
 
     asyncio.run(exercise())
-    assert counts == {"attempted": 2, "connected": 2}
+    assert counts["attempted"] == counts["connected"] == len(counts["results"]) == 2
+    assert all(r["clean_close"] and r["speech_end_to_final_s"] is not None for r in counts["results"])
     assert connector.call_count == 2 and all(socket.closed for socket in sockets)
     assert connector.call_args.kwargs["origin"] == "http://localhost:5173"
     output = capsys.readouterr().out
     assert "final: heat 1051" in output and "first_partial: N/A (no provisional text)" in output
-    assert "first_processing:" in output and "first_final:" in output and "total:" in output
+    assert "first_processing:" in output and "first_final:" in output and "total_s:" in output
 
 
 def test_smoke_hard_timeout_closes_and_does_not_retry(monkeypatch):
@@ -400,3 +409,90 @@ def test_smoke_converts_stereo_wav_to_raw_pcm16_16k(tmp_path):
     pcm = smoke.load_pcm(path)
     assert len(pcm) == 3200 and not pcm.startswith(b"RIFF")
     assert abs(float(np.frombuffer(pcm, dtype="<i2")[50:-50].mean()) - 16384) < 2
+
+
+@pytest.mark.parametrize("name,value", [
+    ("GNANI_STREAM_VAD_THRESHOLD", "-0.1"), ("GNANI_STREAM_VAD_THRESHOLD", "1.1"),
+    ("GNANI_STREAM_VAD_THRESHOLD", "nan"), ("GNANI_STREAM_VAD_THRESHOLD", "inf"),
+    ("GNANI_STREAM_MIN_SILENCE_MS", "99"), ("GNANI_STREAM_MIN_SILENCE_MS", "2001"),
+    ("GNANI_STREAM_MIN_SILENCE_MS", "300.5"), ("GNANI_STREAM_IDLE_TIMEOUT_S", "4"),
+    ("GNANI_STREAM_IDLE_TIMEOUT_S", "901"), ("GNANI_STREAM_IDLE_TIMEOUT_S", "5.5"),
+])
+def test_vad_values_validated(proxy, monkeypatch, name, value):
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError):
+        stream.StreamSettings.from_env()
+
+
+def test_session_overrides_reach_only_allowlisted_server_headers(proxy, monkeypatch):
+    api, _, connector = proxy
+    monkeypatch.setenv("GNANI_STREAM_MIN_SILENCE_MS", "800")
+    with api.websocket_connect("/copilot/voice/stream", headers=ORIGIN) as socket:
+        socket.send_json({"type": "start", "sample_rate": 16000, "vad_min_silence_ms": 300,
+                          "vad_threshold": .5, "idle_timeout_s": 20,
+                          "x-api-key-id": "browser-supplied-key", "model": "different"})
+        assert socket.receive_json()["type"] == "connected"
+        socket.send_json({"type": "stop"})
+        finish(socket)
+    headers = connector.call_args.kwargs["additional_headers"]
+    assert headers["x-min-silence-ms"] == "300"
+    assert headers["x-vad-threshold"] == "0.5" and headers["x-idle-timeout-sec"] == "20"
+    assert headers["x-api-key-id"] == SECRET and headers["model"] == "prisma-v3.0"
+    assert "x-min-speech-ms" not in headers and "x-max-speech-s" not in headers
+
+
+@pytest.mark.parametrize("options", [
+    {"vad_min_silence_ms": 99}, {"vad_threshold": 2}, {"idle_timeout_s": 901},
+    {"vad_threshold": True}, {"vad_min_silence_ms": [300]},
+])
+def test_bad_session_overrides_cannot_open_upstream(proxy, options):
+    api, _, connector = proxy
+    with api.websocket_connect("/copilot/voice/stream", headers=ORIGIN) as socket:
+        socket.send_json({"type": "start", "sample_rate": 16000, **options})
+        assert finish(socket)[0]["code"] == "invalid_start"
+    connector.assert_not_called()
+
+
+def test_speech_end_to_final_timing_computed():
+    from tools import stream_smoke as smoke
+    timings = smoke.session_timings(160000, began=10, connected_at=12,
+                                   last_audio_sent_at=18.25, final_arrivals=[17, 19.75], ended=21)
+    assert timings == {"audio_duration_s": 5, "speech_end_to_final_s": 1.5,
+                       "connect_s": 2, "total_s": 11}
+    early = smoke.session_timings(32000, 0, 1, 5, [4.5], 6)
+    assert early["speech_end_to_final_s"] == -.5  # Never clamp or substitute WAV duration.
+    assert smoke.session_timings(32000, 0, None, None, [], 2)["speech_end_to_final_s"] is None
+
+
+def test_smoke_sends_explicit_overrides_in_start_only(monkeypatch):
+    from tools import stream_smoke as smoke
+
+    class AgentSocket(Upstream):
+        async def send(self, data):
+            self.sent.append(data)
+            if isinstance(data, str) and json.loads(data)["type"] == "stop":
+                self.queue.put_nowait({"type": "final", "text": "why hold"})
+                self.queue.put_nowait({"type": "closed", "code": "stopped"})
+
+    socket = AgentSocket()
+    connector = Mock(return_value=socket)
+    monkeypatch.setattr(smoke, "connect", connector)
+    options = {"vad_min_silence_ms": 300, "vad_threshold": .7, "idle_timeout_s": 60}
+    assert asyncio.run(smoke.run_session("ws://localhost:8001/copilot/voice/stream", bytes(1024), 1,
+                                        {"attempted": 0, "connected": 0}, options))
+    assert json.loads(socket.sent[0]) == {"type": "start", "sample_rate": 16000, **options}
+    assert "additional_headers" not in connector.call_args.kwargs
+
+
+@pytest.mark.parametrize("args", [
+    ["--vad-min-silence-ms", "99"], ["--vad-min-silence-ms", "2001"],
+    ["--vad-threshold", "nan"], ["--vad-threshold", "1.01"],
+    ["--idle-timeout-s", "4"], ["--idle-timeout-s", "901"],
+])
+def test_smoke_rejects_invalid_vad_before_any_connection(monkeypatch, args):
+    from tools import stream_smoke as smoke
+    connector = Mock(side_effect=AssertionError("No connection"))
+    monkeypatch.setattr(smoke, "connect", connector)
+    with pytest.raises(SystemExit):
+        smoke.main(["--max-sessions", "0", *args])
+    connector.assert_not_called()
