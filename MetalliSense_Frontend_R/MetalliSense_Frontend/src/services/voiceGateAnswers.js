@@ -1,5 +1,7 @@
 const names = { C: 'கார்பன்', Si: 'சிலிக்கான்', Mn: 'மாங்கனீசு', P: 'பாஸ்பரஸ்', S: 'சல்பர்', Cu: 'செம்பு', Cr: 'குரோமியம்', Ni: 'நிக்கல்', Mo: 'மாலிப்டினம்', Sn: 'தகரம்' };
 import { langBridgeEnabled, hindiHoldAlert } from './languageBridge';
+import { formatGateLimit } from './hindiVoice';
+import { voiceClarityEnabled, clarityGateSpeech } from './voiceClarity';
 const tamilChecks = {
   charge_weight: 'சார்ஜ் எடை இலக்கு எடையுடன் பொருந்தவில்லை. எடையைச் சரிபார்க்கவும்',
   lot_status: 'மூலப்பொருள் தொகுதிக்கு பயன்படுத்த அனுமதி இல்லை. தர அனுமதியைச் சரிபார்க்கவும்',
@@ -17,10 +19,10 @@ function tamilReason(check) {
   const chemistry = details.filter(d => d.element && Number.isFinite(d.value));
   if (chemistry.length) return chemistry.map(d => {
     const element = `${names[d.element] || d.element} (${d.element})`;
-    const value = Number(d.value.toFixed(3));
-    if (d.value > d.max) return `${element} ${value} சதவீதம்; அதிகபட்ச வரம்பு ${d.max} சதவீதத்தை மீறுகிறது. சார்ஜ் கலவையை மாற்றவும்`;
-    if (d.value < d.min) return `${element} ${value} சதவீதம்; குறைந்தபட்ச வரம்பு ${d.min} சதவீதத்தை விடக் குறைவு. சேர்க்கை தேவை`;
-    return `${element} ${value} சதவீதம்; ${d.min ?? 0} முதல் ${d.max} சதவீத வரம்பை மீறும் அபாயம் உள்ளது. திரையில் எச்சரிக்கையைச் சரிபார்க்கவும்`;
+    const value = d.value.toFixed(2);
+    if (d.value > d.max) return `${element} ${value} சதவீதம்; அதிகபட்ச வரம்பு ${formatGateLimit(d.max)} சதவீதத்தை மீறுகிறது. சார்ஜ் கலவையை மாற்றவும்`;
+    if (d.value < d.min) return `${element} ${value} சதவீதம்; குறைந்தபட்ச வரம்பு ${formatGateLimit(d.min,true)} சதவீதத்தை விடக் குறைவு. சேர்க்கை தேவை`;
+    return `${element} ${value} சதவீதம்; ${formatGateLimit(d.min ?? 0,true)} முதல் ${Number.isFinite(d.max)?formatGateLimit(d.max):d.max} சதவீத வரம்பை மீறும் அபாயம் உள்ளது. திரையில் எச்சரிக்கையைச் சரிபார்க்கவும்`;
   }).join('. ');
   if (check.id === 'lot_status' && details.length) return details.map(d =>
     /QUARANTINED/.test(d.text || '')
@@ -146,10 +148,11 @@ export function createHoldAnnouncer() {
       if (gate?.decision !== 'HOLD' || previous === 'HOLD') return;
       if (langBridgeEnabled()) {
         const { spokenAlert } = buildHoldAlertTexts(heatId, gate, 'ta');
-        return Promise.resolve(speak(spokenAlert, 'ta', 'alert')).then(() => speak(hindiHoldAlert(heatId), 'hi', 'alert'));
+        return Promise.resolve(speak(voiceClarityEnabled()?clarityGateSpeech({heatId,gateResult:gate},'ta','alert'):spokenAlert, 'ta', 'alert'))
+          .then(() => speak(voiceClarityEnabled()?clarityGateSpeech({heatId,gateResult:gate},'hi','alert'):hindiHoldAlert(heatId), 'hi', 'alert'));
       }
       const { spokenAlert } = buildHoldAlertTexts(heatId, gate, lang);
-      return speak(spokenAlert, lang, 'alert');
+      return speak(voiceClarityEnabled()?clarityGateSpeech({heatId,gateResult:gate},lang,'alert'):spokenAlert, lang, 'alert');
     },
   };
 }

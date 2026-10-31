@@ -45,6 +45,11 @@ def valid_tts_pair(model: str, voice: str) -> bool:
 def tts_text(text: str, model: str, style: str, tags_enabled: bool) -> str:
     """Tags belong only to the provider payload, never to the frontend's text."""
     plain = re.sub(r"<[^>]+>", "", text).strip()
+    if model.startswith('timbre-v3') and _env_bool('GNANI_TTS_CLARITY'):
+        # Documented tags have no closing syntax. Slow persists to the next tag;
+        # reapply it after each pause rather than inventing a normal/reset tag.
+        parts = re.split(r'(?<=[.!?।])\s+', plain)
+        return ' <pauses> '.join('<slow> ' + part for part in parts if part)
     if model.startswith("timbre-v3") and tags_enabled and style == "alert":
         # Tags have no closing form. Reapply slow after the pause changes scope.
         paused = re.sub(r"^(Heat\s+[^:]+:)\s*", r"\1 <pauses> <slow> ", plain, count=1)
@@ -165,6 +170,16 @@ class GnaniClient:
         self.tts_fallback_model = os.getenv("GNANI_TTS_FALLBACK_MODEL", "timbre-v2.5").strip()
         self.tts_fallback_voice = os.getenv("GNANI_TTS_FALLBACK_VOICE", "Kamakshi").strip()
         self.tts_language = os.getenv("GNANI_TTS_LANGUAGE", "ta-IN").strip() or "ta-IN"
+        self.tts_speed = None
+        if _env_bool('GNANI_TTS_CLARITY'):
+            raw_speed = os.getenv('GNANI_TTS_SPEED','').strip()
+            if raw_speed:
+                try:
+                    speed = float(raw_speed)
+                    if not math.isfinite(speed) or not .85 <= speed <= 1.15: raise ValueError()
+                    self.tts_speed = speed
+                except ValueError:
+                    raise ValueError('GNANI_TTS_SPEED must be between 0.85 and 1.15') from None
         try:
             timeout = float(os.getenv('GNANI_TTS_TIMEOUT_S', '8'))
             self.tts_timeout_s = min(timeout, 8.0) if math.isfinite(timeout) and timeout > 0 else 8.0
@@ -262,7 +277,8 @@ class GnaniClient:
     def _cache_path(self, text: str, lang: str, voice: str, style: str = "normal", *, model: Optional[str] = None) -> Path:
         key = json.dumps({"version": 2, "model": model or self.tts_model, "voice": voice,
                           "language": lang, "sample_rate": self.tts_sample_rate,
-                          "style": style, "text": text}, sort_keys=True, ensure_ascii=False)
+                          "style": style, "text": text,
+                          **({'speed':self.tts_speed} if self.tts_speed is not None else {})}, sort_keys=True, ensure_ascii=False)
         return self.tts_cache_dir / f"{hashlib.sha256(key.encode('utf-8')).hexdigest()}.wav"
 
     def synthesize(self, text: str, language: Optional[str] = None,
@@ -339,6 +355,7 @@ class GnaniClient:
                 "container": "wav",
             },
         }
+        if self.tts_speed is not None: payload['speed'] = self.tts_speed
         try:
             self.stats["tts_calls"] += 1
             response = requests.post(
@@ -392,6 +409,8 @@ class GnaniClient:
             "tts_language": self.tts_language,
             "tts_sample_rate": self.tts_sample_rate,
             "tts_timeout_s": self.tts_timeout_s,
+            "tts_speed": self.tts_speed,
+            "tts_clarity": _env_bool('GNANI_TTS_CLARITY'),
             "tts_tags": self.tts_tags,
             "tts_fallback_model": self.tts_fallback_model,
             "tts_fallback_voice": self.tts_fallback_voice,

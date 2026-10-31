@@ -3,6 +3,7 @@ import { crossCheckHandover, submitHandover } from '../../services/handover';
 import { getHeats } from '../../services/premeltService';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import sample from '../../fixtures/handover-sample.json';
+import { voiceClarityEnabled, clarityHandoverSummary } from '../../services/voiceClarity';
 
 export default function ShiftHandover(props) {
   return import.meta.env.VITE_HANDOVER === 'true' ? <HandoverPanel {...props} /> : null;
@@ -83,7 +84,7 @@ export function HandoverPanel({ heats = [] }) {
       <h3 className="font-semibold">Cross-check</h3>
       <button type="button" onClick={async () => { try { const response = await getHeats(); setSnapshot(response.data?.data ?? response.data); } catch { setNote('Current gates unavailable. Try refresh again.'); } }}>Refresh gate cross-check</button>
       <ul>{checks.map((check, index) => <li key={index} className={check.severity === 'red' ? 'text-red-700' : check.severity === 'amber' ? 'text-amber-800' : 'text-emerald-700'}>{check.heatId}: {check.claim} · Gate {check.decision} · {check.label}</li>)}</ul>
-      <button type="button" onClick={() => void speak(summary || (lang === 'ta' ? 'முரண்பாடுகள் இல்லை' : 'No mismatches found'), lang)}>Speak cross-check summary</button>
+      <button type="button" onClick={() => void speak(voiceClarityEnabled()?clarityHandoverSummary(checks,lang):summary || (lang === 'ta' ? 'முரண்பாடுகள் இல்லை' : 'No mismatches found'), lang)}>Speak cross-check summary</button>
     </>}
   </section>;
 }

@@ -122,6 +122,17 @@ def test_cache_uses_final_spoken_text_and_existing_alert_tag_key(service,monkeyp
     assert send.call_args.args[0].headers['X-API-Key-ID']=='private-test-key'
 
 
+def test_clarity_sse_speed_tags_and_same_rest_cache_key(service,monkeypatch):
+    monkeypatch.setenv('GNANI_TTS_CLARITY','on')
+    service.gnani.tts_speed=.9
+    send,_=upstream(monkeypatch,[chunk(b'\0\0'),COMPLETE])
+    collect(service,'Heat H-1053. Value 0.50.')
+    payload=json.loads(send.call_args.args[0].content)
+    assert payload['speed']==.9
+    assert '<slow>' in payload['text'] and '<pauses>' in payload['text']
+    assert service.gnani._cache_path(payload['text'],'ta-IN','Kalpana').exists()
+
+
 @pytest.mark.parametrize('provider,media,encoding',[('gnani:timbre-v2.5:Kamakshi','audio/wav','wav'),('gtts','audio/mpeg','mp3')])
 def test_existing_fallback_path_is_reported(service,monkeypatch,provider,media,encoding):
     upstream(monkeypatch,['event: error\ndata: {"message":"private-test-key"}\n\n'])
