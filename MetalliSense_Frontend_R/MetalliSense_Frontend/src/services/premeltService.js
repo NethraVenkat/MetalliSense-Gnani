@@ -33,6 +33,8 @@ export const gunCsvUrl = (sessionId) => `${api.defaults.baseURL}${P}/gun/session
 
 // Heats + gate
 export const getHeats = () => api.get(`${P}/heats`);
+// F9 includes completed/history rows so their exclusion can be stated explicitly.
+export const getShiftSummaryHeats = () => api.get(`${P}/heats`, { params: { all: 1 } });
 export const getHeat = (heatId) => api.get(`${P}/heats/${heatId}`);
 export const planHeat = (data) => api.post(`${P}/heats`, data);
 export const updateCharge = (heatId, data) => api.put(`${P}/heats/${heatId}/charge`, data);

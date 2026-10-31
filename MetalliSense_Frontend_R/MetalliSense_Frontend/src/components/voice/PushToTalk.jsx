@@ -8,6 +8,7 @@ import { useMeltFlow } from '../../context/MeltFlowContext';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import useHandsFree from '../../hooks/useHandsFree';
 import { langBridgeEnabled } from '../../services/languageBridge';
+import { shiftSummaryEnabled } from '../../services/shiftSummary';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
@@ -146,7 +147,7 @@ function VoicePanel({ heatId }) {
     {import.meta.env.VITE_MOCK_MODE === 'true' && <details className="text-sm">
       <summary className="cursor-pointer">Demo transcripts</summary>
       <p className="my-2 text-xs text-slate-600">Try the voice flow without recording audio. Replies use the selected voice language.</p>
-      <div className="flex flex-wrap gap-2">{[`Heat ${String(heatId || flow.heatId || 'H-1053').replace(/^H-/, '')} status என்ன`, 'ஏன் HOLD', 'why hold heat 1053', 'approve', 'start melting'].map(text =>
+      <div className="flex flex-wrap gap-2">{[`Heat ${String(heatId || flow.heatId || 'H-1053').replace(/^H-/, '')} status என்ன`, 'ஏன் HOLD', 'why hold heat 1053', 'approve', 'start melting', ...(shiftSummaryEnabled()?['Shift summary']:[])].map(text =>
         <button type="button" key={text} disabled={state === 'processing' || state === 'listening'} onClick={() => run(text)} className="rounded-full bg-emerald-50 px-3 py-2 text-sm text-emerald-900 disabled:opacity-50">{text}</button>
       )}</div>
     </details>}

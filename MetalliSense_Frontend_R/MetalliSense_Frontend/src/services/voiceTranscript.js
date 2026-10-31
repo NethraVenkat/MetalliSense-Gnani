@@ -1,4 +1,4 @@
-import { getAdditives, getHeats } from './premeltService';
+import { getAdditives, getHeats, getHeat, getShiftSummaryHeats } from './premeltService';
 import { sendChatMessage, phraseGateFacts } from './copilotService';
 import { gatePhraseFacts } from './gatePhraseFacts';
 import { mapIntent } from './voiceIntents';
@@ -6,6 +6,7 @@ import { heatVoiceAnswer, spokenGateReasonAnswer } from './voiceGateAnswers';
 import { pickReplyLanguage, hindiBlocked, hindiNotUnderstood, retryVoiceAnswer } from './languageBridge';
 import { hindiHeatAnswer } from './hindiVoice';
 import { voiceClarityEnabled, clarityReply } from './voiceClarity';
+import { buildShiftSummary, spokenShiftSummary, isSummaryActive } from './shiftSummary';
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
@@ -25,6 +26,15 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
     setPhraseSource(null);
     const { intent, params, reply } = mapIntent(text, { langBridge });
     if (intent === 'blocked') return say(lang === 'hi' ? hindiBlocked : reply[lang]);
+    if (intent === 'shift_summary') {
+      const unwrap = response => response.data?.data ?? response.data;
+      const listed = unwrap(await getShiftSummaryHeats());
+      const current = await Promise.all(listed.map(async heat => isSummaryActive(heat)?unwrap(await getHeat(heat.heatId)):heat));
+      const summary = buildShiftSummary(current, Date.now());
+      const summaryLang = pickReplyLanguage(text, metadata.detected_language_code, currentLang, true);
+      return output(summary.display, spokenShiftSummary(summary,summaryLang), summaryLang,
+        metadata.voiceTiming?{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}:undefined);
+    }
     if (!text.trim() || params.unparsedHeat || intent === 'ask_copilot' && !params.bridgeAction) return say(retryVoiceAnswer(lang));
     if (lang === 'hi') {
       if (params.bridgeAction === 'help') return say('हीट का स्टेटस, होल्ड का कारण या तत्व की मात्रा पूछिए। वॉइस केवल जानकारी देती है।');
