@@ -5,7 +5,7 @@ Main entry point for the AI Intelligence Layer
 """
 from fastapi import FastAPI, HTTPException, status, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 from pathlib import Path
@@ -856,6 +856,18 @@ async def synthesize_speech(request: TTSRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Speech synthesis error: {str(e)}"
         )
+
+
+@app.post('/copilot/voice/speak-stream', tags=['Voice'])
+async def speak_stream(request: TTSRequest):
+    from copilot.gnani_client import _env_bool
+    from copilot.gnani_tts_stream import speak_events
+    if not _env_bool('GNANI_TTS_STREAM'):
+        raise HTTPException(status_code=404, detail={'code':'stream_disabled'})
+    if voice_service is None:
+        raise HTTPException(status_code=503, detail={'code':'tts_unavailable'})
+    return StreamingResponse(speak_events(voice_service,request.text,request.language,request.style),
+        media_type='text/event-stream',headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
 
 
 @app.get("/copilot/voice/status", tags=["Voice"])
