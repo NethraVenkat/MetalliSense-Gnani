@@ -28,3 +28,9 @@ it('voice panel shown by default', () => {
   expect(markup).toContain('Hands-free');
   expect(useHandsFree).toHaveBeenCalledOnce();
 });
+
+it('Shift summary demo chip appears only with its flag',()=>{
+  vi.stubEnv('VITE_SHOW_VOICE_PANEL','true');vi.stubEnv('VITE_MOCK_MODE','true');
+  vi.stubEnv('VITE_SHIFT_SUMMARY','false');expect(renderToStaticMarkup(React.createElement(PushToTalk))).not.toContain('Shift summary');
+  vi.stubEnv('VITE_SHIFT_SUMMARY','true');expect(renderToStaticMarkup(React.createElement(PushToTalk))).toContain('Shift summary');
+});

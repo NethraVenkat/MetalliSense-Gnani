@@ -25,7 +25,7 @@ function normalizeIntentTranscript(transcript) {
 // Mn spellings observed in cached Prisma en-IN transcripts of the benchmark phrases.
 const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு', 'magnus', 'magnes', 'magnis'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
 const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
-export function mapIntent(transcript, { langBridge = false } = {}) {
+export function mapIntent(transcript, { langBridge = false, shiftSummary = import.meta.env?.VITE_SHIFT_SUMMARY === 'true' } = {}) {
   let text = normalizeIntentTranscript(transcript);
   const params = {};
   if (langBridge) {
@@ -43,6 +43,24 @@ export function mapIntent(transcript, { langBridge = false } = {}) {
   // runs before slots, stock, navigation or copilot, including "stock melting".
   const actionText = text.replace(/\bpre\s+melt\b/g, 'premelt');
   if (/approve|approval|confirm|release|deduct|start\s+melt|\bmelt(?:ing)?\b|\bstart\s+pann[ua]\b|override|invoice|delete|உருக்க|அனுமதி|ஒப்புதல்/u.test(actionText)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
+  if (shiftSummary) {
+    // Match original script tokens: bridge aliases rewrite batao before this point.
+    const summaryText = normalizeTranscript(transcript);
+    const contains = words => words.some(word => has(summaryText, normalizeTranscript(word)));
+    const shiftWord = contains(['shift','swift','sift','ஷிஃப்ட்','ஷிப்ட்','शिफ्ट','शिफ़्ट']);
+    const summaryWord = contains(['summary','samari','summery','சுருக்கம்','சம்மரி','सारांश','समरी']);
+    const askWord = contains(['sollu','சொல்','சொல்லு','சொல்லுங்க','batao','बताओ','बताइए','बता','tell','give']);
+    const countQuestion = ['எத்தனை ஹோல்ட்','kitne hold hai','कितने होल्ड','how many heats on hold']
+      .some(phrase => ` ${summaryText} `.includes(` ${normalizeTranscript(phrase)} `));
+    // Retain the original Tamil shift-status alias as a bounded phrase.
+    const shiftStatus = shiftWord && ` ${summaryText} `.includes(' நிலைமை enna ');
+    // Normalization includes spoken/native-script numbers. Leave numbered
+    // utterances to the existing heat/element/reason rules below.
+    if (!/(?:^|\s)\d+(?=\s|$)/u.test(summaryText)
+        && (summaryWord && (shiftWord || askWord) || countQuestion || shiftStatus)) {
+      return { intent:'shift_summary', params };
+    }
+  }
   if (langBridge && /\bhold\b/.test(text) && /\b(?:kaun|kon|list)\b|कौन|कौनसे/u.test(text)) return { intent: 'ask_copilot', params: { bridgeAction: 'list_holds' } };
   if (langBridge && /\b(?:help|madad)\b|मदद/u.test(text)) return { intent: 'ask_copilot', params: { bridgeAction: 'help' } };
   const hasStatusWord = /\b(?:status|epdi|enna|in\s+a|nilai)\b/u.test(text) || has(text, 'நிலை');

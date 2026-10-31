@@ -7,6 +7,7 @@ import { alloy,anomaly } from '../src/mock/handlers/ai.js';
 import { mapIntent } from '../src/services/voiceIntents.js';
 import { crossCheckHandover } from '../src/services/handover.js';
 import handoverSample from '../src/fixtures/handover-sample.json';
+import { buildShiftSummary } from '../src/services/shiftSummary.js';
 import { createHoldAnnouncer, buildHoldAlert, buildHoldAlertTexts, heatVoiceAnswer, spokenGateReasonAnswer, gateReasonAnswer } from '../src/services/voiceGateAnswers.js';
 const saved=new Map();
 globalThis.localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)};
@@ -29,6 +30,25 @@ describe('resettable H-1053 HOLD voice demo', () => {
   return response.data.data;
  };
  const heatView = async () => (await dispatch('GET', 'http://local/api/v2/premelt/heats/H-1053')).data.data;
+ it('shift summary counts actual reset/check seeds and follows later store decisions',async()=>{
+  const store=requirePort('premeltGate/store');
+  const initial=buildShiftSummary(store.heats.list());
+  expect(initial.counts).toEqual({HOLD:0,WARN:0,GO:0,melting:0,not_checked:3});
+  expect(initial.excludedCompleted).toBeGreaterThanOrEqual(1);
+  expect(initial.groups.not_checked).toEqual(['H-1051','H-1052','H-1053']);
+  await check();
+  const go=await dispatch('POST','http://local/api/v2/premelt/heats/H-1051/gate-check',{by:'Test'});
+  expect(go.data.data.decision).toBe('GO');
+  // Isolated test-store in-progress state; seed files and gate engine stay unchanged.
+  store.heats.get('H-1052').status='MELTING';
+  const before=JSON.stringify(store.heats.list());const stock=store.availableKg('PIG-1053');
+  const checked=buildShiftSummary(store.heats.list());
+  expect(checked.counts).toEqual({HOLD:1,WARN:0,GO:1,melting:1,not_checked:0});
+  expect(checked.priorityId).toBe('H-1053');expect(checked.firstReason).toMatchObject({lotId:'PIG-1053',state:'quarantined'});
+  expect(JSON.stringify(store.heats.list())).toBe(before);expect(store.availableKg('PIG-1053')).toBe(stock);
+  const changed=store.heats.get('H-1052');changed.status='PLANNED';changed.gate={decision:'WARN',validUntil:new Date(Date.now()+60000).toISOString(),checks:[]};
+  expect(buildShiftSummary(store.heats.list()).counts).toEqual({HOLD:1,WARN:1,GO:1,melting:0,not_checked:0});
+ });
  it('handover cross-check reads actual H-1053/H-1052 store data without mutating stock or gates', async () => {
   await check();
   const store = requirePort('premeltGate/store');
