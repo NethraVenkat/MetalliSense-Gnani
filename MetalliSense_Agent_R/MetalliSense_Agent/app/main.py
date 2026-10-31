@@ -785,6 +785,15 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
         )
 
 
+@app.post('/copilot/voice/transliterate',tags=['Voice'])
+async def transliterate_audio(audio: UploadFile = File(...)):
+    from copilot.transliteration import transliteration_enabled,transliterate_display
+    if not transliteration_enabled():
+        raise HTTPException(status_code=404,detail={'code':'transliterate_disabled'})
+    text=await transliterate_display(voice_service,await audio.read())
+    return {'transcript_latin':text} if text else {'unavailable':True}
+
+
 @app.post("/copilot/voice/synthesize", tags=["Voice"])
 async def synthesize_speech(request: TTSRequest):
     """

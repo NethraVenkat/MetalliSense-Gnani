@@ -273,6 +273,29 @@ class GnaniClient:
             return {"text": "", "language": lang, "detected_language_code": None, "success": False, "error": str(e)}
 
     # ------------------------------------------------------------------ TTS
+    async def transliterate(self, audio_bytes: bytes) -> Optional[str]:
+        """Independent display-only request; never modifies primary STT state."""
+        import asyncio
+        import httpx
+        if self.mock:
+            return None
+        try:
+            async with asyncio.timeout(6):
+                wav = await asyncio.to_thread(self._to_wav_16k,audio_bytes)
+                data={'model':'prisma-v3.0','format':'transliterate'}
+                # Context for romanised output should itself be in Latin letters.
+                terms=[term.strip() for term in self.stt_keyterms.split(',') if term.strip().isascii()]
+                if terms:data['keyterms']=','.join(terms)
+                async with httpx.AsyncClient(timeout=6,follow_redirects=False) as http:
+                    self.stats['stt_calls']+=1
+                    response=await http.post(self.base_url+'/stt/v3',headers=self._headers(),
+                        files={'audio_file':('audio.wav',wav,'audio/wav')},data=data)
+                    if response.status_code!=200:return None
+                    text=response.json().get('transcript')
+                    return text.strip() if isinstance(text,str) and text.strip() else None
+        except Exception:
+            return None  # No provider body/key/error state reaches the primary flow.
+
 
     def _cache_path(self, text: str, lang: str, voice: str, style: str = "normal", *, model: Optional[str] = None) -> Path:
         key = json.dumps({"version": 2, "model": model or self.tts_model, "voice": voice,
