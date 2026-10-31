@@ -4,6 +4,8 @@ import { decimalDigits,registerLexicon,spokenRegister,colloquialElements } from 
 import { gateReasonAnswer,heatVoiceAnswer } from '../src/services/voiceGateAnswers';
 import { hindiHeatAnswer } from '../src/services/hindiVoice';
 import { createTranscriptHandler } from '../src/services/voiceTranscript';
+import {buildShiftSummary,spokenShiftSummary} from '../src/services/shiftSummary';
+import baseline from './f11d-formal-baseline.json';
 const {post}=vi.hoisted(()=>({post:vi.fn()}));
 vi.mock('axios',()=>({default:{create:()=>({post,interceptors:{response:{use:vi.fn()}}})}}));
 afterEach(()=>{vi.unstubAllEnvs();vi.restoreAllMocks();});
@@ -11,8 +13,8 @@ const heat={heatId:'H-1053',status:'PLANNED',gateResult:{decision:'HOLD',checks:
  {id:'lot_status',status:'FAIL',details:[{lotId:'PIG-1053',text:'QUARANTINED',status:'FAIL'}]},
  {id:'residuals',status:'FAIL',details:[{element:'Cu',value:.5,max:.3,status:'FAIL'}]},
 ]}};
-const target={ta:'ஹீட் ஆயிரத்து ஐம்பத்தி மூணு, ஹோல்ட். லாட் நம்பர் ஆயிரத்து ஐம்பத்தி மூணு, க்வாரண்டைன்ல இருக்கு. காப்பர் அதிகமா இருக்கு. ஜீரோ பாயிண்ட் ஃபைவ் ஜீரோ பர்சென்ட். லிமிட், ஜீரோ பாயிண்ட் த்ரீ ஜீரோ.',
- hi:'हीट एक हज़ार तिरपन, होल्ड। लॉट नंबर एक हज़ार तिरपन, क्वारंटीन में है। कॉपर ज़्यादा है। ज़ीरो पॉइंट फाइव ज़ीरो परसेंट। लिमिट, ज़ीरो पॉइंट थ्री ज़ीरो।'};
+const target={ta:'ஹீட் one zero five three, ஹோல்ட். லாட் நம்பர் one zero five three, க்வாரண்டைன்ல இருக்கு. காப்பர் அதிகமா இருக்கு. ஜீரோ பாயிண்ட் ஃபைவ் ஜீரோ பர்சென்ட். லிமிட், ஜீரோ பாயிண்ட் த்ரீ ஜீரோ.',
+ hi:'हीट one zero five three, होल्ड। लॉट one zero five three, क्वारंटीन में है। कॉपर ज़्यादा है। ज़ीरो पॉइंट फाइव ज़ीरो परसेंट। लिमिट, ज़ीरो पॉइंट थ्री ज़ीरो।'};
 const formal={ta:'ஹீட் ஆயிரத்து ஐம்பத்து மூன்று, ஹோல்ட். லாட் பிக் ஆயிரத்து ஐம்பத்து மூன்று, தனிமையில் உள்ளது. செம்பு அளவு அதிகம். பூஜ்ஜியம் புள்ளி ஐந்து பூஜ்ஜியம் சதவீதம். வரம்பு, பூஜ்ஜியம் புள்ளி மூன்று பூஜ்ஜியம்.',
  hi:'हीट एक हज़ार तिरपन, होल्ड। लॉट पिग एक हज़ार तिरपन, क्वारंटीन में। कॉपर ज़्यादा है। शून्य दशमलव पाँच शून्य प्रतिशत। सीमा, शून्य दशमलव तीन शून्य।'};
 it.each(['ta','hi'])('exact requested HOLD speech %s',lang=>expect(clarityGateSpeech(heat,lang,'reasons','colloquial')).toBe(target[lang]));
@@ -37,7 +39,7 @@ it.each(['ta','hi'])('every decimal digit and written zero survives %s',lang=>{
 it.each(['PIG','DRI','SCRAP','XYZ'])('any lot prefix %s is dropped only in speech',prefix=>{
  const copy=structuredClone(heat);copy.gateResult.checks[0].details[0].lotId=`${prefix}-1053`;
  for(const lang of ['ta','hi']){
-  const text=clarityGateSpeech(copy,lang,'reasons','colloquial');expect(text).not.toContain(prefix);expect(text).toContain(lang==='ta'?'லாட் நம்பர்':'लॉट नंबर');
+  const text=clarityGateSpeech(copy,lang,'reasons','colloquial');expect(text).not.toContain(prefix);expect(text).toContain(lang==='ta'?'லாட் நம்பர்':'लॉट');
  }
  expect(gateReasonAnswer(copy.gateResult,'ta')).toContain(prefix+'-1053');
 });
@@ -54,12 +56,12 @@ it.each(Object.entries(colloquialElements))('full element name %s stays bounded'
   expect(nativeSpeech('prefix'+name,lang,'colloquial')).toBe('prefix'+name);
  }
 });
-it.each([['23','இருபத்தி மூணு'],['34','முப்பத்தி நாலு'],['45','நாப்பத்தி அஞ்சு'],['52','ஐம்பத்தி ரெண்டு'],['61','அறுபத்தி ஒண்ணு'],['73','எழுபத்தி மூணு'],['84','எண்பத்தி நாலு'],['95','தொண்ணூத்தி அஞ்சு']])('Tamil combining form %s', (tail,spoken)=>expect(nativeSpeech(`H-10${tail}`,'ta','colloquial')).toContain(spoken));
+it.each([['23','two three'],['34','three four'],['45','four five'],['52','five two'],['61','six one'],['73','seven three'],['84','eight four'],['95','nine five']])('Tamil digit ID 10%s', (tail,spoken)=>expect(nativeSpeech(`H-10${tail}`,'ta','colloquial')).toBe(`ஹீட் one zero ${spoken}`));
 it.each(['ta','hi','en'])('all builders short, repeat-safe, max two reasons and read-only %s',lang=>{
  const before=JSON.stringify(heat);const extra=structuredClone(heat);extra.gateResult.checks.push({id:'stock',status:'FAIL',details:[{status:'FAIL'}]});
  const texts=[clarityGateSpeech(extra,lang,'reasons','colloquial'),clarityGateSpeech(heat,lang,'status','colloquial'),clarityGateSpeech(heat,lang,'alert','colloquial'),
  clarityGateSpeech({...heat,gateResult:{decision:'GO',checks:[]}},lang,'reasons','colloquial'),clarityHandoverSummary([{heatId:'H-1053',decision:'HOLD',severity:'red'}],lang,'colloquial')];
- for(const text of texts){for(const sentence of text.split(/[.।]/).filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);expect(clarityText(text,lang,'colloquial')).toBe(text);}
+ for(const text of texts){for(const sentence of text.split(/[.।]/).filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);expect(clarityText(text,lang,'colloquial')).toBe(text);expect(text).toContain('one zero five three');}
  expect(texts[0]).toContain(lang==='ta'?'மீதி ஸ்கிரீன்ல பாருங்க':lang==='hi'?'बाकी स्क्रीन पर':'More details on screen');
  expect(JSON.stringify(heat)).toBe(before);
 });
@@ -78,4 +80,38 @@ it('screen and gate facts unchanged with register switch',async()=>{
  const before=JSON.stringify(heat);const display=heatVoiceAnswer('gate_reason',heat,{},'ta');const hindi=hindiHeatAnswer('gate_reason',heat,{});
  const say=vi.fn();const handler=createTranscriptHandler({lang:'ta',say,setHeard:vi.fn(),navigate:vi.fn(),resolveHeat:async()=>heat});await handler('why hold heat 1053');
  expect(say.mock.lastCall[0]).toBe(display);expect(say.mock.lastCall[1]).toBe(target.ta);expect(JSON.stringify(heat)).toBe(before);expect(hindiHeatAnswer('gate_reason',heat,{})).toBe(hindi);
+});
+it.each(['ta','hi','en'])('30 pre-change formal outputs stay byte-for-byte unchanged: %s',lang=>{
+ const {heat,warn,rows}=baseline;
+ expect({
+  reasons:clarityGateSpeech(heat,lang,'reasons','formal'),status:clarityGateSpeech(heat,lang,'status','formal'),alert:clarityGateSpeech(heat,lang,'alert','formal'),
+  warn:clarityGateSpeech(warn,lang,'reasons','formal'),go:clarityGateSpeech({...heat,gateResult:{decision:'GO',checks:[]}},lang,'reasons','formal'),
+  handover:clarityHandoverSummary([{heatId:'H-1053',decision:'HOLD',severity:'red'}],lang,'formal'),
+  summary:spokenShiftSummary(buildShiftSummary(rows),lang,{clarity:true,register:'formal'}),
+  native:nativeSpeech('Heat H-1053 Lot PIG-1053 0.50%',lang,'formal'),
+  blocked:clarityText('Please approve on screen',lang,'formal'),retry:clarityText('Could not hear you. Tap a suggestion below.',lang,'formal'),
+ }).toEqual(baseline.outputs[lang]);
+});
+it.each(['ta','hi','en'])('ID digits and leading zeros equal facts across heat and lot speech: %s',lang=>{
+ const digits='zero one two three four five six seven eight nine'.split(' ');
+ for(const id of ['H-1053','H-1001','PIG-1053','DRI-0010','SCRAP-2045','XYZ-1099','H-01234567','H-89']){
+  const spoken=nativeSpeech(id,lang,'colloquial');
+  const values=spoken.split(/\s+/).filter(word=>digits.includes(word)).map(word=>digits.indexOf(word)).join('');
+  expect(values).toBe(id.split('-')[1]);expect(spoken).not.toContain('PIG');
+ }
+ expect(nativeSpeech('Heat H-1053 Lot PIG-1053',lang,'colloquial')).toBe(lang==='ta'?'ஹீட் one zero five three லாட் நம்பர் one zero five three':lang==='hi'?'हीट one zero five three लॉट one zero five three':'heat one zero five three lot one zero five three');
+});
+it('chosen Tamil counts stay quantities, with furnace/pending/opener and unchanged screen',()=>{
+ const rows=[...structuredClone(baseline.rows),{...structuredClone(heat),heatId:'H-1054'},{heatId:'H-1055',status:'PLANNED'}];
+ const before=JSON.stringify(rows),summary=buildShiftSummary(rows);
+ expect(summary.counts).toEqual({HOLD:2,WARN:0,GO:1,melting:1,not_checked:1});
+ const spoken=spokenShiftSummary(summary,'ta',{clarity:true,register:'colloquial'});
+ for(const text of ['ஷிஃப்ட் சம்மரி.','ரெண்டு ஹீட் ஹோல்ட்.','ஒரு ஹீட் கோ.','ஒரு ஹீட் ஃபர்னஸ்ல இருக்கு.','ஒரு ஹீட் செக் பெண்டிங்.','one zero five three'])expect(spoken).toContain(text);
+ expect(summary.display).toContain('2 HOLD (H-1053, H-1054)');expect(JSON.stringify(rows)).toBe(before);
+ for(const sentence of spoken.split('.').filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);
+ expect(spokenShiftSummary(summary,'hi',{clarity:true,register:'colloquial'})).toContain('एक हीट भट्टी में है');
+});
+it('chosen blocked speech is exact but original safety text remains on screen',()=>{
+ expect(clarityText('திரையில் approve செய்யவும்','ta','colloquial')).toBe('இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல அப்ரூவ் பண்ணுங்க.');
+ expect(clarityText('திரையில் approve செய்யவும்','ta','formal')).toBe('திரையில் அப்ரூவ் செய்யவும்.');
 });

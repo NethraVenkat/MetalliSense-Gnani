@@ -1,6 +1,7 @@
 import { clarityText, nativeSpeech, voiceClarityEnabled } from './voiceClarity.js';
 import { spokenRegister } from './voiceRegister.js';
 import { formatGateLimit } from './hindiVoice.js';
+import { colloquialWords } from './voiceRegister.js';
 
 export const shiftSummaryEnabled = () => import.meta.env.VITE_SHIFT_SUMMARY === 'true';
 const summaryStatus = heat => String(heat.status || '').trim().toUpperCase().replace(/[\s-]+/g,'_');
@@ -51,7 +52,11 @@ export function buildShiftSummary(heats,now=Date.now()) {
 function countWords(count,lang,register) {
   if(count===0) return lang==='ta'?'பூஜ்ஜியம்':lang==='hi'?'शून्य':'zero';
   // Reuse the ID cardinal grammar without heat labels; supports arbitrary counts.
-  if(count<10000) return nativeSpeech(`H-${count}`,lang,register).replace(/^(?:ஹீட்|हीट|heat)\s+/u,'');
+  if(count<10000) {
+    // Quantities stay cardinals; only actual heat/lot identifiers use digits.
+    const words=nativeSpeech(`H-${count}`,lang,'formal').replace(/^(?:ஹீட்|हीट|heat)\s+/u,'');
+    return register==='colloquial'?(lang==='ta'&&count===1?'ஒரு':colloquialWords(words,lang)):words;
+  }
   return String(count); // Provider TN handles large counts without truncating them.
 }
 
@@ -61,12 +66,12 @@ export function spokenShiftSummary(summary,lang='ta', options={}) {
   const colloquial=register==='colloquial';
   const lines=[lang==='ta'?'ஷிஃப்ட் சுருக்கம்':lang==='hi'?'शिफ्ट सारांश':'Shift summary'];
   const n=key=>countWords(summary.counts[key],lang,register);
-  if(summary.counts.HOLD) lines.push(lang==='ta'?`${summary.counts.HOLD===1&&colloquial?'ஒரு':n('HOLD')} ஹீட் ${colloquial?'ஹோல்ட்ல இருக்கு':'ஹோல்டில் உள்ளது'}`:lang==='hi'?`${n('HOLD')} हीट होल्ड पर है`:`${n('HOLD')} heat${summary.counts.HOLD===1?'':'s'} on HOLD`);
+  if(summary.counts.HOLD) lines.push(lang==='ta'?`${summary.counts.HOLD===1&&colloquial?'ஒரு':n('HOLD')} ஹீட் ${colloquial?'ஹோல்ட்':'ஹோல்டில் உள்ளது'}`:lang==='hi'?`${n('HOLD')} हीट होल्ड पर है`:`${n('HOLD')} heat${summary.counts.HOLD===1?'':'s'} on HOLD`);
   else if(!summary.counts.WARN) lines.push(lang==='ta'?'எந்த ஹீட்டும் ஹோல்ட்ல இல்ல':lang==='hi'?'कोई हीट होल्ड पर नहीं है':'No heats on hold');
-  if(summary.counts.WARN) lines.push(lang==='ta'?`${n('WARN')} எச்சரிக்கை`:lang==='hi'?`${n('WARN')} चेतावनी`:`${n('WARN')} WARN`);
-  if(summary.counts.GO) lines.push(`${n('GO')} ${lang==='ta'?'கோ':lang==='hi'?'गो':'GO'}`);
-  if(summary.counts.melting) lines.push(lang==='ta'?`${n('melting')} ${colloquial?'மெல்டிங்ல இருக்கு':'உருக்கத்தில் உள்ளது'}`:lang==='hi'?`${n('melting')} मेल्टिंग में है`:`${n('melting')} melting`);
-  if(summary.counts.not_checked) lines.push(lang==='ta'?`${n('not_checked')} ${colloquial?'இன்னும் செக் பண்ணல':'இன்னும் சோதிக்கப்படவில்லை'}`:lang==='hi'?`${n('not_checked')} अभी चेक नहीं हुआ`:`${n('not_checked')} not checked`);
+  if(summary.counts.WARN) lines.push(lang==='ta'?`${n('WARN')} ${colloquial?'ஹீட் ':''}எச்சரிக்கை`:lang==='hi'?`${n('WARN')} चेतावनी`:`${n('WARN')} WARN`);
+  if(summary.counts.GO) lines.push(`${n('GO')} ${lang==='ta'?(colloquial?'ஹீட் கோ':'கோ'):lang==='hi'?'गो':'GO'}`);
+  if(summary.counts.melting) lines.push(lang==='ta'?`${n('melting')} ${colloquial?'ஹீட் ஃபர்னஸ்ல இருக்கு':'உருக்கத்தில் உள்ளது'}`:lang==='hi'?`${n('melting')} ${colloquial?'हीट भट्टी में है':'मेल्टिंग में है'}`:`${n('melting')} melting`);
+  if(summary.counts.not_checked) lines.push(lang==='ta'?`${n('not_checked')} ${colloquial?'ஹீட் செக் பெண்டிங்':'இன்னும் சோதிக்கப்படவில்லை'}`:lang==='hi'?`${n('not_checked')} अभी चेक नहीं हुआ`:`${n('not_checked')} not checked`);
   lines.push(lang==='ta'?'முடிந்த ஹீட்கள் கணக்கில் இல்லை':lang==='hi'?'पूरे हुए हीट गिनती में नहीं':'Completed heats excluded');
   if(summary.priorityId) {
     lines.push(lang==='ta'?`முதல்ல Heat ${summary.priorityId} பாருங்க`:lang==='hi'?`पहले Heat ${summary.priorityId} देखिए`:`Check Heat ${summary.priorityId} first`);

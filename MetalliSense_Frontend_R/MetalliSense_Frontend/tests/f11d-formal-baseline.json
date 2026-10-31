@@ -1,0 +1,143 @@
+{
+  "heat": {
+    "heatId": "H-1053",
+    "status": "PLANNED",
+    "gateResult": {
+      "decision": "HOLD",
+      "checks": [
+        {
+          "id": "lot_status",
+          "status": "FAIL",
+          "details": [
+            {
+              "lotId": "PIG-1053",
+              "text": "QUARANTINED",
+              "status": "FAIL"
+            }
+          ]
+        },
+        {
+          "id": "residuals",
+          "status": "FAIL",
+          "details": [
+            {
+              "element": "Cu",
+              "value": 0.5,
+              "max": 0.3,
+              "status": "FAIL"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "warn": {
+    "heatId": "H-1053",
+    "status": "PLANNED",
+    "gateResult": {
+      "decision": "WARN",
+      "checks": [
+        {
+          "id": "residuals",
+          "status": "WARN",
+          "details": [
+            {
+              "element": "Cu",
+              "value": 0.27,
+              "min": 0,
+              "max": 0.3,
+              "status": "WARN"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "rows": [
+    {
+      "heatId": "H-1053",
+      "status": "PLANNED",
+      "gateResult": {
+        "decision": "HOLD",
+        "checks": [
+          {
+            "id": "lot_status",
+            "status": "FAIL",
+            "details": [
+              {
+                "lotId": "PIG-1053",
+                "text": "QUARANTINED",
+                "status": "FAIL"
+              }
+            ]
+          },
+          {
+            "id": "residuals",
+            "status": "FAIL",
+            "details": [
+              {
+                "element": "Cu",
+                "value": 0.5,
+                "max": 0.3,
+                "status": "FAIL"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "heatId": "H-1051",
+      "status": "PLANNED",
+      "gate": {
+        "decision": "GO"
+      }
+    },
+    {
+      "heatId": "H-1052",
+      "status": "MELTING"
+    },
+    {
+      "heatId": "H-1043",
+      "status": "COMPLETED"
+    }
+  ],
+  "outputs": {
+    "ta": {
+      "reasons": "ஹீட் ஆயிரத்து ஐம்பத்து மூன்று, ஹோல்ட். லாட் பிக் ஆயிரத்து ஐம்பத்து மூன்று, தனிமையில் உள்ளது. செம்பு அளவு அதிகம். பூஜ்ஜியம் புள்ளி ஐந்து பூஜ்ஜியம் சதவீதம். வரம்பு, பூஜ்ஜியம் புள்ளி மூன்று பூஜ்ஜியம்.",
+      "status": "ஹீட் ஆயிரத்து ஐம்பத்து மூன்று, ஹோல்ட். நிலை, திட்டமிடப்பட்டது. லாட் பிக் ஆயிரத்து ஐம்பத்து மூன்று, தனிமையில் உள்ளது. செம்பு அளவு அதிகம். பூஜ்ஜியம் புள்ளி ஐந்து பூஜ்ஜியம் சதவீதம். வரம்பு, பூஜ்ஜியம் புள்ளி மூன்று பூஜ்ஜியம்.",
+      "alert": "ஹீட் ஆயிரத்து ஐம்பத்து மூன்று, ஹோல்ட். திரையில் பார்க்கவும்.",
+      "warn": "ஹீட் ஆயிரத்து ஐம்பத்து மூன்று, எச்சரிக்கை. செம்பு வரம்பை நெருங்குகிறது. 0.27 சதவீதம். வரம்பு, பூஜ்ஜியம் புள்ளி மூன்று பூஜ்ஜியம்.",
+      "go": "ஹீட் ஆயிரத்து ஐம்பத்து மூன்று, கோ. தடைகள் இல்லை.",
+      "handover": "ஹீட் ஆயிரத்து ஐம்பத்து மூன்று, ஹோல்ட். கூற்றை திரையில் சரிபார்க்கவும்.",
+      "summary": "ஷிஃப்ட் சுருக்கம். ஒன்று ஹீட் ஹோல்டில் உள்ளது. ஒன்று கோ. ஒன்று உருக்கத்தில் உள்ளது. முடிந்த ஹீட்கள் கணக்கில் இல்லை. முதல்ல ஹீட் ஆயிரத்து ஐம்பத்து மூன்று பாருங்க. லாட் பிக் ஆயிரத்து ஐம்பத்து மூன்று: தனிமையில் உள்ளது.",
+      "native": "ஹீட் ஆயிரத்து ஐம்பத்து மூன்று லாட் பிக் ஆயிரத்து ஐம்பத்து மூன்று பூஜ்ஜியம் புள்ளி ஐந்து பூஜ்ஜியம் சதவீதம்",
+      "blocked": "Please அப்ரூவ் on திரை.",
+      "retry": "Could not hear you. Tap a suggestion below."
+    },
+    "hi": {
+      "reasons": "हीट एक हज़ार तिरपन, होल्ड। लॉट पिग एक हज़ार तिरपन, क्वारंटीन में। कॉपर ज़्यादा है। शून्य दशमलव पाँच शून्य प्रतिशत। सीमा, शून्य दशमलव तीन शून्य।",
+      "status": "हीट एक हज़ार तिरपन, होल्ड। स्थिति, योजना में। लॉट पिग एक हज़ार तिरपन, क्वारंटीन में। कॉपर ज़्यादा है। शून्य दशमलव पाँच शून्य प्रतिशत। सीमा, शून्य दशमलव तीन शून्य।",
+      "alert": "हीट एक हज़ार तिरपन, होल्ड। स्क्रीन देखें।",
+      "warn": "हीट एक हज़ार तिरपन, चेतावनी। कॉपर सीमा के पास है। 0.27 प्रतिशत। सीमा, शून्य दशमलव तीन शून्य।",
+      "go": "हीट एक हज़ार तिरपन, गो। कोई रुकावट नहीं।",
+      "handover": "हीट एक हज़ार तिरपन, होल्ड। बात स्क्रीन पर जाँचें।",
+      "summary": "शिफ्ट सारांश। एक हीट होल्ड पर है। एक गो। एक मेल्टिंग में है। पूरे हुए हीट गिनती में नहीं। पहले हीट एक हज़ार तिरपन देखिए। लॉट पिग एक हज़ार तिरपन: क्वारंटीन में।",
+      "native": "हीट एक हज़ार तिरपन लॉट पिग एक हज़ार तिरपन शून्य दशमलव पाँच शून्य प्रतिशत",
+      "blocked": "Please अप्रूव on स्क्रीन।",
+      "retry": "Could not hear you। Tap a suggestion below।"
+    },
+    "en": {
+      "reasons": "heat ten fifty-three, HOLD. Lot pig ten fifty-three, in quarantine. Cu is high. zero point five zero percent. Limit, zero point three zero.",
+      "status": "heat ten fifty-three, HOLD. Status, PLANNED. Lot pig ten fifty-three, in quarantine. Cu is high. zero point five zero percent. Limit, zero point three zero.",
+      "alert": "heat ten fifty-three, HOLD. Check the screen.",
+      "warn": "heat ten fifty-three, WARN. Cu near the limit. 0.27 percent. Limit, zero point three zero.",
+      "go": "heat ten fifty-three, GO. No blocking issues.",
+      "handover": "heat ten fifty-three, HOLD. Check the claim on screen.",
+      "summary": "Shift summary. one heat on HOLD. one GO. one melting. Completed heats excluded. Check heat ten fifty-three first. Lot pig ten fifty-three: quarantined.",
+      "native": "heat ten fifty-three Lot pig ten fifty-three zero point five zero percent",
+      "blocked": "Please approve on screen.",
+      "retry": "Could not hear you. Tap a suggestion below."
+    }
+  }
+}

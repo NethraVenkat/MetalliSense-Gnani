@@ -79,7 +79,7 @@ it.each(['ta','hi','en'])('omits zero categories and speaks melting with short s
  const summary=buildShiftSummary([held,{heatId:'H-1051',status:'PLANNED',gate:gate('GO')},{heatId:'H-1052',status:'MELTING'}],now);
  expect(summary.counts).toEqual({HOLD:1,WARN:0,GO:1,melting:1,not_checked:0});
  const text=spokenShiftSummary(summary,lang,{clarity:true,register:'colloquial'});
- expect(text).toContain(lang==='ta'?'ஒண்ணு மெல்டிங்ல இருக்கு':lang==='hi'?'एक मेल्टिंग में है':'one melting');
+ expect(text).toContain(lang==='ta'?'ஒரு ஹீட் ஃபர்னஸ்ல இருக்கு':lang==='hi'?'एक हीट भट्टी में है':'one melting');
  expect(text).not.toMatch(/எச்சரிக்கை|चेतावनी|WARN|not checked|चेक नहीं|செக் பண்ணல/);
  for(const sentence of text.split(/[.।]/).filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);
  const warning=spokenShiftSummary(buildShiftSummary([{...held,gateResult:gate('WARN')}],now),lang,{clarity:true,register:'colloquial'});
@@ -89,8 +89,8 @@ it.each(['ta','hi','en'])('omits zero categories and speaks melting with short s
 });
 it.each(['ta','hi','en'])('short spoken summary, exact counts and priority %s',lang=>{
  const summary=buildShiftSummary(heats,now);const text=spokenShiftSummary(summary,lang,{clarity:true,register:'colloquial'});
- expect(text).toContain(lang==='ta'?'ஒரு ஹீட் ஹோல்ட்ல இருக்கு':lang==='hi'?'एक हीट होल्ड पर है':'one heat on HOLD');
- expect(text).toContain(lang==='ta'?'ஆயிரத்து ஐம்பத்தி மூணு':lang==='hi'?'एक हज़ार तिरपन':'ten fifty-three');
+ expect(text).toContain(lang==='ta'?'ஒரு ஹீட் ஹோல்ட்':lang==='hi'?'एक हीट होल्ड पर है':'one heat on HOLD');
+ expect(text).toContain('one zero five three');
  expect(text).not.toContain(lang==='ta'?'காப்பர்':lang==='hi'?'कॉपर':'Cu');
  for(const sentence of text.split(/[.।]/).filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);
  expect(text).toContain(lang==='ta'?'முடிந்த ஹீட்கள் கணக்கில் இல்லை':lang==='hi'?'पूरे हुए हीट गिनती में नहीं':'Completed heats excluded');
