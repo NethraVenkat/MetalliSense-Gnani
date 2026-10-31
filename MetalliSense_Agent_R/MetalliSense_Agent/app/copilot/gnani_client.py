@@ -13,6 +13,8 @@ mono WAV. Windows: winget install ffmpeg
 import hashlib
 import io
 import json
+import logging
+import math
 import os
 import re
 import shutil
@@ -164,6 +166,11 @@ class GnaniClient:
         self.tts_fallback_voice = os.getenv("GNANI_TTS_FALLBACK_VOICE", "Kamakshi").strip()
         self.tts_language = os.getenv("GNANI_TTS_LANGUAGE", "ta-IN").strip() or "ta-IN"
         try:
+            timeout = float(os.getenv('GNANI_TTS_TIMEOUT_S', '8'))
+            self.tts_timeout_s = min(timeout, 8.0) if math.isfinite(timeout) and timeout > 0 else 8.0
+        except ValueError:
+            self.tts_timeout_s = 8.0
+        try:
             self.tts_sample_rate = int(os.getenv("GNANI_TTS_SAMPLE_RATE", "22050"))
         except ValueError:
             self.tts_sample_rate = 22050
@@ -211,14 +218,16 @@ class GnaniClient:
         """Retry 429/504 once; callers with a strict credit budget may allow one attempt."""
         if max_attempts not in (1, 2):
             raise ValueError("max_attempts must be 1 or 2")
-        lang = stt_language(language.strip() if language and language.strip() else self.stt_language)
+        bridge = _env_bool('LANG_BRIDGE')
+        lang = stt_language(os.getenv('GNANI_STT_LANGUAGE_BRIDGE', 'ta-IN,hi-IN,en-IN') if bridge
+                            else language.strip() if language and language.strip() else self.stt_language)
         self.detected_language_code = None
         if self.mock:
             self.last_error = None
             return {"text": MOCK_TRANSCRIPT, "language": lang, "detected_language_code": None, "success": True}
         try:
             wav = self._to_wav_16k(audio_bytes)
-            data = {"language_code": lang, "format": self.stt_format}
+            data = {"language_code": lang, "format": 'codemix' if bridge else self.stt_format}
             if self.stt_model:
                 data["model"] = self.stt_model
             if self.stt_keyterms:
@@ -291,6 +300,9 @@ class GnaniClient:
                 self.last_provider_used = f"gnani:{model}:{selected_voice}"
                 self.last_tts_fallback_reason = "; ".join(errors) or None
                 self.last_error = None
+                path = ('cache' if self.last_tts_source == 'cache' else 'mock' if self.mock
+                        else 'v2.5 fallback' if errors and model == 'timbre-v2.5' else model)
+                logging.getLogger('uvicorn.error').info('tts_served path=%s language=%s', path, lang)
                 return audio
             errors.append(self.last_error or "TTS produced no audio")
         self.last_error = "; ".join(errors)
@@ -333,7 +345,7 @@ class GnaniClient:
                 f"{self.base_url}/api/v1/tts/inference",
                 headers=self._headers(json_body=True),
                 json=payload,
-                timeout=60,
+                timeout=self.tts_timeout_s,
             )
             if response.status_code != 200 or not response.content:
                 self.last_error = f"TTS {response.status_code}: {response.text[:300]}"
@@ -351,6 +363,14 @@ class GnaniClient:
             self.last_error = None
             self.last_tts_source = "live"
             return audio
+        except requests.exceptions.Timeout:
+            self.last_error = 'TTS timeout'
+            logging.getLogger(__name__).warning('tts_attempt_failed reason=timeout')
+            return None
+        except requests.exceptions.ConnectionError:
+            self.last_error = 'TTS connection_error'
+            logging.getLogger(__name__).warning('tts_attempt_failed reason=connection_error')
+            return None
         except Exception as e:
             self.last_error = f"TTS: {e}"
             print(f"Gnani TTS request failed: {e}")
@@ -371,6 +391,7 @@ class GnaniClient:
             "tts_voice": self.tts_voice or "(API default)",
             "tts_language": self.tts_language,
             "tts_sample_rate": self.tts_sample_rate,
+            "tts_timeout_s": self.tts_timeout_s,
             "tts_tags": self.tts_tags,
             "tts_fallback_model": self.tts_fallback_model,
             "tts_fallback_voice": self.tts_fallback_voice,

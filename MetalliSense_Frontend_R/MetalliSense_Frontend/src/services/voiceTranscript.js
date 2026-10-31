@@ -1,30 +1,58 @@
-import { getAdditives } from './premeltService';
+import { getAdditives, getHeats } from './premeltService';
 import { sendChatMessage, phraseGateFacts } from './copilotService';
 import { gatePhraseFacts } from './gatePhraseFacts';
 import { mapIntent } from './voiceIntents';
 import { heatVoiceAnswer, spokenGateReasonAnswer } from './voiceGateAnswers';
+import { pickReplyLanguage, hindiBlocked, hindiNotUnderstood, retryVoiceAnswer } from './languageBridge';
+import { hindiHeatAnswer } from './hindiVoice';
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
-export function createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource = () => {} }) {
-  const choose = (ta, en) => lang === 'ta' ? ta : en;
-  return async function handleTranscript(text) {
+export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false }) {
+  return async function handleTranscript(text, metadata = {}) {
+    const started = performance.now();
+    const lang = pickReplyLanguage(text, metadata.detected_language_code, currentLang, langBridge);
+    const choose = (ta, en) => lang === 'ta' ? ta : en;
+    const say = (...args) => {
+      if (metadata.voiceTiming) return output(args[0], args[1] ?? args[0], lang,
+        { stt_ms: metadata.stt_ms ?? null, answer_ms: performance.now() - started });
+      return langBridge ? output(args[0], args[1] ?? args[0], lang) : output(...args);
+    };
     setHeard(text);
     setPhraseSource(null);
-    const { intent, params, reply } = mapIntent(text);
-    if (intent === 'blocked') return say(reply[lang]);
+    const { intent, params, reply } = mapIntent(text, { langBridge });
+    if (intent === 'blocked') return say(lang === 'hi' ? hindiBlocked : reply[lang]);
+    if (!text.trim() || params.unparsedHeat || intent === 'ask_copilot' && !params.bridgeAction) return say(retryVoiceAnswer(lang));
+    if (lang === 'hi') {
+      if (params.bridgeAction === 'help') return say('हीट का स्टेटस, होल्ड का कारण या तत्व की मात्रा पूछिए। वॉइस केवल जानकारी देती है।');
+      if (params.bridgeAction === 'list_holds') {
+        const response = await getHeats();
+        const heats = response.data?.data ?? response.data;
+        const held = heats.filter(h => (h.gateResult || h.gate)?.decision === 'HOLD');
+        return say(held.length ? `होल्ड पर हीट: ${held.map(h => h.heatId).join(', ')}।` : 'कोई हीट होल्ड पर नहीं है।');
+      }
+      if (['heat_status', 'gate_reason', 'element_value'].includes(intent)) {
+        const heat = await resolveHeat(params);
+        if (!heat) return say(retryVoiceAnswer(lang));
+        if (intent === 'gate_reason') setPhraseSource('template');
+        return say(hindiHeatAnswer(intent, heat, params));
+      }
+      if (intent === 'open_screen') { navigate(params.route); return say('स्क्रीन खुल रही है।'); }
+      if (intent !== 'stock_check') return say(hindiNotUnderstood);
+    }
     if (intent === 'open_screen') { say(choose('திரை திறக்கப்படுகிறது', 'Opening screen')); navigate(params.route); return; }
     if (intent === 'stock_check') {
       const response = await getAdditives();
       const additives = response.data?.data ?? response.data;
       const matches = additives.filter(a => !params.alloy || a.alloyName.toLowerCase().replace(/\s/g, '').includes(params.alloy.toLowerCase()));
-      return say(matches.length ? matches.map(a => `${a.alloyName}: ${a.availableKg} kg${a.lowStock ? choose(', இருப்பு குறைவு', ', low stock') : ''}`).join('. ') : choose('இருப்பு தகவல் இல்லை', 'No stock information found'));
+      return say(matches.length ? matches.map(a => `${a.alloyName}: ${a.availableKg} kg${a.lowStock ? (lang === 'hi' ? ', स्टॉक कम है' : choose(', இருப்பு குறைவு', ', low stock')) : ''}`).join('. ') : lang === 'hi' ? 'स्टॉक की जानकारी नहीं है।' : choose('இருப்பு தகவல் இல்லை', 'No stock information found'));
     }
     if (intent === 'ask_copilot') {
       const response = await sendChatMessage(text, true);
       return say(response.data.response || choose('பதில் கிடைக்கவில்லை', 'No answer available'));
     }
     const heat = await resolveHeat(params);
+    if (!heat) return say(retryVoiceAnswer(lang));
     const answer = heatVoiceAnswer(intent, heat, params, lang);
     if (intent === 'gate_reason') {
       if (lang === 'ta' && ['HOLD', 'WARN'].includes(heat.gateResult?.decision)) {

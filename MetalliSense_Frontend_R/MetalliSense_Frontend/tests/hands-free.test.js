@@ -108,6 +108,29 @@ describe('mic PCM and transport', () => {
 });
 
 describe('shared transcript answers and fallback', () => {
+  it('prepares queued Hindi TTS during Tamil playback without overlapping audio', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const players = [];
+    vi.stubGlobal('Audio', class {
+      constructor() { players.push(this); }
+      play() { return Promise.resolve(); }
+      pause() {}
+    });
+    post.mockResolvedValue({ data: new Blob(['audio']), headers: { 'x-tts-provider': 'gnani:timbre-v3.0:Kalpana', 'x-tts-source': 'cache' } });
+    const first = speakText('private Tamil sentence', 'ta'); await flush();
+    expect(players).toHaveLength(1);
+    const second = speakText('private Hindi sentence', 'hi', 'normal', { stt_ms: 100, answer_ms: 20 }); await flush();
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(players).toHaveLength(1);
+    players[0].onended(); await first; await flush();
+    expect(players).toHaveLength(2);
+    players[1].onended(); await second;
+    expect(log).toHaveBeenLastCalledWith('voice_turn_timing', {
+      stt_ms: 100, answer_ms: 20, tts_ms: expect.any(Number), queue_ms: expect.any(Number), tts_path: 'cache', language: 'hi',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/private|Kalpana|key|text/);
+    log.mockRestore();
+  });
   it('final transcript goes through the same handler as push-to-talk', async () => {
     const heat = { heatId: 'H-1053', status: 'PLANNED', gateResult: { decision: 'HOLD' } };
     const say = vi.fn(), setHeard = vi.fn();

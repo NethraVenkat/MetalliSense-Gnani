@@ -14,6 +14,7 @@ first to actually call it. If it errors, paste the exact error and it can
 be fixed from the real response instead of guesswork.
 """
 import os
+import logging
 import requests
 from pathlib import Path
 from typing import BinaryIO, Optional, Dict
@@ -144,7 +145,11 @@ class VoiceService:
         self.last_provider_used = "gtts"
         self.last_media_type = "audio/mpeg"
         # gTTS wants short codes ("ta"), Gnani-style callers may send "ta-IN".
-        return self._gtts_tts(text, (language or "en").split("-")[0], slow)
+        short_language = (language or "en").split("-")[0]
+        audio = self._gtts_tts(text, short_language, slow)
+        if audio:
+            logging.getLogger('uvicorn.error').info('tts_served path=gTTS language=%s', short_language)
+        return audio
 
     def _gtts_tts(self, text: str, language: str = "en", slow: bool = False) -> bytes:
         try:

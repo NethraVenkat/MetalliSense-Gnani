@@ -73,6 +73,7 @@ class TranscriptionResponse(BaseModel):
     text: str = Field(..., description="Transcribed text")
     language: str = Field(..., description="Detected language")
     success: bool = Field(..., description="Success status")
+    detected_language_code: Optional[str] = None
     error: Optional[str] = Field(None, description="Error message if failed")
 
 

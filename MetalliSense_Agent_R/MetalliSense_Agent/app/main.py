@@ -75,7 +75,7 @@ app.add_middleware(
     allow_origins=["*"],  # Configure appropriately for production
     allow_credentials=True,
     allow_methods=["*"],
-    expose_headers=["X-TTS-Provider"],
+    expose_headers=["X-TTS-Provider", "X-TTS-Source"],
     allow_headers=["*"],
 )
 
@@ -826,6 +826,8 @@ async def synthesize_speech(request: TTSRequest):
             headers={
                 "Content-Disposition": f"inline; filename=speech.{extension}",
                 "X-TTS-Provider": voice_service.last_provider_used or "unknown",
+                "X-TTS-Source": (voice_service.gnani.last_tts_source or "unknown")
+                    if (voice_service.last_provider_used or "").startswith('gnani:') else 'unknown',
             }
         )
     except HTTPException:

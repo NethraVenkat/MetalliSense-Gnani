@@ -1,5 +1,5 @@
 ﻿import { useCallback, useSyncExternalStore } from 'react';
-import { synthesizeSpeech } from '../services/copilotService';
+import { synthesizeSpeechWithMeta } from '../services/copilotService';
 const listeners = new Set();
 const read = (key, fallback) => { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } };
 let muted = read('metallisense.voice.muted', 'false') === 'true';
@@ -18,12 +18,25 @@ export function useVoiceLanguage() {
   const setLang = useCallback(value => { language = value === 'en' ? 'en' : 'ta'; persist('metallisense.voice.language', language); }, []);
   return [lang, setLang];
 }
-export function speakText(text, lang = 'ta', style = 'normal') {
+export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
   if (muted || !text) return Promise.resolve();
   const ticket = generation;
+  const queuedAt = performance.now();
+  // Prepare audio while prior playback finishes; playback itself stays serial.
+  // Resolve errors into data immediately so canceled queued turns cannot leave
+  // an unhandled rejection. Muting still prevents every queued playback.
+  const prepared = synthesizeSpeechWithMeta(text, lang, style).then(
+    meta => ({ ...meta, tts_ms: performance.now() - queuedAt }),
+    () => ({ failed: true, tts_ms: performance.now() - queuedAt }));
   queue = queue.then(async () => {
     if (muted || ticket !== generation) return;
-    const blob = await synthesizeSpeech(text, lang, false, style);
+    const queue_ms = performance.now() - queuedAt;
+    const { blob, provider, source, tts_ms, failed } = await prepared;
+    console.info('voice_turn_timing', { stt_ms: timing?.stt_ms ?? null, answer_ms: timing?.answer_ms ?? null,
+      tts_ms, queue_ms,
+      tts_path: failed ? 'error' : source === 'mock' ? 'mock' : source === 'cache' ? 'cache' : provider?.includes('timbre-v3.0') ? 'timbre-v3.0'
+        : provider?.includes('timbre-v2.5') ? 'v2.5 fallback' : provider === 'gtts' ? 'gTTS' : 'unknown', language: lang });
+    if (failed) return;
     if (muted || ticket !== generation) return;
     const url = URL.createObjectURL(blob);
     try {
