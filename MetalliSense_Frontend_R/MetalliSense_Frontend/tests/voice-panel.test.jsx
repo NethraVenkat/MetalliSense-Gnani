@@ -26,6 +26,8 @@ it('voice panel shown by default', () => {
   expect(markup).toContain('Shop floor voice');
   expect(markup).toContain('Hold to talk');
   expect(markup).toContain('Hands-free');
+  expect(markup).not.toContain('Start tour');
+  expect(markup).not.toContain('Take the tour');
   expect(useHandsFree).toHaveBeenCalledOnce();
 });
 

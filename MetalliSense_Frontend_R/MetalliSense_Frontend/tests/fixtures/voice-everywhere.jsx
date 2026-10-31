@@ -13,6 +13,7 @@ function Content(){
   useRegisterVoicePage(pathname==='/premelt-gate'?{heatId:'H-1053',grade:'SG-IRON'}:{},'fixture screen');
   useEffect(()=>{if(pathname==='/premelt-gate')holdAnnouncer.observe('H-1053',{decision:'HOLD'});},[pathname]);
   return <><h1 data-testid="route">{pathname}</h1><Snapshot/>
+    {pathname==='/premelt-gate'&&import.meta.env.VITE_HANDOVER==='true'&&<section aria-label="Shift handover">Sample handover card</section>}
     {pathname==='/premelt-gate'&&<><button onClick={()=>holdAnnouncer.checkResult('H-1053',{gateId:'fixture-go',decision:'GO'},speakText,'en')}>Fixture GO check</button><button onClick={()=>holdAnnouncer.checkResult('H-1053',{gateId:'fixture-hold',decision:'HOLD',checks:[]},speakText,'en')}>Fixture HOLD check</button></>}
     {['/dashboard','/spectrometer','/premelt-gate'].includes(pathname)&&<PushToTalk heatId={pathname==='/premelt-gate'?'H-1053':undefined}/>}
     <div data-testid="chat-panel"><PushToTalk/></div>

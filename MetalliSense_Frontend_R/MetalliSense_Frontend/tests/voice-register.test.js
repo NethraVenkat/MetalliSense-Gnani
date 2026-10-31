@@ -81,7 +81,7 @@ it('screen and gate facts unchanged with register switch',async()=>{
  const say=vi.fn();const handler=createTranscriptHandler({lang:'ta',say,setHeard:vi.fn(),navigate:vi.fn(),resolveHeat:async()=>heat});await handler('why hold heat 1053');
  expect(say.mock.lastCall[0]).toBe(display);expect(say.mock.lastCall[1]).toBe(target.ta);expect(JSON.stringify(heat)).toBe(before);expect(hindiHeatAnswer('gate_reason',heat,{})).toBe(hindi);
 });
-it.each(['ta','hi','en'])('30 pre-change formal outputs stay byte-for-byte unchanged: %s',lang=>{
+it.each(['ta','hi','en'])('formal outputs retain facts and authored retry punctuation: %s',lang=>{
  const {heat,warn,rows}=baseline;
  expect({
   reasons:clarityGateSpeech(heat,lang,'reasons','formal'),status:clarityGateSpeech(heat,lang,'status','formal'),alert:clarityGateSpeech(heat,lang,'alert','formal'),
@@ -90,7 +90,7 @@ it.each(['ta','hi','en'])('30 pre-change formal outputs stay byte-for-byte uncha
   summary:spokenShiftSummary(buildShiftSummary(rows),lang,{clarity:true,register:'formal'}),
   native:nativeSpeech('Heat H-1053 Lot PIG-1053 0.50%',lang,'formal'),
   blocked:clarityText('Please approve on screen',lang,'formal'),retry:clarityText('Could not hear you. Tap a suggestion below.',lang,'formal'),
- }).toEqual(baseline.outputs[lang]);
+ }).toEqual({...baseline.outputs[lang],retry:'Could not hear you. Tap a suggestion below.'});
 });
 it.each(['ta','hi','en'])('ID digits and leading zeros equal facts across heat and lot speech: %s',lang=>{
  const digits='zero one two three four five six seven eight nine'.split(' ');

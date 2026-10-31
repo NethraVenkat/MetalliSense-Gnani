@@ -25,12 +25,10 @@ export function nativeSpeech(text, lang, register=spokenRegister()) {
 }
 function sentences(lines,lang,register=spokenRegister()) {
   const end=lang==='hi'?'।':'.';
-  return lines.flatMap(line => nativeSpeech(line,lang,register).replace(/[;()[\]]/g,' ').split(/(?<!\d)[.!?।]+|[.!?।]+(?!\d)/u))
-    .map(line=>line.trim()).filter(Boolean).flatMap(line=>{
-      const words=line.split(/\s+/);const chunks=[];
-      for(let index=0;index<words.length;index+=8) chunks.push(words.slice(index,index+8).join(' '));
-      return chunks;
-    }).map(line=>line+end).join(' ');
+  // Preserve authored punctuation and quotations. Word-count chunking can cut
+  // noun phrases and quoted questions; only the caller's boundaries are safe.
+  return lines.map(line => nativeSpeech(line,lang,register).trim()).filter(Boolean)
+    .map(line => /[.!?\u0964]["'\u2019\u201d]?$/.test(line) ? line : line+end).join(' ');
 }
 const choose=(lang,ta,hi,en)=>lang==='ta'?ta:lang==='hi'?hi:en;
 export function clarityText(text,lang,register=spokenRegister()) {

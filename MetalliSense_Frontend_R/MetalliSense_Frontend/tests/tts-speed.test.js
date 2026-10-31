@@ -3,6 +3,7 @@ import { toSpokenText } from '../src/services/spokenText';
 import { playSpeechStream, readAudioEvents } from '../src/services/ttsStream';
 import { speakText, isSpeechEchoGuarded } from '../src/hooks/useSpeak';
 import { createHoldAnnouncer } from '../src/services/voiceGateAnswers';
+import {voiceTourSteps,tourSpokenText} from '../src/services/voiceTour';
 
 const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock('axios', () => ({ default: { create: () => ({ post }) } }));
@@ -50,6 +51,15 @@ function webAudio(autoEnd=true) {
   vi.stubGlobal('AudioContext',Context);return {nodes,contexts};
 }
 const flush = async () => { for(let i=0;i<30;i++) await Promise.resolve(); };
+it.each(['ta','hi','en'])('reviewed tour payload bypasses lexicon and normalization flags: %s',async lang=>{
+ vi.stubEnv('VITE_VOICE_CLARITY','true');vi.stubEnv('VITE_VOICE_REGISTER','formal');vi.stubEnv('VITE_SPOKEN_NORMALIZE','true');vi.stubEnv('VITE_TTS_STREAM','false');
+ post.mockResolvedValue({data:new Blob(['wav']),headers:{}});
+ vi.stubGlobal('Audio',class{play(){this.onended();return Promise.resolve();}pause(){}});
+ const text=tourSpokenText(voiceTourSteps(true,{shiftSummary:true})[6],lang);
+ await speakText(text,lang,'normal',{pronunciationOnly:true});expect(post.mock.lastCall[1].text).toBe(text);
+ const quoted="HOLD carbon 0.50% Ask 'what can I ask here?' any time.";
+ await speakText(quoted,lang,'normal',{pronunciationOnly:true});expect(post.mock.lastCall[1].text).toBe(quoted);
+});
 it('SSE parser handles fragmented event frames', async () => {
   const events=[];for await (const event of readAudioEvents(sse(AUDIO+COMPLETE))) events.push(event);
   expect(events.map(event=>event.type)).toEqual(['audio','complete']);
@@ -137,4 +147,21 @@ it('late REST audio after navigation is never played',async()=>{
  const playback=speakText('old page reply','en','normal',{isCurrent:()=>current});
  await flush();current=false;finish({data:new Blob(['wav']),headers:{}});await playback;
  expect(audio).not.toHaveBeenCalled();
+});
+it('tour cancellation stops streaming audio before the next queued step plays',async()=>{
+ vi.stubEnv('VITE_TTS_STREAM','true');const {nodes}=webAudio(false);
+ const fetch=vi.fn().mockImplementation(async()=>sse(AUDIO+COMPLETE));vi.stubGlobal('fetch',fetch);
+ const abort=new AbortController();
+ const first=speakText('tour first','ta','normal',{signal:abort.signal,isCurrent:()=>!abort.signal.aborted});await flush();
+ const second=speakText('tour second','ta','normal');await flush();expect(fetch).toHaveBeenCalledTimes(1);
+ abort.abort();await first;await flush();expect(nodes[0].stop).toHaveBeenCalled();expect(fetch).toHaveBeenCalledTimes(2);
+ nodes[1].onended();await second;
+});
+it('cancelled pending tour REST audio releases the queue without waiting for old HTTP',async()=>{
+ vi.stubEnv('VITE_TTS_STREAM','false');let finish;
+ post.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;})).mockResolvedValue({data:new Blob(['wav']),headers:{}});
+ const played=vi.fn();vi.stubGlobal('Audio',class{play(){played();this.onended();return Promise.resolve();}pause(){}});
+ const abort=new AbortController(),first=speakText('old tour','en','normal',{signal:abort.signal});await flush();
+ abort.abort();const next=speakText('new tour','en','normal');await Promise.all([first,next]);
+ expect(played).toHaveBeenCalledTimes(1);finish({data:new Blob(['old']),headers:{}});await flush();expect(played).toHaveBeenCalledTimes(1);
 });
