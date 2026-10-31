@@ -1,31 +1,4 @@
-const numberWords = {
-  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
-  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
-  sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
-  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
-};
-const numberToken = `(?:${Object.keys(numberWords).join('|')}|hundred|thousand)`;
-const spokenNumbers = new RegExp(`\\b${numberToken}(?:(?:[\\s-]+(?:and[\\s-]+)?)${numberToken})*\\b`, 'g');
-function numberValue(phrase) {
-  const words = phrase.split(/[\s-]+/).filter(word => word !== 'and');
-  // IDs can be spoken digit by digit, including zeroes in the middle.
-  if (words.every(word => numberWords[word] < 10)) {
-    return words.map(word => numberWords[word]).join('');
-  }
-  // Furnace IDs may be dictated as two groups: "ten fifty one" = 10 / 51.
-  if (!words.includes('hundred') && !words.includes('thousand') && words.length > 1
-      && numberWords[words[0]] >= 10 && numberWords[words[1]] >= 20) {
-    return numberWords[words[0]] * 100 + words.slice(1).reduce((sum, word) => sum + numberWords[word], 0);
-  }
-  let total = 0;
-  let group = 0;
-  for (const word of words) {
-    if (word === 'hundred') group = (group || 1) * 100;
-    else if (word === 'thousand') { total += (group || 1) * 1000; group = 0; }
-    else group += numberWords[word];
-  }
-  return total + group;
-}
+import { normalizeSpokenNumbers } from './spokenNumbers.js';
 const tamilWords = {
   'எப்படி இருக்கு': 'epdi irukku', 'எவ்வளவு': 'evvalavu', 'என்ன': 'enna',
   'காட்டு': 'kaattu', 'நிலை': 'status', 'ஏன்': 'yen',
@@ -34,11 +7,11 @@ const tamilPhrase = new RegExp(`(?<![\\p{L}\\p{M}\\p{N}])(?:${Object.keys(tamilW
 
 // Shared with the offline benchmark: keep speech aliases out of WER normalization.
 export function normalizeTranscript(transcript) {
-  return String(transcript ?? '').normalize('NFKC').toLowerCase()
+  return normalizeSpokenNumbers(String(transcript ?? '').normalize('NFKC').toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ').trim()
     .replace(tamilPhrase, phrase => tamilWords[phrase])
-    .replace(spokenNumbers, phrase => String(numberValue(phrase)));
+  );
 }
 function normalizeIntentTranscript(transcript) {
   return normalizeTranscript(transcript)
@@ -52,18 +25,32 @@ function normalizeIntentTranscript(transcript) {
 // Mn spellings observed in cached Prisma en-IN transcripts of the benchmark phrases.
 const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு', 'magnus', 'magnes', 'magnis'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
 const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
-export function mapIntent(transcript) {
-  const text = normalizeIntentTranscript(transcript);
+export function mapIntent(transcript, { langBridge = false } = {}) {
+  let text = normalizeIntentTranscript(transcript);
   const params = {};
+  if (langBridge) {
+    // These action checks precede every read-only alias, slot and navigation rule.
+    if (/\b(?:approv\w*|ap+ro+v\w*|apruv\w*|melting|milting|smelting|meltin|melton)\b|\b(?:start|shuru|suru|override|over\s+ride|release|deduct)\s*(?:karo|kro|kar|करो)?\b|(?:\bstock|स्टॉक)\s+(?:kam\b|kum\b|कम)|अप्रूव|एप्रूव|मंजूर|अनुमोदन|मेल्टिंग|मैल्टिंग|पिघला|शुरू|स्टार्ट|ओवरराइड|रिलीज|कन्फर्म/u.test(text)) {
+      return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen', hi: 'वॉइस से अप्रूव या मेल्टिंग नहीं होगी। यह स्क्रीन पर करें।' } };
+    }
+    const aliases = { 'हीट': 'heat', 'होल्ड': 'hold', 'स्टेटस': 'status', 'क्यों': 'yen', 'क्यूं': 'yen', 'क्या': 'enna', 'कितना': 'evvalavu', 'कार्बन': 'carbon', 'सिलिकॉन': 'silicon', 'मैंगनीज़': 'manganese', 'फॉस्फोरस': 'phosphorus', 'सल्फर': 'sulphur', 'कॉपर': 'copper', 'क्रोमियम': 'chromium', 'निकल': 'nickel', 'मॉलिब्डेनम': 'molybdenum' };
+    for (const [word, alias] of Object.entries(aliases)) text = text.replace(new RegExp(`(?<![\\p{L}\\p{M}])${word}(?![\\p{L}\\p{M}])`, 'gu'), alias);
+    text = normalizeIntentTranscript(text).replace(/\b(?:kyun|kyu|kyon)\b/g, 'yen').replace(/\b(?:kya|batao)\b/g, 'enna').replace(/\bkitna\b/g, 'evvalavu');
+    // Only in the observed why-HOLD context; do not rewrite standalone N/என்.
+    text = text.replace(/\bn(?=\s+hold\b)/g, 'yen').replace(/என்(?=\s+hold\b)/gu, 'yen');
+  }
   // Keep the read-only Pre-Melt screen name as a compound. Every action check
   // runs before slots, stock, navigation or copilot, including "stock melting".
   const actionText = text.replace(/\bpre\s+melt\b/g, 'premelt');
   if (/approve|approval|confirm|release|deduct|start\s+melt|\bmelt(?:ing)?\b|\bstart\s+pann[ua]\b|override|invoice|delete|உருக்க|அனுமதி|ஒப்புதல்/u.test(actionText)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
+  if (langBridge && /\bhold\b/.test(text) && /\b(?:kaun|kon|list)\b|कौन|कौनसे/u.test(text)) return { intent: 'ask_copilot', params: { bridgeAction: 'list_holds' } };
+  if (langBridge && /\b(?:help|madad)\b|मदद/u.test(text)) return { intent: 'ask_copilot', params: { bridgeAction: 'help' } };
   const hasStatusWord = /\b(?:status|epdi|enna|in\s+a|nilai)\b/u.test(text) || has(text, 'நிலை');
   const heat = text.match(/\b(?:heat|heath|sheet|hit|hate|eat|heet|he\s+t|h)[\s-]*(\d+)\b/i)
     || text.match(/^\s*(\d+)\b/)
     || (hasStatusWord ? text.match(/\b(\d{3,4})\b/) : null);
   if (heat) params.heatNumber = Number(heat[1]);
+  else if (/\b(?:heat|heath|sheet|heet)\b/u.test(text)) params.unparsedHeat = true;
   if (/stock|இருப்பு/u.test(text) && !/open|kaattu|காட்டு|திற/u.test(text)) {
     if (/fesi|ferro\s*silicon/i.test(text) || has(text, 'fpsi')) params.alloy = 'FeSi';
     else if (/femn|ferro\s*manganese/i.test(text)) params.alloy = 'FeMn';
@@ -71,7 +58,8 @@ export function mapIntent(transcript) {
     return { intent: 'stock_check', params };
   }
   if (/\b(?:hold|warn|warning|warnings)\b|தடை|எச்சரிக்கை/u.test(text) && /\b(?:why|yen|reason)\b|ஏன்|காரண/u.test(text)) return { intent: 'gate_reason', params };
-  for (const [element, aliases] of Object.entries(elements)) if (aliases.some(alias => has(text, alias))) return { intent: 'element_value', params: { ...params, element } };
+  const bridgeElements = langBridge ? { ...elements, Cu: ['copper'], Cr: ['chromium'], Ni: ['nickel'], Mo: ['molybdenum'] } : elements;
+  for (const [element, aliases] of Object.entries(bridgeElements)) if (aliases.some(alias => has(text, alias))) return { intent: 'element_value', params: { ...params, element } };
   for (const [pattern, route] of [[/dashboard|டாஷ்போர்டு/u, '/dashboard'], [/pre[\s-]*melt|premelt/u, '/premelt-gate'], [/spectrometer|ஸ்பெக்ட்ரோமீட்டர்/u, '/spectrometer'], [/stock|இருப்பு/u, '/raw-material-stock']]) {
     if (pattern.test(text)) return { intent: 'open_screen', params: { ...params, route } };
   }

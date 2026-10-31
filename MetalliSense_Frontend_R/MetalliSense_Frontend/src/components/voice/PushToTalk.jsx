@@ -7,6 +7,7 @@ import { createTranscriptHandler } from '../../services/voiceTranscript';
 import { useMeltFlow } from '../../context/MeltFlowContext';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import useHandsFree from '../../hooks/useHandsFree';
+import { langBridgeEnabled } from '../../services/languageBridge';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
@@ -34,22 +35,24 @@ function VoicePanel({ heatId }) {
   const busy = useRef(false);
   const alive = useRef(true);
   const choose = (ta, en) => lang === 'ta' ? ta : en;
-  const say = (text, spokenText = text) => { if (!alive.current) return; setAnswer(text); void speak(spokenText, lang); };
+  const say = (text, spokenText = text, replyLang = lang, timing) => { if (!alive.current) return; setAnswer(text); void speak(spokenText, replyLang, 'normal', timing); };
   async function resolveHeat(params) {
     if (params.heatNumber == null && (heatId || flow.heatId)) return unwrap(await getHeat(heatId || flow.heatId));
     const heats = unwrap(await getHeats());
     const selected = params.heatNumber != null
       ? heats.find(h => String(h.heatId).match(/\d+$/)?.[0].replace(/^0+/, '') === String(params.heatNumber).replace(/^0+/, ''))
       : [...heats].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')) || Number(String(b.heatId).match(/\d+$/)?.[0] || 0) - Number(String(a.heatId).match(/\d+$/)?.[0] || 0))[0];
-    if (!selected) throw new Error('Heat not found');
+    if (!selected) return null;
     return unwrap(await getHeat(selected.heatId));
   }
   const handleTranscript = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource });
+  // REST bridge only: hands-free retains the current single-locale Tamil path.
+  const handlePushToTalk = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource, langBridge: langBridgeEnabled() });
   const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
   async function run(text) {
     if (busy.current) return;
     busy.current = true; setState('processing');
-    try { await handleTranscript(text); if (alive.current) setState('idle'); }
+    try { await handlePushToTalk(text, { voiceTiming: true }); if (alive.current) setState('idle'); }
     catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
     finally { busy.current = false; }
   }
@@ -78,11 +81,13 @@ function VoicePanel({ heatId }) {
         setState('processing');
         try {
           const blob = new Blob(chunks, { type: rec.mimeType });
+          const sttStarted = performance.now();
           const response = await transcribeAudio(new File([blob], rec.mimeType.includes('mp4') ? 'voice.mp4' : 'voice.webm', { type: blob.type }), null);
-          const text = response.data.text?.trim();
-          if (!text) throw new Error('No speech');
+          const stt_ms = performance.now() - sttStarted;
+          if (response.data.success === false) throw new Error('STT failed');
+          const text = response.data.text?.trim() || '';
           if (alive.current) {
-            try { await handleTranscript(text); if (alive.current) setState('idle'); }
+            try { await handlePushToTalk(text, { ...response.data, voiceTiming: true, stt_ms }); if (alive.current) setState('idle'); }
             catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
           }
         } catch { if (alive.current) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }

@@ -102,7 +102,8 @@ export const synthesizeSpeechWithMeta = async (text, language = "en", style = "n
     { text, language, slow: false, style },
     { responseType: "blob", timeout: 45000 }
   );
-  return { blob: response.data, provider: response.headers?.["x-tts-provider"] || "unknown" };
+  return { blob: response.data, provider: response.headers?.["x-tts-provider"] || "unknown",
+    source: response.headers?.['x-tts-source'] || 'unknown' };
 };
 
 export const getVoiceStatus = () => copilotApi.get("/copilot/voice/status");

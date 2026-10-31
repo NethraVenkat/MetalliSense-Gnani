@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.copilot.gnani_client import GnaniClient, _silent_wav, _finalize_wav, tts_text
@@ -23,6 +24,7 @@ def client(monkeypatch, tmp_path):
         "GNANI_TTS_MODEL": "timbre-v3.0", "GNANI_TTS_VOICE": "Shivani",
         "GNANI_TTS_TAGS": "on", "GNANI_TTS_LANGUAGE": "ta-IN",
         "GNANI_TTS_SAMPLE_RATE": "22050", "GNANI_TTS_CACHE_DIR": str(tmp_path),
+        "GNANI_TTS_TIMEOUT_S": "8",
         "GNANI_TTS_FALLBACK_MODEL": "timbre-v2.5", "GNANI_TTS_FALLBACK_VOICE": "Kamakshi",
     }
     for key, value in settings.items():
@@ -144,6 +146,70 @@ def test_request_style_validation():
     assert TTSRequest(text="HOLD", style="alert").style == "alert"
     with pytest.raises(ValueError):
         TTSRequest(text="HOLD", style="shouting")
+
+
+@pytest.mark.parametrize('setting,expected', [(None, 8), ('2.5', 2.5), ('8', 8), ('60', 8), ('0', 8), ('-1', 8), ('bad', 8), ('nan', 8), ('inf', 8)])
+def test_timbre_timeout_default_validation_and_hard_cap(client, monkeypatch, setting, expected):
+    if setting is None:
+        monkeypatch.delenv('GNANI_TTS_TIMEOUT_S')
+    else:
+        monkeypatch.setenv('GNANI_TTS_TIMEOUT_S', setting)
+    configured = GnaniClient()
+    post = Mock(return_value=response())
+    monkeypatch.setattr('requests.post', post)
+    assert configured.synthesize('timeout setting test', 'hi')
+    assert post.call_args.kwargs['timeout'] == expected
+    assert configured.status()['tts_timeout_s'] == expected
+
+
+@pytest.mark.parametrize('error', [requests.exceptions.ReadTimeout('provider secret text'), requests.exceptions.ConnectionError(ConnectionResetError(10054, 'reset'))])
+def test_timeout_or_reset_immediately_uses_v25_without_retry_or_sleep(client, monkeypatch, caplog, error):
+    post = Mock(side_effect=[error, response()])
+    monkeypatch.setattr('requests.post', post)
+    sleep = Mock(side_effect=AssertionError('No sleep before fallback'))
+    monkeypatch.setattr('time.sleep', sleep)
+    with caplog.at_level('INFO'):
+        assert client.synthesize('private transcript', 'hi') == _silent_wav()
+    assert [call.kwargs['json']['model'] for call in post.call_args_list] == ['timbre-v3.0', 'timbre-v2.5']
+    assert [call.kwargs['timeout'] for call in post.call_args_list] == [8, 8]
+    assert client.last_provider_used == 'gnani:timbre-v2.5:Kamakshi'
+    assert 'tts_served path=v2.5 fallback language=hi-IN' in caplog.text
+    assert 'private transcript' not in caplog.text and client.api_key not in caplog.text
+    assert 'provider secret text' not in caplog.text
+    sleep.assert_not_called()
+
+
+def test_timeout_then_reset_immediately_serves_gtts_after_v25(client, monkeypatch, caplog):
+    monkeypatch.setenv('STT_PROVIDER', 'gnani')
+    monkeypatch.setenv('TTS_PROVIDER', 'gnani')
+    monkeypatch.setenv('GROQ_API_KEY', '')
+    monkeypatch.setattr('app.copilot.voice_service.get_gnani_client', lambda: client)
+    service = VoiceService()
+    post = Mock(side_effect=[requests.exceptions.Timeout(), requests.exceptions.ConnectionError(ConnectionResetError(10054, 'reset'))])
+    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('time.sleep', Mock(side_effect=AssertionError('No sleep before fallback')))
+    gtts = Mock(return_value=b'mocked mp3')
+    monkeypatch.setattr(service, '_gtts_tts', gtts)
+    with caplog.at_level('INFO'):
+        assert service.text_to_speech('private transcript', 'hi-IN') == b'mocked mp3'
+    assert [call.kwargs['json']['model'] for call in post.call_args_list] == ['timbre-v3.0', 'timbre-v2.5']
+    gtts.assert_called_once_with('private transcript', 'hi', False)
+    assert service.last_provider_used == 'gtts'
+    assert 'tts_served path=gTTS language=hi' in caplog.text
+    assert 'private transcript' not in caplog.text and client.api_key not in caplog.text
+
+
+def test_timeout_can_use_cached_v25_with_no_second_http_attempt(client, monkeypatch, caplog):
+    fallback = client._cache_path('private transcript', 'hi-IN', 'Kamakshi', model='timbre-v2.5')
+    fallback.write_bytes(_silent_wav())
+    post = Mock(side_effect=requests.exceptions.ReadTimeout())
+    monkeypatch.setattr('requests.post', post)
+    with caplog.at_level('INFO'):
+        assert client.synthesize('private transcript', 'hi', max_calls=1)
+    post.assert_called_once()
+    assert client.last_tts_source == 'cache'
+    assert client.last_provider_used == 'gnani:timbre-v2.5:Kamakshi'
+    assert 'tts_served path=cache language=hi-IN' in caplog.text
 
 
 def test_streaming_wav_lengths_are_finalized_without_changing_pcm(client, monkeypatch):
