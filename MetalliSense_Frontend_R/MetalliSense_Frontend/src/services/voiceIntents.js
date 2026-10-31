@@ -45,7 +45,9 @@ function normalizeIntentTranscript(transcript) {
     .replace(/\b(?:in a|inna|ena|yenna|anna)(?=\s*(?:[.!?,;:]|$))/g, 'enna')
     .replace(/\b(?:evalavu|evolve|evalu|how much)\b/g, 'evvalavu')
     .replace(/\b(?:kattu|cut too|show)\b/g, 'kaattu')
-    .replace(/\b(?:en|why)\b/g, 'yen');
+    .replace(/\b(?:en|why)\b/g, 'yen')
+    // Cached 8 kHz transcript: "Y hold heat one zero five one."
+    .replace(/\by(?=\s+hold\b)/g, 'yen');
 }
 // Mn spellings observed in cached Prisma en-IN transcripts of the benchmark phrases.
 const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு', 'magnus', 'magnes', 'magnis'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };

@@ -1,18 +1,18 @@
 # SYNTHETIC telephony 8 kHz benchmark
 
-Generated: 2026-10-30T18:27:24.413905+00:00
+Generated: 2026-10-30T20:01:18.163549+00:00
 
 STT model: prisma-v3.0. Language: ta-IN,en-IN. Format: codemix.
 
-New STT calls: 130. Cached results: 0. Missing recordings: 0.
+New STT calls: 0. Cached results: 130. Missing recordings: 0.
 
 | SNR (dB) | Scored / planned | STT success | WER | Word accuracy | Exact text | Heat slot | Element slots | Intent correct | Intent + heat correct |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| clean | 10 / 10 | 100.0% | 14.3% | 85.7% | 50.0% | 100.0% | 100.0% | 90.0% | 90.0% |
-| 20 | 30 / 30 | 100.0% | 19.8% | 80.2% | 50.0% | 90.5% | 100.0% | 90.0% | 83.3% |
-| 10 | 30 / 30 | 96.7% | 18.3% | 81.7% | 46.7% | 95.2% | 88.9% | 86.7% | 86.7% |
-| 5 | 30 / 30 | 100.0% | 15.9% | 84.1% | 46.7% | 100.0% | 100.0% | 90.0% | 90.0% |
-| 0 | 30 / 30 | 100.0% | 17.5% | 82.5% | 43.3% | 95.2% | 100.0% | 90.0% | 83.3% |
+| clean | 10 / 10 | 100.0% | 14.3% | 85.7% | 50.0% | 100.0% | 100.0% | 100.0% | 100.0% |
+| 20 | 30 / 30 | 100.0% | 19.8% | 80.2% | 50.0% | 90.5% | 100.0% | 100.0% | 93.3% |
+| 10 | 30 / 30 | 96.7% | 18.3% | 81.7% | 46.7% | 95.2% | 88.9% | 96.7% | 96.7% |
+| 5 | 30 / 30 | 100.0% | 15.9% | 84.1% | 46.7% | 100.0% | 100.0% | 100.0% | 100.0% |
+| 0 | 30 / 30 | 100.0% | 17.5% | 82.5% | 43.3% | 95.2% | 100.0% | 100.0% | 93.3% |
 
 WER and exact text use the frontend's shared normalization: lowercase, punctuation removal, English number words (including digit-by-digit IDs), and Tamil question/action words mapped to Tanglish. Raw transcripts are preserved in runs.csv.
 WER is micro-averaged edit distance / reference words; it may exceed 100%. Word accuracy is max(0, 1 - WER).

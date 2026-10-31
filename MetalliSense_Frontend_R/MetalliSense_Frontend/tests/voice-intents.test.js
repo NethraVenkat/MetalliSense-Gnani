@@ -49,6 +49,27 @@ describe('read-only voice intents', () => {
     ['stock open', 'open_screen', { route: '/raw-material-stock' }],
     ['explain the furnace', 'ask_copilot', {}], ['', 'ask_copilot', {}],
   ])('%s', (text, intent, params) => expect(mapIntent(text)).toEqual({ intent, params }));
+  it('Y hold heat one zero five one.', () => {
+    const transcript = 'Y hold heat one zero five one.';
+    expect(mapIntent(transcript)).toEqual({ intent: 'gate_reason', params: { heatNumber: 1051 } });
+    // Intent aliases must not erase the STT substitution from benchmark WER.
+    expect(normalizeTranscript(transcript)).toBe('y hold heat 1051');
+  });
+  it('only treats a standalone Y directly before HOLD as why', () => {
+    for (const transcript of ['Y heat 1051', 'Yhold heat 1051', 'any hold heat 1051']) {
+      expect(mapIntent(transcript)).toEqual({ intent: 'heat_status', params: { heatNumber: 1051 } });
+    }
+    expect(mapIntent('approve Y hold heat 1051')).toMatchObject({ intent: 'blocked' });
+    expect(mapIntent('please check 1051')).toEqual({ intent: 'ask_copilot', params: {} });
+  });
+  it.each([
+    ['Heat one zero five, and manganese in a.', { heatNumber: 105, element: 'Mn' }],
+    ['Heat one zero five, and manganese in an.', { heatNumber: 105, element: 'Mn' }],
+    ['Heat one zero five on manganese FeMn.', { heatNumber: 105, element: 'Mn' }],
+    ['What is the silicon level in Fe 1051?', { element: 'Si' }],
+  ])('does not guess missing heat information: %s', (transcript, params) => {
+    expect(mapIntent(transcript)).toEqual({ intent: 'element_value', params });
+  });
   it.each(['heat', 'heath', 'sheet', 'hit', 'hate', 'eat', 'heet', "he't", 'he’t', 'h', 'h-'])('recognizes heat alias %s before a number', alias => {
     expect(mapIntent(`${alias} 1051 status`)).toEqual({ intent: 'heat_status', params: { heatNumber: 1051 } });
   });
