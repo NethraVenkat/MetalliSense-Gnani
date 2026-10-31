@@ -26,9 +26,19 @@ it('gate_reason uses Evon text when source evon', async () => {
   post.mockResolvedValue({ data: { source: 'evon', text } });
   const f = fixture(); await f.handle('ஏன் HOLD');
   expect(post.mock.calls[0][0]).toBe('/copilot/evon/phrase');
-  expect(post.mock.calls[0][1]).toEqual({ kind: 'hold', lang: 'ta', facts: gatePhraseFacts(heat) });
+  expect(post.mock.calls[0][1]).toEqual({ kind: 'hold', lang: 'ta', facts: gatePhraseFacts(heat),
+    mode: 'translate', english_source: spokenGateReasonAnswer(heat.gateResult, 'en') });
   expect(f.say).toHaveBeenCalledExactlyOnceWith(text, text);
   expect(f.setPhraseSource).toHaveBeenLastCalledWith('evon');
+});
+
+it('English gate_reason keeps its English template without Evon translation', async () => {
+  const say = vi.fn(), setPhraseSource = vi.fn();
+  const handle = createTranscriptHandler({ lang: 'en', setHeard: vi.fn(), say, navigate: vi.fn(), resolveHeat: async () => heat, setPhraseSource });
+  await handle('why hold heat 1053');
+  expect(post).not.toHaveBeenCalled();
+  expect(say).toHaveBeenCalledExactlyOnceWith(heatVoiceAnswer('gate_reason', heat, {}, 'en'), spokenGateReasonAnswer(heat.gateResult, 'en'));
+  expect(setPhraseSource).toHaveBeenLastCalledWith('template');
 });
 
 it('gate_reason uses the existing full and spoken templates on source template', async () => {
@@ -96,7 +106,7 @@ it('facts select the first two template reasons and contain no model advice or r
     { id: 'stock', status: 'WARN', details: [{ text: 'Unneeded raw text', status: 'WARN' }] },
   ] } };
   const before = structuredClone(extra);
-  expect(gatePhraseFacts(extra)).toEqual({ heat_id: 'H-1053', decision: 'HOLD', reasons: [
+  expect(gatePhraseFacts(extra)).toEqual({ heat_id: 'H-1053', decision: 'HOLD', remaining_reasons: 1, reasons: [
     { check: 'lot_status', status: 'FAIL', lot_id: 'PIG-1053', lot_status: 'QUARANTINED' },
     { check: 'residuals', status: 'FAIL', element: 'Cu', value: .5, max: .3, direction: 'high' },
   ] });

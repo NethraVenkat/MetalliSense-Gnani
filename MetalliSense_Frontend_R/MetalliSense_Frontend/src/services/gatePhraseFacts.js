@@ -26,6 +26,7 @@ export function gatePhraseFacts(heat) {
       }
       return reason;
     });
-  }).slice(0, 2);
-  return { heat_id: heat.heatId, decision: gate?.decision, reasons };
+  });
+  return { heat_id: heat.heatId, decision: gate?.decision, reasons: reasons.slice(0, 2),
+    ...(reasons.length > 2 ? { remaining_reasons: reasons.length - 2 } : {}) };
 }
