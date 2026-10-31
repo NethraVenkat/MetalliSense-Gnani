@@ -829,7 +829,8 @@ async def synthesize_speech(request: TTSRequest):
             text=request.text,
             language=request.language,
             slow=request.slow,
-            style=request.style
+            style=request.style,
+            **({'voice':request.voice} if request.voice else {})
         )
         
         if not audio_bytes:
@@ -866,16 +867,17 @@ async def speak_stream(request: TTSRequest):
         raise HTTPException(status_code=404, detail={'code':'stream_disabled'})
     if voice_service is None:
         raise HTTPException(status_code=503, detail={'code':'tts_unavailable'})
-    return StreamingResponse(speak_events(voice_service,request.text,request.language,request.style),
+    return StreamingResponse(speak_events(voice_service,request.text,request.language,request.style,**({'voice':request.voice} if request.voice else {})),
         media_type='text/event-stream',headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
 
 
 @app.get("/copilot/voice/status", tags=["Voice"])
 async def voice_status():
     """Which TTS/STT providers are active (no secrets returned)."""
+    from copilot.voice_clone import clone_status
     if voice_service is None:
-        return {"available": False, **stream_status(), "evon": phrase_status()}
-    return {"available": True, **voice_service.status(), **stream_status(), "evon": phrase_status()}
+        return {"available": False, **stream_status(), "evon": phrase_status(), "clone":clone_status()}
+    return {"available": True, **voice_service.status(), **stream_status(), "evon": phrase_status(), "clone":clone_status()}
 
 
 class EvonPhraseRequest(BaseModel):

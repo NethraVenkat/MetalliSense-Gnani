@@ -3,6 +3,7 @@ import { synthesizeSpeechWithMeta } from '../services/copilotService';
 import { toSpokenText } from '../services/spokenText';
 import { playSpeechStream } from '../services/ttsStream';
 import { clarityText, voiceClarityEnabled } from '../services/voiceClarity';
+import { supervisorVoiceFor } from '../services/supervisorVoice';
 const listeners = new Set();
 const read = (key, fallback) => { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } };
 let muted = read('metallisense.voice.muted', 'false') === 'true';
@@ -25,6 +26,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
   if (muted || !text) return Promise.resolve();
   if (voiceClarityEnabled()) text = clarityText(text,lang);
   else if (import.meta.env.VITE_SPOKEN_NORMALIZE === 'true') text = toSpokenText(text,lang);
+  const voice=supervisorVoiceFor(style);
   const ticket = generation;
   const queuedAt = performance.now();
   if (import.meta.env.VITE_TTS_STREAM === 'true' && (globalThis.AudioContext || globalThis.webkitAudioContext)) {
@@ -33,7 +35,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
       const controller = new AbortController(); cancelPlayback = () => controller.abort();
       const queue_ms = performance.now()-queuedAt;
       try {
-        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,onAudioStart:() => { speaking = true; }});
+        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,onAudioStart:() => { speaking = true; },...(voice?{voice}:{})});
         console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,
           ...metrics,time_to_first_audio_ms:metrics.time_to_first_audio_ms+queue_ms,total_ms:metrics.total_ms+queue_ms,queue_ms,language:lang});
       } catch {
@@ -47,7 +49,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
   // Prepare audio while prior playback finishes; playback itself stays serial.
   // Resolve errors into data immediately so canceled queued turns cannot leave
   // an unhandled rejection. Muting still prevents every queued playback.
-  const prepared = synthesizeSpeechWithMeta(text, lang, style).then(
+  const prepared = synthesizeSpeechWithMeta(text, lang, style, ...(voice?[voice]:[])).then(
     meta => ({ ...meta, tts_ms: performance.now() - queuedAt }),
     () => ({ failed: true, tts_ms: performance.now() - queuedAt }));
   queue = queue.then(async () => {

@@ -297,6 +297,16 @@ class GnaniClient:
         if not text or not text.strip():
             return None
         lang = to_gnani_language(language, self.tts_language)
+        if voice == 'supervisor':
+            from .voice_clone import load_embedding
+            selected = load_embedding(lang)
+            if selected and not self.mock:
+                audio = self._synthesize_clone(text,lang,style,selected,max_calls != 0)
+                if audio or not allow_fallback:
+                    return audio
+                if max_calls is not None:
+                    max_calls = max(0,max_calls-1)
+            voice = None  # Missing consent/embedding or failure: existing voice chain.
         pairs = [(self.tts_model, (voice or self.tts_voice).strip())]
         if allow_fallback:
             pairs.append((self.tts_fallback_model, self.tts_fallback_voice))
@@ -323,6 +333,41 @@ class GnaniClient:
             errors.append(self.last_error or "TTS produced no audio")
         self.last_error = "; ".join(errors)
         return None
+
+    def _synthesize_clone(self,text,lang,style,selected,can_call):
+        from .voice_clone import clone_payload, CLONE_MODEL
+        embedding,digest = selected
+        payload = clone_payload(text,embedding,self.tts_sample_rate)
+        path = self._cache_path(payload['text'],lang,'supervisor:'+digest,style,model=CLONE_MODEL)
+        try:
+            if path.exists() and _is_wav(path.read_bytes()):
+                audio = _finalize_wav(path.read_bytes())
+                self.stats['tts_cache_hits'] += 1
+                source = 'cache'
+            else:
+                if not can_call:
+                    self.last_error = 'TTS call budget exhausted'
+                    return None
+                self.stats['tts_calls'] += 1
+                response = requests.post(self.base_url+'/api/v1/tts/inference',
+                    headers=self._headers(json_body=True),json=payload,timeout=self.tts_timeout_s)
+                if response.status_code != 200 or not _is_wav(response.content):
+                    raise ValueError('clone_unavailable')
+                audio = _finalize_wav(response.content)
+                try:
+                    path.parent.mkdir(parents=True,exist_ok=True); path.write_bytes(audio)
+                except OSError:
+                    pass
+                source = 'live'
+            self.last_tts_source = source
+            self.last_provider_used = 'gnani:vachana-vc-v1:supervisor'
+            self.last_error = None
+            logging.getLogger('uvicorn.error').info('tts_served path=clone_%s language=%s',source,lang)
+            return audio
+        except Exception:
+            self.last_error = 'clone_unavailable'
+            logging.getLogger(__name__).warning('tts_attempt_failed reason=clone_unavailable')
+            return None
 
     def _synthesize_variant(self, text, lang, voice, model, style, can_call):
         if self.mock:

@@ -9,6 +9,7 @@ import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import useHandsFree from '../../hooks/useHandsFree';
 import { langBridgeEnabled } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
+import { useSupervisorVoice } from '../../services/supervisorVoice';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
@@ -24,6 +25,7 @@ function VoicePanel({ heatId }) {
   const navigate = useNavigate();
   const { flow } = useMeltFlow();
   const { speak, muted, toggleMute } = useSpeak();
+  const supervisor=useSupervisorVoice();
   const [lang, setLang] = useVoiceLanguage();
   const [state, setState] = useState('idle');
   const [heard, setHeard] = useState('');
@@ -131,6 +133,7 @@ function VoicePanel({ heatId }) {
       </button>
       <select aria-label="Voice language" value={lang} disabled={state === 'listening' || state === 'processing'} onChange={e => setLang(e.target.value)} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option></select>
       <button type="button" onClick={toggleMute} aria-label={muted ? 'Unmute voice' : 'Mute voice'} aria-pressed={muted} className="rounded border p-3">{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
+      {supervisor.mode!=='off' && <button type="button" onClick={supervisor.toggle} aria-pressed={supervisor.enabled} className="rounded border p-3">Supervisor voice (cloned, with consent)</button>}
       <button type="button" aria-pressed={handsFree.enabled} onClick={handsFree.enabled ? handsFree.stop : handsFree.start}
         className={`rounded border px-3 py-2 text-sm ${handsFree.enabled ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : ''}`}>
         கைகள் இல்லாமல் / Hands-free

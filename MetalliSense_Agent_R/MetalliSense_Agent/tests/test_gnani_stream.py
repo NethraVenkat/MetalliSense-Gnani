@@ -231,7 +231,8 @@ def test_status_contains_only_nonsecret_stream_fields(proxy, monkeypatch):
     api, _, _ = proxy
     monkeypatch.setattr(main, "voice_service", None)
     response = api.get("/copilot/voice/status").json()
-    assert {k: v for k, v in response.items() if k != 'evon'} == {"available": False, "stream_enabled": True, "stream_model": "prisma-v3.0", "stream_language": "ta-IN"}
+    assert {k: v for k, v in response.items() if k not in ('evon','clone')} == {"available": False, "stream_enabled": True, "stream_model": "prisma-v3.0", "stream_language": "ta-IN"}
+    assert set(response['clone']) == {'enabled','state','languages'}
     assert set(response['evon']) == {'enabled', 'mode', 'last_latency_ms', 'last_reject_reason'}
     monkeypatch.setenv("GNANI_MOCK", "true")
     assert not api.get("/copilot/voice/status").json()["stream_enabled"]

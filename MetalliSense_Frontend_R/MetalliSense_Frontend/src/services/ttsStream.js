@@ -23,7 +23,7 @@ export async function* readAudioEvents(response) {
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 
-export async function playSpeechStream(text, lang, style, { signal, onAudioStart = () => {} } = {}) {
+export async function playSpeechStream(text, lang, style, { signal, onAudioStart = () => {}, voice } = {}) {
   const started = performance.now();
   const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AudioContext) throw new Error('web_audio_unavailable');
@@ -58,7 +58,7 @@ export async function playSpeechStream(text, lang, style, { signal, onAudioStart
     await context.resume();
     try {
       const response = await fetch(`${(import.meta.env.VITE_COPILOT_BASE_URL || 'http://localhost:8001').replace(/\/$/,'')}/copilot/voice/speak-stream`,
-        {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,language:lang,style}),signal});
+        {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,language:lang,style,...(voice?{voice}:{})}),signal});
       if (!response.ok) throw new Error('stream_unavailable');
       for await (const message of readAudioEvents(response)) {
         if (message.type === 'reset') { stop(); audioMs = 0; }
@@ -70,7 +70,7 @@ export async function playSpeechStream(text, lang, style, { signal, onAudioStart
     } catch (error) {
       stop(); audioMs = 0;
       if (signal?.aborted) throw error;
-      const result = await synthesizeSpeechWithMeta(text,lang,style);
+      const result = await synthesizeSpeechWithMeta(text,lang,style,...(voice?[voice]:[]));
       if (signal?.aborted) throw new DOMException('Aborted','AbortError');
       path = result.source === 'cache' ? 'cache' : result.provider?.includes('timbre-v2.5') || result.provider === 'gtts' ? 'fallback' : 'rest';
       await enqueue(new Uint8Array(await result.blob.arrayBuffer()),'file');

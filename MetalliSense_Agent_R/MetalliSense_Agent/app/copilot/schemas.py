@@ -51,6 +51,7 @@ class ChatResponse(BaseModel):
 
 class TTSRequest(BaseModel):
     """Text-to-Speech request"""
+    voice: Optional[Literal['supervisor']] = None
     style: Literal["normal", "alert"] = Field(default="normal", description="Delivery style; audio tags are applied server-side only")
     text: str = Field(
         ...,

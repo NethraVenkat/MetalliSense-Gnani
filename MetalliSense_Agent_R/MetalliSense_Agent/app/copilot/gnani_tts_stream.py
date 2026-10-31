@@ -51,21 +51,25 @@ def cache_wav(path, pcm, rate):
         if temporary and os.path.exists(temporary): os.unlink(temporary)
 
 
-async def speak_events(service, text, lang, style='normal'):
+async def speak_events(service, text, lang, style='normal', voice=None):
     client = service.gnani
     rate = client.tts_sample_rate if client else 22050
     locale = to_gnani_language(lang, client.tts_language if client else 'ta-IN')
     sent = False
     response = None
-    def audio_event(audio, path, encoding='pcm_s16le', sample_rate=rate):
+    def audio_event(audio, path, encoding='pcm_s16le', sample_rate=None):
         return event('audio', {'audio':base64.b64encode(audio).decode(), 'encoding':encoding,
-                               'sample_rate':sample_rate, 'path':path})
+                               'sample_rate':sample_rate or rate, 'path':path})
     try:
         if not client or client.mock or service.tts_provider != 'gnani': raise ValueError('use_rest')
-        model, voice = client.tts_model, client.tts_voice
-        if not valid_tts_pair(model,voice): raise ValueError('use_rest')
-        final = tts_text(text, model, style, client.tts_tags)
-        path = client._cache_path(final, locale, voice, style, model=model)
+        from .voice_clone import load_embedding, clone_payload, CLONE_MODEL
+        selected = load_embedding(locale) if voice == 'supervisor' else None
+        model, selected_voice = (CLONE_MODEL,'supervisor:'+selected[1]) if selected else (client.tts_model,client.tts_voice)
+        if not selected and not valid_tts_pair(model,selected_voice): raise ValueError('use_rest')
+        payload = clone_payload(text,selected[0],rate,streaming=True) if selected else None
+        if selected: rate = payload['audio_config']['sample_rate']
+        final = payload['text'] if selected else tts_text(text, model, style, client.tts_tags)
+        path = client._cache_path(final, locale, selected_voice, style, model=model)
         if path.exists():
             try:
                 with wave.open(str(path),'rb') as source:
@@ -73,15 +77,15 @@ async def speak_events(service, text, lang, style='normal'):
                     cached_rate = source.getframerate(); pcm = source.readframes(source.getnframes())
                 if not pcm: raise ValueError('invalid_cache')
                 client.stats['tts_cache_hits'] += 1
-                client.last_tts_source = 'cache'; client.last_provider_used = f'gnani:{model}:{voice}'
+                client.last_tts_source = 'cache'; client.last_provider_used = f'gnani:{model}:supervisor' if selected else f'gnani:{model}:{selected_voice}'
                 client.last_error = client.last_tts_fallback_reason = service.last_error = None
                 service.last_provider_used = client.last_provider_used; service.last_media_type = 'audio/wav'
                 for offset in range(0,len(pcm),8192): yield audio_event(pcm[offset:offset+8192],'cache',sample_rate=cached_rate)
                 yield event('complete',{'path':'cache'}); return
             except (wave.Error, EOFError, ValueError): pass
-        payload = {'text':final, 'model':model, 'voice':voice, 'language':locale,
+        payload = payload or {'text':final, 'model':model, 'voice':selected_voice, 'language':locale,
                    'audio_config':{'sample_rate':rate,'num_channels':1,'sample_width':2,'encoding':'linear_pcm','container':'raw'}}
-        if client.tts_speed is not None: payload['speed'] = client.tts_speed
+        if not selected and client.tts_speed is not None: payload['speed'] = client.tts_speed
         parts, size, carry = [], 0, b''
         async with asyncio.timeout(120):
             async with httpx.AsyncClient(timeout=8,follow_redirects=False) as http:
@@ -110,7 +114,7 @@ async def speak_events(service, text, lang, style='normal'):
                     if response is not None: await response.aclose()
         try: cache_wav(path,b''.join(parts),rate)
         except OSError: pass  # Successful playback does not depend on cache writes.
-        client.last_tts_source = 'live'; client.last_provider_used = f'gnani:{model}:{voice}'
+        client.last_tts_source = 'live'; client.last_provider_used = f'gnani:{model}:supervisor' if selected else f'gnani:{model}:{selected_voice}'
         client.last_error = client.last_tts_fallback_reason = service.last_error = None
         service.last_provider_used = client.last_provider_used; service.last_media_type = 'audio/wav'
         yield event('complete',{'path':'stream'})

@@ -118,14 +118,15 @@ class VoiceService:
         text: str,
         language: str = "en",
         slow: bool = False,
-        style: str = "normal"
+        style: str = "normal",
+        voice: Optional[str] = None
     ) -> bytes:
         """
         Convert text to speech. Uses ElevenLabs if configured and available,
         otherwise gTTS (default, already-working behavior).
         """
         if self.tts_provider == "gnani":
-            audio = self.gnani.synthesize(text, language, style=style)
+            audio = self.gnani.synthesize(text, language, style=style, **({'voice':voice} if voice else {}))
             if audio:
                 self.last_provider_used = self.gnani.last_provider_used
                 self.last_error = None

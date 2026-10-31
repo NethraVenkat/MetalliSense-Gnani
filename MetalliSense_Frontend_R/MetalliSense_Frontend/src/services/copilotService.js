@@ -96,10 +96,10 @@ export const checkCopilotHealth = () => copilotApi.get("/health");
  * TTS that also reports which provider actually spoke (elevenlabs | gtts).
  * @returns {Promise<{ blob: Blob, provider: string }>}
  */
-export const synthesizeSpeechWithMeta = async (text, language = "en", style = "normal") => {
+export const synthesizeSpeechWithMeta = async (text, language = "en", style = "normal", voice) => {
   const response = await copilotApi.post(
     "/copilot/voice/synthesize",
-    { text, language, slow: false, style },
+    { text, language, slow: false, style, ...(voice?{voice}:{}) },
     { responseType: "blob", timeout: 45000 }
   );
   return { blob: response.data, provider: response.headers?.["x-tts-provider"] || "unknown",
