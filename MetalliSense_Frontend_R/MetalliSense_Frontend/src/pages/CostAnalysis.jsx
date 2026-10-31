@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useEffect, useState } from "react";
 import { IndianRupee, Save, RefreshCw } from "lucide-react";
 import Card from "../components/common/Card";
@@ -10,6 +11,7 @@ import toast from "react-hot-toast";
 // Fully additive: doesn't touch anomaly/RL/OPC logic, just visualizes and
 // edits the price list used to annotate RL candidates with ₹ estimates.
 export default function CostAnalysis() {
+  useRegisterVoicePage({}, 'CostAnalysis');
   const [elementPrices, setElementPrices] = useState({});
   const [baseMetalPrices, setBaseMetalPrices] = useState({});
   const [editedElements, setEditedElements] = useState({});

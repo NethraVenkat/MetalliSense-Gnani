@@ -23,7 +23,7 @@ export async function* readAudioEvents(response) {
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 
-export async function playSpeechStream(text, lang, style, { signal, onAudioStart = () => {} } = {}) {
+export async function playSpeechStream(text, lang, style, { signal, onAudioStart = () => {}, isCurrent = () => true } = {}) {
   const started = performance.now();
   const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AudioContext) throw new Error('web_audio_unavailable');
@@ -36,7 +36,7 @@ export async function playSpeechStream(text, lang, style, { signal, onAudioStart
   };
   signal?.addEventListener('abort', stop);
   async function enqueue(data, encoding, rate) {
-    if (signal?.aborted) throw new DOMException('Aborted','AbortError');
+    if (signal?.aborted || !isCurrent()) throw new DOMException('Aborted','AbortError');
     let buffer;
     if (encoding === 'pcm_s16le') {
       if (data.length % 2 || ![8000,16000,22050,24000,44100,48000].includes(rate)) throw new Error('invalid_audio');
@@ -44,6 +44,7 @@ export async function playSpeechStream(text, lang, style, { signal, onAudioStart
       const samples = buffer.getChannelData(0), view = new DataView(data.buffer,data.byteOffset,data.byteLength);
       for (let index=0; index<samples.length; index++) samples[index] = view.getInt16(index*2,true)/32768;
     } else buffer = await context.decodeAudioData(data.buffer.slice(data.byteOffset,data.byteOffset+data.byteLength));
+    if (signal?.aborted || !isCurrent()) throw new DOMException('Aborted','AbortError');
     const node = context.createBufferSource(); node.buffer = buffer; node.connect(context.destination);
     let item;
     finishes.push(new Promise(resolve => {
@@ -69,7 +70,7 @@ export async function playSpeechStream(text, lang, style, { signal, onAudioStart
       if (!ended || first == null) throw new Error('incomplete_stream');
     } catch (error) {
       stop(); audioMs = 0;
-      if (signal?.aborted) throw error;
+      if (signal?.aborted || !isCurrent()) throw error;
       const result = await synthesizeSpeechWithMeta(text,lang,style);
       if (signal?.aborted) throw new DOMException('Aborted','AbortError');
       path = result.source === 'cache' ? 'cache' : result.provider?.includes('timbre-v2.5') || result.provider === 'gtts' ? 'fallback' : 'rest';

@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 /**
  * MechanicalProperties Page
  *
@@ -161,6 +162,7 @@ export default function MechanicalProperties() {
   const { flow, isUnlocked, mechDone, approveTap } = useMeltFlow();
 
   const [reading, setReading] = useState(null);
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'MechanicalProperties');
   const [engineer, setEngineer] = useState("");
   const [approving, setApproving] = useState(false);
   const [finished, setFinished] = useState(null); // server view of the finished heat

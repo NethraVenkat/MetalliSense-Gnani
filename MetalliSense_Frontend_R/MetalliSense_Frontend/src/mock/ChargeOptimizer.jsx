@@ -1,9 +1,11 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 ﻿import React,{useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import toast from 'react-hot-toast';
 export default function ChargeOptimizer(){
+ useRegisterVoicePage({}, 'ChargeOptimizer');
  const [grade,setGrade]=useState('SG-IRON'),[target,setTarget]=useState(1000),[risk,setRisk]=useState(0),[result,setResult]=useState(null),[busy,setBusy]=useState(false);const navigate=useNavigate();
  async function run(){setBusy(true);try{const r=await fetch('/__mock/optimize',{method:'POST',body:JSON.stringify({grade,targetKg:Number(target),riskWeight:Number(risk)})});const j=await r.json();if(!r.ok)throw new Error(j.message);setResult(j.data);}catch(e){toast.error(e.message);}finally{setBusy(false);}}
  async function useMix(c){setBusy(true);try{const r=await fetch('http://localhost:3000/api/v2/premelt/heats',{method:'POST',body:JSON.stringify({grade,targetKg:Number(target),charge:c.charge,plannedBy:'Demo charge planner'})});const j=await r.json();if(!r.ok)throw new Error(j.message);toast.success(j.data.heatId+' planned; stock remains available until approved furnace start');navigate('/premelt-gate');}catch(e){toast.error(e.message);}finally{setBusy(false);}}

@@ -59,19 +59,19 @@ it('Hindi near-limit WARN is risk, never false high or low', () => {
   expect(hindiGateAnswer(warn)).toContain('कॉपर 0.27 प्रतिशत है, सीमा के पास है।');
 });
 it('Hindi HOLD alert is at most 15 words', () => expect(hindiHoldAlert('H-1053').split(/\s+/).length).toBeLessThanOrEqual(15));
-it('bridge HOLD speaks Tamil then Hindi sequentially, once', async () => {
-  vi.stubEnv('VITE_LANG_BRIDGE', 'true'); let finish;
+it('explicit bilingual flag speaks Tamil then Hindi sequentially, once', async () => {
+  vi.stubEnv('VITE_LANG_BRIDGE', 'true');vi.stubEnv('VITE_BILINGUAL_ALERT','true'); let finish;
   const speak = vi.fn().mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })).mockResolvedValue(undefined);
   const announcer = createHoldAnnouncer();
-  const result = announcer.announce(heat.heatId, heat.gateResult, speak, 'en');
+  const result = announcer.checkResult(heat.heatId, heat.gateResult, speak, 'en');
   expect(speak).toHaveBeenCalledExactlyOnceWith(buildHoldAlertTexts(heat.heatId, heat.gateResult, 'ta').spokenAlert, 'ta', 'alert');
   finish(); await result;
   expect(speak).toHaveBeenLastCalledWith(hindiHoldAlert(heat.heatId), 'hi', 'alert');
-  announcer.announce(heat.heatId, heat.gateResult, speak); expect(speak).toHaveBeenCalledTimes(2);
+  announcer.checkResult(heat.heatId, heat.gateResult, speak); expect(speak).toHaveBeenCalledTimes(2);
 });
-it('bridge off keeps old alert', () => {
-  vi.stubEnv('VITE_LANG_BRIDGE', 'false'); const speak = vi.fn();
-  createHoldAnnouncer().announce(heat.heatId, heat.gateResult, speak, 'en');
+it('bridge on alone keeps the alert in the selected language', () => {
+  vi.stubEnv('VITE_LANG_BRIDGE', 'true'); const speak = vi.fn();
+  createHoldAnnouncer().checkResult(heat.heatId, heat.gateResult, speak, 'en');
   expect(speak).toHaveBeenCalledExactlyOnceWith(buildHoldAlertTexts(heat.heatId, heat.gateResult, 'en').spokenAlert, 'en', 'alert');
 });
 it('Hindi transcript uses deterministic templates and hi TTS without Evon', async () => {

@@ -29,11 +29,11 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
   const queuedAt = performance.now();
   if (import.meta.env.VITE_TTS_STREAM === 'true' && (globalThis.AudioContext || globalThis.webkitAudioContext)) {
     queue = queue.then(async () => {
-      if (muted || ticket !== generation) return;
+      if (muted || ticket !== generation || timing?.isCurrent?.()===false) return;
       const controller = new AbortController(); cancelPlayback = () => controller.abort();
       const queue_ms = performance.now()-queuedAt;
       try {
-        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,onAudioStart:() => { speaking = true; }});
+        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,isCurrent:timing?.isCurrent,onAudioStart:() => { speaking = true; }});
         console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,
           ...metrics,time_to_first_audio_ms:metrics.time_to_first_audio_ms+queue_ms,total_ms:metrics.total_ms+queue_ms,queue_ms,language:lang});
       } catch {
@@ -51,7 +51,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
     meta => ({ ...meta, tts_ms: performance.now() - queuedAt }),
     () => ({ failed: true, tts_ms: performance.now() - queuedAt }));
   queue = queue.then(async () => {
-    if (muted || ticket !== generation) return;
+    if (muted || ticket !== generation || timing?.isCurrent?.()===false) return;
     const queue_ms = performance.now() - queuedAt;
     const { blob, provider, source, tts_ms, failed } = await prepared;
     const instrument = import.meta.env.VITE_TTS_STREAM === 'true' || import.meta.env.VITE_SPOKEN_NORMALIZE === 'true';
@@ -61,7 +61,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         : provider?.includes('timbre-v2.5') ? 'v2.5 fallback' : provider === 'gtts' ? 'gTTS' : 'unknown', language: lang,
       ...(instrument && failed ? {time_to_first_audio_ms:null,total_audio_ms:0,total_ms:performance.now()-queuedAt,path:'error'} : {}) });
     if (failed) return;
-    if (muted || ticket !== generation) return;
+    if (muted || ticket !== generation || timing?.isCurrent?.()===false) return;
     const url = URL.createObjectURL(blob);
     try {
       speaking = true;

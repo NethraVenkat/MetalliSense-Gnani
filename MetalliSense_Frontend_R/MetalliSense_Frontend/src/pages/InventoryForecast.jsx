@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -497,6 +498,7 @@ export default function InventoryForecast() {
   const [prs, setPrs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(params.get("item") || null);
+  useRegisterVoicePage({item:detail}, 'InventoryForecast');
   const [prFor, setPrFor] = useState(null);
   const [act, setAct] = useState(null); // { pr, mode }
 

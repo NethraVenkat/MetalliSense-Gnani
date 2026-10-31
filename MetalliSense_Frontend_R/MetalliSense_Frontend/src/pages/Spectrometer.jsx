@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import PushToTalk from "../components/voice/PushToTalk";
 import React, { useState, useEffect, useContext } from "react";
@@ -17,6 +18,7 @@ import { formatDate, formatPercentage } from "../utils/formatters";
 import { Trash2 } from "lucide-react";
 
 const Spectrometer = () => {
+  useRegisterVoicePage({}, 'Spectrometer');
   const { opcStatus } = useContext(OPCContext);
   const [readings, setReadings] = useState([]);
   const [latestReading, setLatestReading] = useState(null);

@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useEffect, useMemo } from "react";
 import Card from "../components/common/Card";
 import Badge from "../components/common/Badge";
@@ -107,6 +108,7 @@ const strategyColor = {
 const RLOptimizer = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunRL, rlDone, acceptStrategy, rejectAll } = useMeltFlow();
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'RLOptimizer');
   // Restore the last RL run for this heat when navigating back to the page
   const [reading, setReading] = useState(() => (isUnlocked ? flow.rlResult?._reading || null : null));
   const [result, setResult] = useState(() => (isUnlocked ? flow.rlResult : null));

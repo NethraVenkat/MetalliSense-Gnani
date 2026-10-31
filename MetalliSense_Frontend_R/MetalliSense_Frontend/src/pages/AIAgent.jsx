@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useRef, useEffect } from "react";
 import Card from "../components/common/Card";
 import Badge from "../components/common/Badge";
@@ -13,6 +14,7 @@ import { formatPercentage } from "../utils/formatters";
 const AIAgent = () => {
   const { flow, isUnlocked } = useMeltFlow();
   const [syntheticReading, setSyntheticReading] = useState(null); // Store synthetic data separately
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:syntheticReading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'AIAgent');
   const [result, setResult] = useState(null);
   const [aiAvailable, setAIAvailable] = useState(true);
   const [aiExplanation, setAiExplanation] = useState(null);

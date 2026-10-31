@@ -185,13 +185,13 @@ describe('shared transcript answers and fallback', () => {
     expect(f.changes.at(-1)).toEqual({ state: 'off', enabled: false, message: 'origin_error' });
     expect(f.mics[0].stop).toHaveBeenCalledOnce();
   });
-  it('blocked phrase via hands-free still answers \'திரையில் approve செய்யவும்\' and changes nothing', async () => {
+  it('blocked phrase via hands-free uses the general English refusal and changes nothing', async () => {
     const heat = { heatId: 'H-1053', status: 'PLANNED', gateResult: { decision: 'HOLD' }, stockKg: 1000 };
     const before = structuredClone(heat), say = vi.fn(), navigate = vi.fn(), resolveHeat = vi.fn();
     const handler = createTranscriptHandler({ lang: 'ta', setHeard: vi.fn(), say, navigate, resolveHeat });
     const f = fixture({ onTranscript: handler }), socket = await f.ready();
     for (const text of ['start melting', 'approve', 'override HOLD']) { socket.message({ type: 'final', text }); await flush(); }
-    expect(say.mock.calls).toEqual(Array(3).fill(['திரையில் approve செய்யவும்']));
+    expect(say.mock.calls).toEqual(Array(3).fill(["This can't be done by voice. Please use the screen.","This can't be done by voice. Please use the screen.",'en']));
     expect(resolveHeat).not.toHaveBeenCalled(); expect(navigate).not.toHaveBeenCalled();
     expect(post).not.toHaveBeenCalled(); expect(get).not.toHaveBeenCalled(); expect(heat).toEqual(before);
   });

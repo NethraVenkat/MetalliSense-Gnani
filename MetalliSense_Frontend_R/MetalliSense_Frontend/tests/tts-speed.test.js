@@ -116,9 +116,25 @@ it('streaming keeps queue serial and echo guard through 400ms after playback', a
   expect(isSpeechEchoGuarded(Date.now()+401)).toBe(false);
 });
 it('streaming HOLD keeps alert style and Tamil then Hindi order', async () => {
-  vi.stubEnv('VITE_TTS_STREAM','true');vi.stubEnv('VITE_LANG_BRIDGE','true');webAudio();
+  vi.stubEnv('VITE_TTS_STREAM','true');vi.stubEnv('VITE_LANG_BRIDGE','true');vi.stubEnv('VITE_BILINGUAL_ALERT','true');webAudio();
   const fetch=vi.fn().mockImplementation(async()=>sse(AUDIO+COMPLETE));vi.stubGlobal('fetch',fetch);
-  await createHoldAnnouncer().announce('H-1053',{decision:'HOLD',checks:[]},speakText,'ta');
+  await createHoldAnnouncer().checkResult('H-1053',{decision:'HOLD',checks:[]},speakText,'ta');
   expect(fetch.mock.calls.map(([,init])=>JSON.parse(init.body).language)).toEqual(['ta','hi']);
   expect(fetch.mock.calls.every(([,init])=>JSON.parse(init.body).style==='alert')).toBe(true);
+});
+it('late first stream audio after navigation is dropped without REST fallback',async()=>{
+ const {nodes}=webAudio(false);let finish,current=true;
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise(resolve=>{finish=resolve;})));
+ const before=post.mock.calls.length;
+ const playback=playSpeechStream('old page reply','en','normal',{isCurrent:()=>current});
+ await flush();current=false;finish(sse(AUDIO+COMPLETE));
+ await expect(playback).rejects.toThrow('Aborted');expect(nodes).toHaveLength(0);expect(post.mock.calls.length).toBe(before);
+});
+it('late REST audio after navigation is never played',async()=>{
+ vi.stubEnv('VITE_TTS_STREAM','false');let finish,current=true;
+ post.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const audio=vi.fn();vi.stubGlobal('Audio',audio);
+ const playback=speakText('old page reply','en','normal',{isCurrent:()=>current});
+ await flush();current=false;finish({data:new Blob(['wav']),headers:{}});await playback;
+ expect(audio).not.toHaveBeenCalled();
 });

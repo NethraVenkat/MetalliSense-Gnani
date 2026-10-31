@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Workflow, ThumbsUp, ThumbsDown, AlertTriangle, ShieldCheck, Gauge, Lock, CheckCircle2 } from "lucide-react";
@@ -68,6 +69,7 @@ export default function FullAnalysis() {
   const navigate = useNavigate();
   const { flow, isUnlocked, acceptStrategy } = useMeltFlow();
   const [reading, setReading] = useState(null);
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'FullAnalysis');
   const [batchWeightKg, setBatchWeightKg] = useState(1000);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);

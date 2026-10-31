@@ -6,6 +6,8 @@ import { getHeat, getHeats } from '../../services/premeltService';
 import { createTranscriptHandler } from '../../services/voiceTranscript';
 import { useMeltFlow } from '../../context/MeltFlowContext';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
+import {useVoicePage} from '../../context/VoicePageContext';
+import {voiceEverywhereEnabled,scopeVoiceCallbacks} from '../../services/voicePages';
 import useHandsFree from '../../hooks/useHandsFree';
 import { langBridgeEnabled } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
@@ -24,10 +26,17 @@ export function TransliterationLine({text,show}){
   return transliterateEnabled()&&show&&text?<p className="text-xs text-slate-500">Heard (English letters): {text}</p>:null;
 }
 export default function PushToTalk(props) {
+  if(voiceEverywhereEnabled()&&!props.shared)return null;
   // Keep the inner panel unmounted when hidden: no capture, socket or shortcut.
   return import.meta.env.VITE_SHOW_VOICE_PANEL !== 'false' ? <VoicePanel {...props} /> : null;
 }
 function VoicePanel({ heatId }) {
+  const pageContext=useVoicePage();
+  if(voiceEverywhereEnabled())heatId=pageContext?.selected?.heatId || heatId;
+  const scope=voiceEverywhereEnabled()?pageContext?.scope:null;
+  const currentScope=useRef(scope);currentScope.current=scope;
+  const currentRoute=useRef(pageContext?.route);currentRoute.current=pageContext?.route;
+  const isCurrent=()=>alive.current&&(!voiceEverywhereEnabled()||scope===currentScope.current);
   const navigate = useNavigate();
   const { flow } = useMeltFlow();
   const { speak, muted, toggleMute } = useSpeak();
@@ -48,7 +57,14 @@ function VoicePanel({ heatId }) {
   const latinDisplay=useRef(null);
   if(!latinDisplay.current)latinDisplay.current=createLatinDisplay({request:transliterateAudio,afterSpeech:()=>answerSpeech.current,onText:text=>{if(alive.current)setHeardLatin(text);}});
   const choose = (ta, en) => lang === 'ta' ? ta : en;
-  const say = (text, spokenText = text, replyLang = lang, timing) => { if (!alive.current) return; setAnswer(text); answerSpeech.current=Promise.resolve(speak(spokenText, replyLang, 'normal', timing)); };
+  const say = (text, spokenText = text, replyLang = lang, timing) => {
+    if (!isCurrent()) return;
+    setAnswer(text);
+    // A navigation confirmation may play on its destination, but not after a
+    // subsequent navigation elsewhere. Other replies belong to their scope.
+    const speechCurrent=timing?.navigation?()=>alive.current&&(isCurrent()||currentRoute.current===timing.navigation):isCurrent;
+    answerSpeech.current=Promise.resolve(speak(spokenText, replyLang, 'normal', voiceEverywhereEnabled()?{...timing,isCurrent:speechCurrent}:timing));
+  };
   async function resolveHeat(params) {
     if (params.heatNumber == null && (heatId || flow.heatId)) return unwrap(await getHeat(heatId || flow.heatId));
     const heats = unwrap(await getHeats());
@@ -58,24 +74,31 @@ function VoicePanel({ heatId }) {
     if (!selected) return null;
     return unwrap(await getHeat(selected.heatId));
   }
-  const recordHeard=text=>{setHeard(text);setHeardLatin('');};
-  const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, say, navigate, resolveHeat, setPhraseSource });
+  const recordHeard=text=>{if(isCurrent()){setHeard(text);setHeardLatin('');}};
+  const callbacks=voiceEverywhereEnabled()?scopeVoiceCallbacks({say,navigate,setPhraseSource},isCurrent):{say,navigate,setPhraseSource};
+  const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, ...callbacks, resolveHeat, pageContext });
   // REST bridge only: hands-free retains the current single-locale Tamil path.
-  const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, say, navigate, resolveHeat, setPhraseSource, langBridge: langBridgeEnabled() });
+  const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, langBridge: langBridgeEnabled() });
   const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
   async function run(text) {
     if (busy.current) return;
     busy.current = true; setState('processing');
     latinDisplay.current.invalidate();
-    try { await handlePushToTalk(text, { voiceTiming: true }); if (alive.current) setState('idle'); }
-    catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
-    finally { busy.current = false; }
+    try { await handlePushToTalk(text, { voiceTiming: true }); if (isCurrent()) setState('idle'); }
+    catch { if (isCurrent()) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
+    finally { if(isCurrent())busy.current = false; }
   }
   function stop() {
     held.current = false;
     if (recorder.current?.state === 'recording') recorder.current.stop();
     stream.current?.getTracks().forEach(track => track.stop());
   }
+  useEffect(()=>{
+    if(!voiceEverywhereEnabled())return;
+    setHeard('');setHeardLatin('');setAnswer('');setPhraseSource(null);setState('idle');busy.current=false;
+    latinDisplay.current.invalidate();
+    return ()=>{latinDisplay.current.invalidate();actions.current.stop();};
+  },[scope]);
   async function start() {
     if (busy.current || held.current) return;
     owner = panel.current; held.current = true; busy.current = true;
@@ -83,36 +106,37 @@ function VoicePanel({ heatId }) {
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Microphone unavailable');
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!held.current || !alive.current) { media.getTracks().forEach(t => t.stop()); busy.current = false; return; }
+      if (!held.current || !isCurrent()) { media.getTracks().forEach(t => t.stop()); if(isCurrent())busy.current = false; return; }
       stream.current = media;
       const type = ['audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
       const rec = new MediaRecorder(media, type ? { mimeType: type } : undefined);
       recorder.current = rec;
       const chunks = [];
       rec.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
-      rec.onerror = () => { stop(); if (alive.current) setState('error'); busy.current = false; };
+      rec.onerror = () => { if(!isCurrent()){media.getTracks().forEach(t=>t.stop());return;} stop(); setState('error'); busy.current = false; };
       rec.onstop = async () => {
         media.getTracks().forEach(t => t.stop());
-        if (!alive.current) return;
+        if (!isCurrent()) return;
         setState('processing');
         try {
           const blob = new Blob(chunks, { type: rec.mimeType });
           const file=new File([blob],rec.mimeType.includes('mp4')?'voice.mp4':'voice.webm',{type:blob.type});
           if(transliterateEnabled())await latinDisplay.current.beforeMain();
-          if(!alive.current)return;
+          if(!isCurrent())return;
           const sttStarted = performance.now();
           const response = await transcribeAudio(file, null);
+          if(!isCurrent())return;
           const stt_ms = performance.now() - sttStarted;
           if (response.data.success === false) throw new Error('STT failed');
           if (alive.current) {
-            try { await latinDisplay.current.afterMain(response.data,handlePushToTalk,file,showLatin,latinTicket,{voiceTiming:true,stt_ms}); if (alive.current) setState('idle'); }
-            catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
+            try { await latinDisplay.current.afterMain(response.data,handlePushToTalk,file,showLatin,latinTicket,{voiceTiming:true,stt_ms}); if (isCurrent()) setState('idle'); }
+            catch { if (isCurrent()) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
           }
-        } catch { if (alive.current) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }
-        finally { busy.current = false; }
+        } catch { if (isCurrent()) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }
+        finally { if(isCurrent())busy.current = false; }
       };
       rec.start(); setState('listening');
-    } catch { stream.current?.getTracks().forEach(track => track.stop()); held.current = false; busy.current = false; if (alive.current) { setState('error'); setAnswer(choose('மைக்ரோஃபோன் கிடைக்கவில்லை. கீழே தொடவும்.', 'Microphone unavailable. Tap a suggestion below.')); } }
+    } catch { if(!isCurrent())return;stream.current?.getTracks().forEach(track => track.stop()); held.current = false; busy.current = false; setState('error'); setAnswer(choose('மைக்ரோஃபோன் கிடைக்கவில்லை. கீழே தொடவும்.', 'Microphone unavailable. Tap a suggestion below.')); }
   }
   const actions = useRef({ start, stop });
   actions.current = { start, stop };
@@ -137,6 +161,7 @@ function VoicePanel({ heatId }) {
     };
   }, []);
   return <section ref={panel} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" className="rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2">
+    {voiceEverywhereEnabled()&&<p className="text-xs text-slate-500">Kural · {pageContext?.pageName?.[lang] || pageContext?.pageName?.en}</p>}
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" aria-label={choose('பேச அழுத்திப் பிடிக்கவும்', 'Hold to talk')} aria-pressed={state === 'listening'} disabled={state === 'processing'}
         onPointerDown={event => { if (event.button !== 0) return; event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); start(); }}

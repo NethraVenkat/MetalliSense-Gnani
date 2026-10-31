@@ -116,28 +116,28 @@ describe('resettable H-1053 HOLD voice demo', () => {
  });
  it('announces HOLD once across reruns, rerenders and language changes, then rearms after Reset', async () => {
   const gate = await check(), announcer = createHoldAnnouncer(), speak = vi.fn();
-  announcer.announce('H-1053', null, speak, 'ta');
-  announcer.announce('H-1053', gate, speak, 'ta');
-  announcer.announce('H-1053', gate, speak, 'ta');
-  announcer.announce('H-1053', await check(), speak, 'en');
+  announcer.checkResult('H-1053', null, speak, 'ta');
+  announcer.checkResult('H-1053', gate, speak, 'ta');
+  announcer.checkResult('H-1053', gate, speak, 'ta');
+  announcer.checkResult('H-1053', await check(), speak, 'en');
   expect(speak).toHaveBeenCalledTimes(1);
   expect(speak.mock.calls[0][0]).toBe('Heat H-1053 HOLD. PIG-1053 lot quarantine. திரையில் பார்க்கவும்.');
   expect(speak.mock.calls[0][0]).not.toContain('செம்பு');
   expect(speak.mock.calls[0][1]).toBe('ta');
   expect(speak.mock.calls[0][2]).toBe('alert');
   announcer.reset();
-  announcer.announce('H-1053', gate, speak, 'ta');
+  announcer.checkResult('H-1053', gate, speak, 'ta');
   expect(speak).toHaveBeenCalledTimes(2);
-  announcer.announce('H-1053', { decision: 'WARN' }, speak, 'ta');
-  announcer.announce('H-1053', gate, speak, 'ta');
+  announcer.checkResult('H-1053', { decision: 'WARN' }, speak, 'ta');
+  announcer.checkResult('H-1053', {...gate,gateId:'new-transition'}, speak, 'ta');
   expect(speak).toHaveBeenCalledTimes(3);
  });
- it('does not consume the HOLD announcement while muted', async () => {
+ it('consumes a muted HOLD check so unmuting never replays it', async () => {
   const gate = await check(), announcer = createHoldAnnouncer(), speak = vi.fn();
-  announcer.announce('H-1053', gate, speak, 'ta', true);
+  announcer.checkResult('H-1053', gate, speak, 'ta', true);
   expect(speak).not.toHaveBeenCalled();
-  announcer.announce('H-1053', gate, speak, 'ta', false);
-  expect(speak).toHaveBeenCalledTimes(1);
+  announcer.checkResult('H-1053', gate, speak, 'ta', false);
+  expect(speak).not.toHaveBeenCalled();
  });
  it('HOLD spoken alert is at most 15 words (Tamil and English)', async () => {
   const gate = await check();

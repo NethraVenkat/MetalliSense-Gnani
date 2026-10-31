@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, CheckCircle, Sparkles, Volume2, VolumeX, Loader2, MessageCircle, ShieldCheck } from "lucide-react";
@@ -20,6 +21,7 @@ const AnomalyDetection = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunAnomaly, anomalyDone } = useMeltFlow();
   const [generatedReading, setGeneratedReading] = useState(null);
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:generatedReading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'AnomalyDetection');
   const [analysisResult, setAnalysisResult] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiExplanation, setAiExplanation] = useState(null);

@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 import Card from "../components/common/Card";
@@ -11,6 +12,7 @@ import toast from "react-hot-toast";
 // Semantic Search over training data / grade specs, powered by Actian
 // VectorAI DB (PEC Hacks 4.0 x Actian VectorAI DB submission).
 export default function SemanticSearch() {
+  useRegisterVoicePage({}, 'SemanticSearch');
   const [query, setQuery] = useState("");
   const [collection, setCollection] = useState("training_data");
   const [results, setResults] = useState([]);

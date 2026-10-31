@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState } from "react";
 import Card from "../components/common/Card";
 import Badge from "../components/common/Badge";
@@ -7,6 +8,7 @@ import { formatPercentage } from "../utils/formatters";
 
 const SyntheticData = () => {
   const [generatedReading, setGeneratedReading] = useState(null);
+  useRegisterVoicePage({grade:generatedReading?.metalGrade}, 'SyntheticData');
 
   const handleDataGenerated = async (reading, params) => {
     setGeneratedReading(reading);
