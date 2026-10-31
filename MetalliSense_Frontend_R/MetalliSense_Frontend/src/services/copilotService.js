@@ -106,3 +106,17 @@ export const synthesizeSpeechWithMeta = async (text, language = "en", style = "n
 };
 
 export const getVoiceStatus = () => copilotApi.get("/copilot/voice/status");
+
+// Bound the entire phrasing attempt, including mock transports that might hang.
+// A late result is discarded; the caller retains its existing template answer.
+export async function phraseGateFacts(facts, kind, lang) {
+  const controller = new AbortController();
+  let timer;
+  try {
+    const response = await Promise.race([
+      copilotApi.post('/copilot/evon/phrase', { facts, kind, lang }, { timeout: 6000, signal: controller.signal }),
+      new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('Phrase timeout')); }, 6000); }),
+    ]);
+    return response.data;
+  } finally { clearTimeout(timer); }
+}

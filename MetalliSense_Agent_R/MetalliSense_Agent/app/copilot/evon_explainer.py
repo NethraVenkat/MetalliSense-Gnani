@@ -53,6 +53,23 @@ def _wrap(content: str):
     return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
 
 
+def fold_instructions(messages):
+    """llama.cpp Evon echoes system-role prompts; keep instructions in user #1.
+
+    Copy the history: do not mutate the parent's saved conversation messages.
+    """
+    rules = '\n\n'.join(str(message.get('content', '')) for message in messages
+                         if message.get('role') in {'system', 'developer'})
+    result = [dict(message) for message in messages if message.get('role') not in {'system', 'developer'}]
+    if rules:
+        first = next((message for message in result if message.get('role') == 'user'), None)
+        if first is None:
+            result.insert(0, {'role': 'user', 'content': rules})
+        else:
+            first['content'] = rules + '\n\n' + str(first.get('content', ''))
+    return result
+
+
 class _EvonCompletions:
     def __init__(self, base_url: str, api_key: str, mock: bool, timeout: int = 120):
         self.base_url = base_url.rstrip("/")
@@ -70,22 +87,25 @@ class _EvonCompletions:
             headers["Authorization"] = f"Bearer {self.api_key}"
         payload = {
             "model": model,
-            "messages": messages,
+            "messages": fold_instructions(messages),
             "temperature": temperature,
             "max_tokens": max_tokens,
             "chat_template_kwargs": {"enable_thinking": False},
         }
         url = f"{self.base_url}/chat/completions"
-        response = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
-        if response.status_code == 400 and "chat_template_kwargs" in response.text:
-            # Server doesn't accept template kwargs — retry once without them.
-            payload.pop("chat_template_kwargs")
+        try:
             response = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
+            if response.status_code == 400 and "chat_template_kwargs" in response.text:
+                # Server doesn't accept template kwargs — retry once without them.
+                payload.pop("chat_template_kwargs")
+                response = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
+        except requests.RequestException:
+            raise RuntimeError("Evon unavailable") from None
         if response.status_code != 200:
-            raise RuntimeError(f"Evon error {response.status_code}: {response.text[:300]}")
+            raise RuntimeError(f"Evon error {response.status_code}")
 
         content = response.json()["choices"][0]["message"].get("content") or ""
-        return _wrap(strip_thinking(content))
+        return _wrap(strip_thinking(content).replace(self.api_key, '[redacted]') if self.api_key else strip_thinking(content))
 
 
 class _EvonClient:

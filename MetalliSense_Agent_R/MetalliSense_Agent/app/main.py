@@ -6,10 +6,11 @@ Main entry point for the AI Intelligence Layer
 from fastapi import FastAPI, HTTPException, status, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel
 import uvicorn
 from pathlib import Path
 import sys
-from typing import Optional
+from typing import Optional, Literal
 import tempfile
 import os
 
@@ -35,6 +36,7 @@ from agents.agent_manager import get_agent_manager
 # Copilot imports
 from copilot import get_copilot, get_voice_service
 from copilot.gnani_stream import proxy_stream, stream_status
+from copilot.evon_phrase import phrase as phrase_gate_facts, phrase_status
 from copilot.schemas import (
     ExplainAnalysisRequest,
     ExplainAnalysisResponse,
@@ -839,8 +841,19 @@ async def synthesize_speech(request: TTSRequest):
 async def voice_status():
     """Which TTS/STT providers are active (no secrets returned)."""
     if voice_service is None:
-        return {"available": False, **stream_status()}
-    return {"available": True, **voice_service.status(), **stream_status()}
+        return {"available": False, **stream_status(), "evon": phrase_status()}
+    return {"available": True, **voice_service.status(), **stream_status(), "evon": phrase_status()}
+
+
+class EvonPhraseRequest(BaseModel):
+    facts: dict
+    kind: Literal["hold", "warn", "status"]
+    lang: Literal["ta", "en"]
+
+
+@app.post("/copilot/evon/phrase", tags=["Copilot"])
+async def evon_phrase(request: EvonPhraseRequest):
+    return await phrase_gate_facts(request.facts, request.kind, request.lang)
 
 
 @app.websocket("/copilot/voice/stream")

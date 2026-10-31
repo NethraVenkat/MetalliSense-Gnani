@@ -11,6 +11,9 @@ const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
 const panels = new Set();
+export function VoicePhraseBadge({ source }) {
+  return source ? <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{source === 'evon' ? 'Evon v3.3' : 'template'}</span> : null;
+}
 export default function PushToTalk(props) {
   // Keep the inner panel unmounted when hidden: no capture, socket or shortcut.
   return import.meta.env.VITE_SHOW_VOICE_PANEL !== 'false' ? <VoicePanel {...props} /> : null;
@@ -23,6 +26,7 @@ function VoicePanel({ heatId }) {
   const [state, setState] = useState('idle');
   const [heard, setHeard] = useState('');
   const [answer, setAnswer] = useState('');
+  const [phraseSource, setPhraseSource] = useState(null);
   const panel = useRef(null);
   const recorder = useRef(null);
   const stream = useRef(null);
@@ -40,7 +44,7 @@ function VoicePanel({ heatId }) {
     if (!selected) throw new Error('Heat not found');
     return unwrap(await getHeat(selected.heatId));
   }
-  const handleTranscript = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat });
+  const handleTranscript = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat, setPhraseSource });
   const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
   async function run(text) {
     if (busy.current) return;
@@ -132,6 +136,7 @@ function VoicePanel({ heatId }) {
       <span role="status" className="text-xs">{state}</span>
     </div>
     <div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}{answer && <p>{answer}</p>}</div>
+    <VoicePhraseBadge source={phraseSource} />
     {handsFree.note && <p role="status" className="text-sm text-amber-800">{handsFree.note}</p>}
     {import.meta.env.VITE_MOCK_MODE === 'true' && <details className="text-sm">
       <summary className="cursor-pointer">Demo transcripts</summary>

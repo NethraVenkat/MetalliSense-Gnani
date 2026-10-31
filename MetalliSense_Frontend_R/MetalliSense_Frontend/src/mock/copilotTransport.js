@@ -1,8 +1,8 @@
-// Only voice/chat leave the factory mock; all plant APIs stay in the browser.
+// Only voice/chat/validated phrasing leave the factory mock; plant APIs stay local.
 export async function tryRealCopilot(fetchAgent, url, init = {}, timeout = 30000) {
   const target = new URL(url);
   const base = new URL(import.meta.env.VITE_COPILOT_BASE_URL || 'http://localhost:8001');
-  if (target.origin !== base.origin || !/^\/copilot\/(?:voice\/|chat(?:\/history)?$)/.test(target.pathname)) return null;
+  if (target.origin !== base.origin || !/^\/copilot\/(?:voice\/|chat(?:\/history)?$|evon\/phrase$)/.test(target.pathname)) return null;
   const controller = new AbortController();
   const abort = () => controller.abort(init.signal.reason);
   if (init.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
