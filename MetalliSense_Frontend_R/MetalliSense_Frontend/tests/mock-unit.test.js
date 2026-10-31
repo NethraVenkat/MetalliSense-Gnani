@@ -5,6 +5,8 @@ import { startMock,dispatch,requirePort,reset } from '../src/mock/server.js';
 import { solveCharge } from '../src/mock/handlers/optimizer.js';
 import { alloy,anomaly } from '../src/mock/handlers/ai.js';
 import { mapIntent } from '../src/services/voiceIntents.js';
+import { crossCheckHandover } from '../src/services/handover.js';
+import handoverSample from '../src/fixtures/handover-sample.json';
 import { createHoldAnnouncer, buildHoldAlert, buildHoldAlertTexts, heatVoiceAnswer, spokenGateReasonAnswer, gateReasonAnswer } from '../src/services/voiceGateAnswers.js';
 const saved=new Map();
 globalThis.localStorage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)};
@@ -27,6 +29,17 @@ describe('resettable H-1053 HOLD voice demo', () => {
   return response.data.data;
  };
  const heatView = async () => (await dispatch('GET', 'http://local/api/v2/premelt/heats/H-1053')).data.data;
+ it('handover cross-check reads actual H-1053/H-1052 store data without mutating stock or gates', async () => {
+  await check();
+  const store = requirePort('premeltGate/store');
+  const before = JSON.stringify(store.heats.list());
+  const stock = store.availableKg('PIG-1053');
+  const heats = (await dispatch('GET','http://local/api/v2/premelt/heats')).data.data;
+  expect(heats.find(h => h.heatId === 'H-1052')).toBeTruthy();
+  expect(crossCheckHandover(handoverSample.segments,heats)).toContainEqual(expect.objectContaining({heatId:'H-1053',label:'Mismatch',severity:'red',decision:'HOLD'}));
+  expect(JSON.stringify(store.heats.list())).toBe(before);
+  expect(store.availableKg('PIG-1053')).toBe(stock);
+ });
  it('seeds a 1000 kg planned charge and repeatedly gets exactly two real blocking checks without using stock', async () => {
   const store = requirePort('premeltGate/store'), heat = store.heats.get('H-1053');
   expect(heat).toMatchObject({ grade: 'SG-IRON', targetKg: 1000, status: 'PLANNED', gate: null });

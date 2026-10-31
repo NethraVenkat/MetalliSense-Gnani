@@ -1,6 +1,7 @@
 import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import useSpeak, { useVoiceLanguage } from "../hooks/useSpeak";
 import PushToTalk from "../components/voice/PushToTalk";
+import ShiftHandover from "../components/voice/ShiftHandover";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { holdAnnouncer } from "../services/voiceGateAnswers";
 import { useNavigate } from "react-router-dom";
@@ -405,6 +406,7 @@ export default function PreMeltGate() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <VoiceErrorBoundary><PushToTalk heatId={heatId} /></VoiceErrorBoundary>
+      <VoiceErrorBoundary><ShiftHandover heats={heats} /></VoiceErrorBoundary>
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-metal-950 via-metal-900 to-primary-950 text-white p-6 md:p-8 shadow-metal-xl">
         <div className="pointer-events-none absolute -top-24 -right-16 w-80 h-80 rounded-full bg-primary-500/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-emerald-400/10 blur-3xl" />
