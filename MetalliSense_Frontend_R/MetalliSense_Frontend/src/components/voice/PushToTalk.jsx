@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Volume2, VolumeX } from 'lucide-react';
 import { transcribeAudio } from '../../services/copilotService';
@@ -11,7 +11,11 @@ const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
 const panels = new Set();
-export default function PushToTalk({ heatId }) {
+export default function PushToTalk(props) {
+  // Keep the inner panel unmounted when hidden: no capture, socket or shortcut.
+  return import.meta.env.VITE_SHOW_VOICE_PANEL !== 'false' ? <VoicePanel {...props} /> : null;
+}
+function VoicePanel({ heatId }) {
   const navigate = useNavigate();
   const { flow } = useMeltFlow();
   const { speak, muted, toggleMute } = useSpeak();
