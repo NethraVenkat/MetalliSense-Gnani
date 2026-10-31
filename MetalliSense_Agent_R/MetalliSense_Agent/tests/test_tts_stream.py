@@ -16,7 +16,8 @@ from app.copilot.gnani_client import GnaniClient, _silent_wav, tts_text
 @pytest.fixture
 def service(monkeypatch, tmp_path):
     for name,value in {'GNANI_API_KEY':'private-test-key','GNANI_MOCK':'false','GNANI_TTS_MODEL':'timbre-v3.0',
-                       'GNANI_TTS_VOICE':'Kalpana','GNANI_TTS_CACHE_DIR':str(tmp_path),'GNANI_TTS_SAMPLE_RATE':'22050'}.items(): monkeypatch.setenv(name,value)
+                       'GNANI_TTS_VOICE':'Kalpana','GNANI_TTS_CACHE_DIR':str(tmp_path),'GNANI_TTS_SAMPLE_RATE':'22050',
+                       'GNANI_TTS_CLARITY':'off','GNANI_TTS_SPEED':''}.items(): monkeypatch.setenv(name,value)
     client = GnaniClient()
     service = SimpleNamespace(gnani=client,tts_provider='gnani',last_provider_used='gnani:timbre-v3.0:Kalpana',last_media_type='audio/wav')
     service.text_to_speech = Mock(return_value=_silent_wav())
