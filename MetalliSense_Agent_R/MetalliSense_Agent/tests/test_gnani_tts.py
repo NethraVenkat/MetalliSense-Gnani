@@ -25,6 +25,7 @@ def client(monkeypatch, tmp_path):
         "GNANI_TTS_TAGS": "on", "GNANI_TTS_LANGUAGE": "ta-IN",
         "GNANI_TTS_SAMPLE_RATE": "22050", "GNANI_TTS_CACHE_DIR": str(tmp_path),
         "GNANI_TTS_TIMEOUT_S": "8",
+        "GNANI_TTS_CLARITY": "off",
         "GNANI_TTS_FALLBACK_MODEL": "timbre-v2.5", "GNANI_TTS_FALLBACK_VOICE": "Kamakshi",
     }
     for key, value in settings.items():
@@ -146,6 +147,44 @@ def test_request_style_validation():
     assert TTSRequest(text="HOLD", style="alert").style == "alert"
     with pytest.raises(ValueError):
         TTSRequest(text="HOLD", style="shouting")
+
+
+def test_clarity_tags_are_documented_no_closing_tags_and_off_unchanged(client,monkeypatch):
+    text='Heat H-1053. Cu 0.50 percent.'
+    before=tts_text(text,'timbre-v3.0','normal',False)
+    assert before==text
+    monkeypatch.setenv('GNANI_TTS_CLARITY','on')
+    tagged=tts_text(text,'timbre-v3.0','normal',False)
+    assert tagged=='<slow> Heat H-1053. <pauses> <slow> Cu 0.50 percent.'
+    assert '</' not in tagged
+    assert ' '.join(tts_text(tagged,'timbre-v2.5','normal',True).split())==text
+
+
+def test_clarity_speed_09_passthrough_and_cache_identity(client,monkeypatch):
+    baseline=client._cache_path('spoken','ta-IN','Shivani')
+    monkeypatch.setenv('GNANI_TTS_CLARITY','on');monkeypatch.setenv('GNANI_TTS_SPEED','0.9')
+    configured=GnaniClient()
+    post=Mock(return_value=response());monkeypatch.setattr('requests.post',post)
+    assert configured.synthesize('Heat H-1053. Value 0.50.','ta')
+    payload=post.call_args.kwargs['json']
+    assert payload['speed']==.9 and '<pauses>' in payload['text'] and '<slow>' in payload['text']
+    assert configured._cache_path('spoken','ta-IN','Shivani')!=baseline
+    assert configured._cache_path(payload['text'],'ta-IN','Shivani').exists()
+    monkeypatch.setenv('GNANI_TTS_CLARITY','off')
+    assert GnaniClient().tts_speed is None  # Even if speed env remains populated.
+
+
+def test_clarity_blank_speed_omits_provider_override(client,monkeypatch):
+    monkeypatch.setenv('GNANI_TTS_CLARITY','on');monkeypatch.setenv('GNANI_TTS_SPEED','')
+    configured=GnaniClient();post=Mock(return_value=response());monkeypatch.setattr('requests.post',post)
+    assert configured.synthesize('Hello.','ta')
+    assert 'speed' not in post.call_args.kwargs['json']
+
+
+@pytest.mark.parametrize('speed',['.8','1.2','nan','bad'])
+def test_clarity_rejects_undocumented_speed(client,monkeypatch,speed):
+    monkeypatch.setenv('GNANI_TTS_CLARITY','on');monkeypatch.setenv('GNANI_TTS_SPEED',speed)
+    with pytest.raises(ValueError,match='GNANI_TTS_SPEED'):GnaniClient()
 
 
 @pytest.mark.parametrize('setting,expected', [(None, 8), ('2.5', 2.5), ('8', 8), ('60', 8), ('0', 8), ('-1', 8), ('bad', 8), ('nan', 8), ('inf', 8)])

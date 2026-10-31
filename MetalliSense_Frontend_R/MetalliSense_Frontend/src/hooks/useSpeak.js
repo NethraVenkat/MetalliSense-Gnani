@@ -2,6 +2,7 @@
 import { synthesizeSpeechWithMeta } from '../services/copilotService';
 import { toSpokenText } from '../services/spokenText';
 import { playSpeechStream } from '../services/ttsStream';
+import { clarityText, voiceClarityEnabled } from '../services/voiceClarity';
 const listeners = new Set();
 const read = (key, fallback) => { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } };
 let muted = read('metallisense.voice.muted', 'false') === 'true';
@@ -22,7 +23,8 @@ export function useVoiceLanguage() {
 }
 export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
   if (muted || !text) return Promise.resolve();
-  if (import.meta.env.VITE_SPOKEN_NORMALIZE === 'true') text = toSpokenText(text,lang);
+  if (voiceClarityEnabled()) text = clarityText(text,lang);
+  else if (import.meta.env.VITE_SPOKEN_NORMALIZE === 'true') text = toSpokenText(text,lang);
   const ticket = generation;
   const queuedAt = performance.now();
   if (import.meta.env.VITE_TTS_STREAM === 'true' && (globalThis.AudioContext || globalThis.webkitAudioContext)) {

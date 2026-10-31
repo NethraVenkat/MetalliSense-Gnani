@@ -81,6 +81,7 @@ async def speak_events(service, text, lang, style='normal'):
             except (wave.Error, EOFError, ValueError): pass
         payload = {'text':final, 'model':model, 'voice':voice, 'language':locale,
                    'audio_config':{'sample_rate':rate,'num_channels':1,'sample_width':2,'encoding':'linear_pcm','container':'raw'}}
+        if client.tts_speed is not None: payload['speed'] = client.tts_speed
         parts, size, carry = [], 0, b''
         async with asyncio.timeout(120):
             async with httpx.AsyncClient(timeout=8,follow_redirects=False) as http:

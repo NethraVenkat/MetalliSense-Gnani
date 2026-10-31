@@ -70,8 +70,8 @@ describe('resettable H-1053 HOLD voice demo', () => {
    expect(mapped.intent).toBe('gate_reason');
    const tamil = heatVoiceAnswer(mapped.intent, heat, mapped.params, 'ta');
    expect(tamil).toContain('PIG-1053 தனிமைப்படுத்தப்பட்டுள்ளது');
-   expect(tamil).toContain('செம்பு (Cu) 0.5 சதவீதம்');
-   expect(tamil).toContain('0.3 சதவீதத்தை மீறுகிறது');
+   expect(tamil).toContain('செம்பு (Cu) 0.50 சதவீதம்');
+   expect(tamil).toContain('0.30 சதவீதத்தை மீறுகிறது');
    expect(tamil).not.toContain('Cannot be charged');
    expect(heatVoiceAnswer(mapped.intent, heat, mapped.params, 'en')).toBe(heat.gateResult.blocking.join('. '));
   }
@@ -160,7 +160,7 @@ describe('resettable H-1053 HOLD voice demo', () => {
    .toBe('Heat H-1053: Gate HOLD. Furnace start is locked. PIG-1053: quarantined. Cu 0.50 percent, high');
   expect(tamil.displayAlert).toBe(buildHoldAlert('H-1053', blockingOnly, 'ta'));
   expect(spokenGateReasonAnswer(blockingOnly, 'ta')).toBe('PIG-1053: தனிமைப்படுத்தப்பட்டுள்ளது. செம்பு 0.50 சதவீதம், அதிகம்');
-  expect(gateReasonAnswer(gate, 'ta')).toContain('0.3 சதவீதத்தை மீறுகிறது');
+  expect(gateReasonAnswer(gate, 'ta')).toContain('0.30 சதவீதத்தை மீறுகிறது');
  });
  it('future auditions export the short spoken text and retain the full display text', async () => {
   const fixture = await import('../../../MetalliSense_Agent_R/MetalliSense_Agent/tools/tts_audition/hold_sentence.mjs');

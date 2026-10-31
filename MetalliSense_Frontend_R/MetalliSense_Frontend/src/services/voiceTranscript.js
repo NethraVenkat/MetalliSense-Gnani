@@ -5,6 +5,7 @@ import { mapIntent } from './voiceIntents';
 import { heatVoiceAnswer, spokenGateReasonAnswer } from './voiceGateAnswers';
 import { pickReplyLanguage, hindiBlocked, hindiNotUnderstood, retryVoiceAnswer } from './languageBridge';
 import { hindiHeatAnswer } from './hindiVoice';
+import { voiceClarityEnabled, clarityReply } from './voiceClarity';
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
@@ -13,7 +14,9 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
     const started = performance.now();
     const lang = pickReplyLanguage(text, metadata.detected_language_code, currentLang, langBridge);
     const choose = (ta, en) => lang === 'ta' ? ta : en;
+    let clarityHeat = null;
     const say = (...args) => {
+      if (voiceClarityEnabled() && clarityHeat) args = [args[0],clarityReply(intent,clarityHeat,params,lang,args[1]??args[0])];
       if (metadata.voiceTiming) return output(args[0], args[1] ?? args[0], lang,
         { stt_ms: metadata.stt_ms ?? null, answer_ms: performance.now() - started });
       return langBridge ? output(args[0], args[1] ?? args[0], lang) : output(...args);
@@ -34,6 +37,7 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
       if (['heat_status', 'gate_reason', 'element_value'].includes(intent)) {
         const heat = await resolveHeat(params);
         if (!heat) return say(retryVoiceAnswer(lang));
+        clarityHeat = heat;
         if (intent === 'gate_reason') setPhraseSource('template');
         return say(hindiHeatAnswer(intent, heat, params));
       }
@@ -53,6 +57,7 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
     }
     const heat = await resolveHeat(params);
     if (!heat) return say(retryVoiceAnswer(lang));
+    clarityHeat = heat;
     const answer = heatVoiceAnswer(intent, heat, params, lang);
     if (intent === 'gate_reason') {
       if (lang === 'ta' && ['HOLD', 'WARN'].includes(heat.gateResult?.decision)) {
