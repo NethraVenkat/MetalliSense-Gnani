@@ -3,7 +3,7 @@
 MetalliSense AI Service - FastAPI Application
 Main entry point for the AI Intelligence Layer
 """
-from fastapi import FastAPI, HTTPException, status, File, UploadFile
+from fastapi import FastAPI, HTTPException, status, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 import uvicorn
@@ -34,6 +34,7 @@ from agents.agent_manager import get_agent_manager
 
 # Copilot imports
 from copilot import get_copilot, get_voice_service
+from copilot.gnani_stream import proxy_stream, stream_status
 from copilot.schemas import (
     ExplainAnalysisRequest,
     ExplainAnalysisResponse,
@@ -838,8 +839,13 @@ async def synthesize_speech(request: TTSRequest):
 async def voice_status():
     """Which TTS/STT providers are active (no secrets returned)."""
     if voice_service is None:
-        return {"available": False}
-    return {"available": True, **voice_service.status()}
+        return {"available": False, **stream_status()}
+    return {"available": True, **voice_service.status(), **stream_status()}
+
+
+@app.websocket("/copilot/voice/stream")
+async def stream_voice(websocket: WebSocket):
+    await proxy_stream(websocket)
 
 
 @app.get("/copilot/voice/languages", response_model=LanguagesResponse, tags=["Voice"])

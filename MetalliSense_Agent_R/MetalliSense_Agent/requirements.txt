@@ -51,3 +51,4 @@ anthropic
 # Google Gemini (optional alternative to Groq/Claude for reasoning — see copilot/gemini_explainer.py)
 google-genai
 requests==2.31.0
+websockets==14.2
