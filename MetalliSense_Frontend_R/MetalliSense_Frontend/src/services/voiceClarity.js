@@ -36,7 +36,7 @@ const choose=(lang,ta,hi,en)=>lang==='ta'?ta:lang==='hi'?hi:en;
 export function clarityText(text,lang,register=spokenRegister()) {
   if(register==='colloquial') {
     if(/^(?:திரையில்\s+(?:approve|அப்ரூவ்)\s+செய்யவும்|Please approve on screen|वॉइस से अप्रूव या मेल्टिंग नहीं होगी। यह स्क्रीन पर करें।)$/iu.test(text.trim()))
-      text=choose(lang,'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல அப்ரூவ் பண்ணுங்க.','वॉइस से अप्रूव नहीं होगा। मेल्टिंग नहीं होगी।','Voice cannot approve. Voice cannot start melting.');
+      text=choose(lang,'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.','यह वॉइस से नहीं हो सकता। स्क्रीन पर कीजिए।',"This can't be done by voice. Please use the screen.");
     else if(['மீண்டும் சொல்லுங்கள்','समझ नहीं आया, कृपया फिर से बोलिए।','Could not hear you. Tap a suggestion below.'].includes(text.trim()))
       text=choose(lang,'சரியா கேக்கல, திரும்ப சொல்லுங்க','समझ नहीं आया, फिर से बोलिए।','Could not hear you. Please say that again.');
   }

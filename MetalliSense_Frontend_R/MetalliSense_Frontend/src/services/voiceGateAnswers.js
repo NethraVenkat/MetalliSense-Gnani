@@ -1,5 +1,5 @@
 const names = { C: 'கார்பன்', Si: 'சிலிக்கான்', Mn: 'மாங்கனீசு', P: 'பாஸ்பரஸ்', S: 'சல்பர்', Cu: 'செம்பு', Cr: 'குரோமியம்', Ni: 'நிக்கல்', Mo: 'மாலிப்டினம்', Sn: 'தகரம்' };
-import { langBridgeEnabled, hindiHoldAlert } from './languageBridge';
+import { hindiHoldAlert } from './languageBridge';
 import { formatGateLimit } from './hindiVoice';
 import { voiceClarityEnabled, clarityGateSpeech } from './voiceClarity';
 const tamilChecks = {
@@ -138,20 +138,28 @@ export function buildHoldAlertTexts(heatId, gate, lang = 'ta') {
 
 export function createHoldAnnouncer() {
   const decisions = new Map();
+  const results = new Set();
+  let objects = new WeakSet();
   return {
-    reset() { decisions.clear(); },
-    announce(heatId, gate, speak, lang = 'ta', muted = false) {
-      if (!heatId) return;
-      const previous = decisions.get(heatId);
-      if (gate?.decision === 'HOLD' && muted) return;
+    reset() { decisions.clear(); results.clear(); objects=new WeakSet(); },
+    // Loading a saved result only establishes a baseline; it is never an event.
+    observe(heatId,gate) { if(heatId)decisions.set(heatId,gate?.decision); },
+    // Called exclusively from the successful manual check response, not an effect.
+    checkResult(heatId, gate, speak, lang = 'ta', muted = false, previousDecision = decisions.get(heatId)) {
+      if (!heatId || !gate) return;
+      const resultId=gate.gateId||gate.checkedAt;
+      const key=resultId?`${heatId}:${resultId}`:null;
+      if(key?results.has(key):objects.has(gate))return;
+      if(key)results.add(key);else objects.add(gate);
       decisions.set(heatId, gate?.decision);
-      if (gate?.decision !== 'HOLD' || previous === 'HOLD') return;
-      if (langBridgeEnabled()) {
+      // Muted checks are consumed too: unmuting must not replay an old result.
+      if (gate.decision !== 'HOLD' || previousDecision === 'HOLD' || muted) return;
+      if (import.meta.env.VITE_BILINGUAL_ALERT === 'true') {
         const { spokenAlert } = buildHoldAlertTexts(heatId, gate, 'ta');
         return Promise.resolve(speak(voiceClarityEnabled()?clarityGateSpeech({heatId,gateResult:gate},'ta','alert'):spokenAlert, 'ta', 'alert'))
           .then(() => speak(voiceClarityEnabled()?clarityGateSpeech({heatId,gateResult:gate},'hi','alert'):hindiHoldAlert(heatId), 'hi', 'alert'));
       }
-      const { spokenAlert } = buildHoldAlertTexts(heatId, gate, lang);
+      const spokenAlert=lang==='hi'?hindiHoldAlert(heatId):buildHoldAlertTexts(heatId, gate, lang).spokenAlert;
       return speak(voiceClarityEnabled()?clarityGateSpeech({heatId,gateResult:gate},lang,'alert'):spokenAlert, lang, 'alert');
     },
   };

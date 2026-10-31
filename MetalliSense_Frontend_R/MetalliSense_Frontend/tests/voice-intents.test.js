@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mapIntent, normalizeTranscript } from '../src/services/voiceIntents';
 describe('read-only voice intents', () => {
   it.each(['stock melting', 'start melting', 'melting start pannu', 'உருக்க ஆரம்பி'])('%s -> blocked', text => {
-    expect(mapIntent(text)).toEqual({ intent: 'blocked', params: {}, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } });
+    expect(mapIntent(text)).toEqual({ intent: 'blocked', params: {}, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen." } });
   });
   it.each([
     ['FeSi stock evvalavu', { alloy: 'FeSi' }], ['stock evvalavu', {}], ['stock enna', {}],
@@ -10,12 +10,12 @@ describe('read-only voice intents', () => {
     expect(mapIntent(text)).toEqual({ intent: 'stock_check', params });
   });
   it.each(['melt', 'melting', 'start melt', 'stop melting', 'உருக்கு', 'உருக்க', 'approval', 'start pannu', 'start panna'])('blocks the action phrase %s', text => {
-    expect(mapIntent(text)).toMatchObject({ intent: 'blocked', params: {}, reply: { ta: 'திரையில் approve செய்யவும்' } });
+    expect(mapIntent(text)).toMatchObject({ intent: 'blocked', params: {}, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.' } });
   });
   it('blocked check runs before every other intent', () => {
     for (const readOnly of ['FeSi stock evvalavu', 'Heat 1053 status என்ன', 'Heat 1053 carbon evvalavu', 'ஏன் HOLD', 'show dashboard', 'spectrometer kaattu', 'pre-melt open pannu', 'explain the furnace']) {
       for (const text of [`melting ${readOnly}`, `${readOnly} approval`]) {
-        expect(mapIntent(text)).toEqual({ intent: 'blocked', params: {}, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } });
+        expect(mapIntent(text)).toEqual({ intent: 'blocked', params: {}, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen." } });
       }
     }
   });
@@ -123,7 +123,7 @@ describe('read-only voice intents', () => {
     expect(mapIntent(`silicon ${word}`)).toEqual({ intent: 'element_value', params: { element: 'Si' } });
   });
   it.each(['approve', 'approve heat 42', 'approve heat 1053', 'start melting', 'start melting heat 1053', 'override HOLD', 'confirm', 'release', 'deduct stock', 'start melt', 'invoice', 'delete', 'அனுமதி', 'ஒப்புதல்'])('blocks %s', text => {
-    expect(mapIntent(text)).toMatchObject({ intent: 'blocked', reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } });
+    expect(mapIntent(text)).toMatchObject({ intent: 'blocked', reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen." } });
   });
 });
 
@@ -162,7 +162,7 @@ describe('TTS delivery style', () => {
   it('HOLD alert speech requests style alert', async () => {
     audio();
     try {
-      await createHoldAnnouncer().announce('H-1053', { decision: 'HOLD', checks: [] }, speakText, 'ta');
+      await createHoldAnnouncer().checkResult('H-1053', { decision: 'HOLD', checks: [] }, speakText, 'ta');
       expect(post.mock.lastCall[1]).toMatchObject({ language: 'ta', style: 'alert', slow: false });
       expect(post.mock.lastCall[1].text).not.toMatch(/<[^>]+>/);
       expect(post.mock.lastCall[1].text).toMatch(/^Heat H-1053 HOLD\./);

@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ScanLine, Plug, PlugZap, Download, Upload, ShieldCheck } from "lucide-react";
@@ -23,6 +24,7 @@ export default function YardInspection() {
   const [status, setStatus] = useState(null);
   const [lots, setLots] = useState([]);
   const [form, setForm] = useState({ lotId: params.get("lot") || "", device: "XRF", pieces: 15, surfacePrepared: false, inspector: "" });
+  useRegisterVoicePage({lotId:form.lotId}, 'YardInspection');
   const [live, setLive] = useState(null);
   const [running, setRunning] = useState(false);
   const [sessions, setSessions] = useState([]);

@@ -78,7 +78,7 @@ it('WARN gate reasons also use validated Evon text', async () => {
 
 it('HOLD alert stays template-only', async () => {
   const speak = vi.fn();
-  createHoldAnnouncer().announce(heat.heatId, heat.gateResult, speak, 'ta');
+  createHoldAnnouncer().checkResult(heat.heatId, heat.gateResult, speak, 'ta');
   expect(speak).toHaveBeenCalledOnce();
   expect(speak.mock.calls[0][0]).toContain('Heat H-1053 HOLD');
   expect(speak.mock.calls[0][2]).toBe('alert');
@@ -89,7 +89,7 @@ it('status, blocked and GO answers never request Evon phrasing', async () => {
   const f = fixture(); await f.handle('Heat 1053 status என்ன'); await f.handle('start melting');
   const go = fixture({ ...heat, gateResult: { decision: 'GO' } }); await go.handle('ஏன் HOLD');
   expect(post).not.toHaveBeenCalled();
-  expect(f.say.mock.calls[1][0]).toBe('திரையில் approve செய்யவும்');
+  expect(f.say.mock.calls[1][0]).toBe("This can't be done by voice. Please use the screen.");
   expect(go.setPhraseSource).toHaveBeenLastCalledWith('template');
 });
 

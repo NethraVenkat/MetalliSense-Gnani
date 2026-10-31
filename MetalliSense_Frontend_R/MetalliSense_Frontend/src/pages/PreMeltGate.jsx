@@ -1,8 +1,9 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import useSpeak, { useVoiceLanguage } from "../hooks/useSpeak";
 import PushToTalk from "../components/voice/PushToTalk";
 import ShiftHandover from "../components/voice/ShiftHandover";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { holdAnnouncer } from "../services/voiceGateAnswers";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, Lock, LockOpen, Flame, Plus, Trash2, Sparkles, ChevronDown, Microscope, RotateCcw, ArrowRight, Boxes, ScanLine, FlaskConical, BrainCircuit, Clock, Check, Zap } from "lucide-react";
@@ -295,6 +296,7 @@ export default function PreMeltGate() {
   const [heats, setHeats] = useState([]);
   const [heatId, setHeatId] = useState("");
   const [heat, setHeat] = useState(null);
+  useRegisterVoicePage({heatId,grade:heat?.heatId===heatId?heat.grade:undefined}, 'PreMeltGate');
   const [lots, setLots] = useState([]);
   const [grades, setGrades] = useState([]);
   const [charge, setCharge] = useState([]);
@@ -334,9 +336,11 @@ export default function PreMeltGate() {
   const gate = heat?.gateResult;
   const { speak, muted } = useSpeak();
   const [voiceLang] = useVoiceLanguage();
+  const voiceSettings=useRef({speak,muted,lang:voiceLang});
+  voiceSettings.current={speak,muted,lang:voiceLang};
   useEffect(() => {
-    void holdAnnouncer.announce(heat?.heatId, gate, speak, voiceLang, muted);
-  }, [heat?.heatId, gate, speak, voiceLang, muted]);
+    holdAnnouncer.observe(heat?.heatId, gate);
+  }, [heat?.heatId, gate]);
   const planned = heat?.status === "PLANNED";
 
   const editLine = (i, patch) => { setCharge((c) => c.map((l, j) => (j === i ? { ...l, ...patch } : l))); setDirty(true); };
@@ -355,8 +359,11 @@ export default function PreMeltGate() {
   const check = async () => {
     setChecking(true);
     try {
-      if (dirty) await saveCharge();
+      let previousDecision=gate?.decision??null;
+      if (dirty) previousDecision=(await saveCharge()).gateResult?.decision??null;
       const r = await runGateCheck(heat.heatId, "Melt shop");
+      const voice=voiceSettings.current;
+      void holdAnnouncer.checkResult(heat.heatId, r.data.data, voice.speak, voice.lang, voice.muted, previousDecision);
       toast(r.data.data.decision === "GO" ? "GO — charge cleared" : r.data.data.decision === "WARN" ? "WARN — review the warnings" : "HOLD — furnace start locked",
         { icon: r.data.data.decision === "GO" ? "✅" : r.data.data.decision === "WARN" ? "⚠️" : "⛔" });
       await loadHeat(heat.heatId);
@@ -392,6 +399,7 @@ export default function PreMeltGate() {
   const reset = async () => {
     if (!window.confirm("Reset all stock, heats and inspections to the starting point?")) return;
     await resetDemo();
+    holdAnnouncer.reset();
     setHeatId("");
     await Promise.all([loadHeats("H-1051"), loadLots(), loadAudit()]);
     toast.success("Reset complete");

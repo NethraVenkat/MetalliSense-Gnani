@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
@@ -329,6 +330,7 @@ export default function SalesInvoices() {
   const [loading, setLoading] = useState(true);
   const [invFor, setInvFor] = useState(null);
   const [view, setView] = useState(null); // { heatId, invoice, tab }
+  useRegisterVoicePage({heatId:view?.heatId,invoiceId:view?.invoice?.invoiceId}, 'SalesInvoices');
 
   const load = useCallback(async () => {
     try {

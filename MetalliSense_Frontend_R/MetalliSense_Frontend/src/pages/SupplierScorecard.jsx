@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
@@ -682,6 +683,7 @@ function SupplierDrawer({ s, trendLabels, windowDays, onClose }) {
 
 // ─────────────────────────────────────────────── page
 export default function SupplierScorecard() {
+  useRegisterVoicePage({}, 'SupplierScorecard');
   const [type, setType] = useState("");
   const [view, setView] = useState("overall");
   const [data, setData] = useState(null);

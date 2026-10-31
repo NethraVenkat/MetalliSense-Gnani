@@ -3,14 +3,15 @@ import { sendChatMessage, phraseGateFacts } from './copilotService';
 import { gatePhraseFacts } from './gatePhraseFacts';
 import { mapIntent } from './voiceIntents';
 import { heatVoiceAnswer, spokenGateReasonAnswer } from './voiceGateAnswers';
-import { pickReplyLanguage, hindiBlocked, hindiNotUnderstood, retryVoiceAnswer } from './languageBridge';
+import { pickReplyLanguage, blockedVoiceReplies, questionReplyLanguage, hindiNotUnderstood, retryVoiceAnswer } from './languageBridge';
 import { hindiHeatAnswer } from './hindiVoice';
 import { voiceClarityEnabled, clarityReply } from './voiceClarity';
 import { buildShiftSummary, spokenShiftSummary, isSummaryActive } from './shiftSummary';
+import {voiceEverywhereEnabled,navigationAnswer,pageHelp} from './voicePages';
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
-export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false }) {
+export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false, pageContext = null }) {
   return async function handleTranscript(text, metadata = {}) {
     const started = performance.now();
     const lang = pickReplyLanguage(text, metadata.detected_language_code, currentLang, langBridge);
@@ -24,8 +25,20 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
     };
     setHeard(text);
     setPhraseSource(null);
-    const { intent, params, reply } = mapIntent(text, { langBridge });
-    if (intent === 'blocked') return say(lang === 'hi' ? hindiBlocked : reply[lang]);
+    const { intent, params } = mapIntent(text, { langBridge });
+    if (intent === 'blocked') {
+      const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      const refusal=blockedVoiceReplies[replyLang];
+      return output(refusal,refusal,replyLang,...(metadata.voiceTiming?[{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}]:[]));
+    }
+    if(voiceEverywhereEnabled() && (intent==='page_help'||params.pageAware)) {
+      // New navigation/help language picking does not alter F2/global answers.
+      const pageLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      const pageAnswer=intent==='page_help'?pageHelp(pageContext,pageLang):navigationAnswer(params.route,pageLang);
+      output(pageAnswer,pageAnswer,pageLang,intent==='open_screen'?{navigation:params.route}:undefined);
+      if(intent==='open_screen')navigate(params.route);
+      return;
+    }
     if (intent === 'shift_summary') {
       const unwrap = response => response.data?.data ?? response.data;
       const listed = unwrap(await getShiftSummaryHeats());
@@ -36,6 +49,11 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
         metadata.voiceTiming?{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}:undefined);
     }
     if (!text.trim() || params.unparsedHeat || intent === 'ask_copilot' && !params.bridgeAction) return say(retryVoiceAnswer(lang));
+    if (intent==='open_screen') {
+      const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      const confirmation=navigationAnswer(params.route,replyLang);
+      output(confirmation,confirmation,replyLang,...(voiceEverywhereEnabled()?[{navigation:params.route}]:[]));navigate(params.route);return;
+    }
     if (lang === 'hi') {
       if (params.bridgeAction === 'help') return say('हीट का स्टेटस, होल्ड का कारण या तत्व की मात्रा पूछिए। वॉइस केवल जानकारी देती है।');
       if (params.bridgeAction === 'list_holds') {
@@ -51,10 +69,8 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
         if (intent === 'gate_reason') setPhraseSource('template');
         return say(hindiHeatAnswer(intent, heat, params));
       }
-      if (intent === 'open_screen') { navigate(params.route); return say('स्क्रीन खुल रही है।'); }
       if (intent !== 'stock_check') return say(hindiNotUnderstood);
     }
-    if (intent === 'open_screen') { say(choose('திரை திறக்கப்படுகிறது', 'Opening screen')); navigate(params.route); return; }
     if (intent === 'stock_check') {
       const response = await getAdditives();
       const additives = response.data?.data ?? response.data;

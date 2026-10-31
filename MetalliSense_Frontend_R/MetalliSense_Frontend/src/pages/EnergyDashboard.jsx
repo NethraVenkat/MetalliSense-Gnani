@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import clsx from "clsx";
@@ -45,6 +46,7 @@ function HeatAnalysis({ heats, onChanged }) {
   const current = heats.filter((h) => !h.history);
   const past = heats.filter((h) => h.history);
   const [heatId, setHeatId] = useState(params.get("heat") || current[0]?.heatId || heats[0]?.heatId || "");
+  useRegisterVoicePage({heatId}, 'EnergyDashboard');
   const [tapTempC, setTapTempC] = useState("");
   const [holdingMin, setHoldingMin] = useState(15);
   const [hour, setHour] = useState(new Date().getHours());
@@ -241,6 +243,7 @@ function HeatAnalysis({ heats, onChanged }) {
 
 // ────────────────────────────────────────────── page
 export default function EnergyDashboard() {
+  useRegisterVoicePage({}, 'EnergyDashboard');
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
 

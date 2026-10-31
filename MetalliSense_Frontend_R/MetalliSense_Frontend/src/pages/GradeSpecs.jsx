@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useEffect } from "react";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -23,6 +24,7 @@ const GradeSpecs = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingGrade, setEditingGrade] = useState(null);
   const [selectedGrade, setSelectedGrade] = useState(null);
+  useRegisterVoicePage({grade:selectedGrade?.grade}, 'GradeSpecs');
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({

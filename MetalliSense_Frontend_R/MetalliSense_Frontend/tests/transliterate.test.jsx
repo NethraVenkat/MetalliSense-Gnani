@@ -44,7 +44,7 @@ it('main blocked phrase wins even when Latin text is a safe heat question',async
  vi.stubEnv('VITE_TRANSLITERATE','true');const say=vi.fn(),resolveHeat=vi.fn(),onLatin=vi.fn();
  const handler=createTranscriptHandler({lang:'ta',say,setHeard:vi.fn(),navigate:vi.fn(),resolveHeat});
  await handleDisplayTranscription({text:'start melting',transcript_latin:'heat 1053 status enna'},handler,onLatin,true);
- expect(say.mock.lastCall[0]).toBe('திரையில் approve செய்யவும்');expect(resolveHeat).not.toHaveBeenCalled();expect(onLatin).toHaveBeenCalledWith('');
+ expect(say.mock.lastCall[0]).toBe("This can't be done by voice. Please use the screen.");expect(resolveHeat).not.toHaveBeenCalled();expect(onLatin).toHaveBeenCalledWith('');
 });
 it('only main transcript and metadata reach the shared answer handler',()=>{
  vi.stubEnv('VITE_TRANSLITERATE','true');const handler=vi.fn(),onLatin=vi.fn();

@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Boxes, Truck, FlaskConical, ScanLine, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -455,6 +456,7 @@ export default function RawMaterialStock() {
   const [qaLot, setQaLot] = useState(null);
   const [approveLot, setApproveLot] = useState(null);
   const [detailId, setDetailId] = useState(null);
+  useRegisterVoicePage({lotId:detailId}, 'RawMaterialStock');
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {

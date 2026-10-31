@@ -1,0 +1,23 @@
+{
+  "/dashboard": "This page shows the plant overview and connection status. Only navigation on this page for now",
+  "/premelt-gate": "This page shows the heat charge and pre-melt gate result. Voice can read heat status, blocking reasons and element values.",
+  "/raw-material-stock": "This page shows raw-material lots and stock. Voice can read alloy additive stock.",
+  "/yard-inspection": "This page shows yard inspection readings and results. Only navigation on this page for now",
+  "/spectrometer": "This page shows spectrometer readings and connection status. Only navigation on this page for now",
+  "/grades": "This page shows grade specifications and element limits. Only navigation on this page for now",
+  "/supplier-scorecard": "This page shows supplier scores and rankings. Only navigation on this page for now",
+  "/energy": "This page shows predicted heat energy and meter records. Only navigation on this page for now",
+  "/inventory-forecast": "This page shows stock forecasts and purchase requests. Only navigation on this page for now",
+  "/sales": "This page shows finished heats, certificates and sales bills. Only navigation on this page for now",
+  "/cost-analysis": "This page shows configured material prices and cost records. Only navigation on this page for now",
+  "/anomaly": "This page shows the composition deviation analysis result. Only navigation on this page for now",
+  "/recommendation": "This page shows suggested composition corrections. Only navigation on this page for now",
+  "/rl-optimizer": "This page compares strategies and model scores. Only navigation on this page for now",
+  "/full-analysis": "This page combines composition analysis and cost estimates. Only navigation on this page for now",
+  "/mechanical-properties": "This page shows predicted strength and hardness. Only navigation on this page for now",
+  "/agent": "This page shows AI analysis and recommendations. Only navigation on this page for now",
+  "/synthetic": "This page shows synthetic readings for testing. Only navigation on this page for now",
+  "/training-data": "This page shows training records and their details. Only navigation on this page for now",
+  "/semantic-search": "This page shows records matching a search. Only navigation on this page for now",
+  "/charge-optimizer": "This page compares charge mixes and their costs. Only navigation on this page for now"
+}

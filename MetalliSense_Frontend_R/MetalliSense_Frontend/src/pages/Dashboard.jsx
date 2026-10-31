@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import VoiceErrorBoundary from "../components/voice/VoiceErrorBoundary";
 import PushToTalk from "../components/voice/PushToTalk";
 import React, { useState, useEffect, useContext } from "react";
@@ -22,6 +23,7 @@ import {
 } from "recharts";
 
 const Dashboard = () => {
+  useRegisterVoicePage({}, 'Dashboard');
   const { opcStatus } = useContext(OPCContext);
   const { grades } = useContext(GradeContext);
   const [stats, setStats] = useState({

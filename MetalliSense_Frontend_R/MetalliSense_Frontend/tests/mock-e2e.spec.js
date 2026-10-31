@@ -52,9 +52,9 @@ test('H-1053 HOLD voice demo uses real checks and read-only transcript actions',
  await panel.getByRole('combobox', { name: 'Voice language' }).selectOption('ta');
  for (const transcript of ['approve', 'start melting']) {
   await panel.getByRole('button', { name: transcript, exact: true }).click();
-  await expect(panel.getByText('திரையில் approve செய்யவும்', { exact: true })).toBeVisible();
+  await expect(panel.getByText("This can't be done by voice. Please use the screen.", { exact: true })).toBeVisible();
  }
- await expect.poll(() => speech.filter(s => s.text === 'திரையில் approve செய்யவும்').length).toBe(2);
+ await expect.poll(() => speech.filter(s => s.text === "This can't be done by voice. Please use the screen.").length).toBe(2);
  expect(speech.filter(s => s.text.startsWith('Heat H-1053 HOLD.'))).toHaveLength(1);
  expect(speech.filter(s => s.text.startsWith('Heat H-1053 HOLD.'))[0].language).toBe('ta');
  const heat = (await call(page, '/api/v2/premelt/heats/H-1053')).data;

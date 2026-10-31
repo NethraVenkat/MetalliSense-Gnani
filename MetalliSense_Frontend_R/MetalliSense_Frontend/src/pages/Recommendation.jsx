@@ -1,3 +1,4 @@
+import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../components/common/Card";
@@ -17,6 +18,7 @@ import { formatPercentage, formatConfidence } from "../utils/formatters";
 const Recommendation = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunAlloy, alloyDone } = useMeltFlow();
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'Recommendation');
   const [syntheticReading, setSyntheticReading] = useState(() => (isUnlocked ? flow.alloyResult?._reading || null : null));
   const [result, setResult] = useState(() => (isUnlocked ? flow.alloyResult : null));
   const [aiAvailable, setAIAvailable] = useState(true);

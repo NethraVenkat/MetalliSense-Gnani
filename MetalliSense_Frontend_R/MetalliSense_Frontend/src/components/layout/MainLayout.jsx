@@ -4,6 +4,10 @@ import Joyride from "react-joyride";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import { useLocation } from "react-router-dom";
+import PushToTalk from '../voice/PushToTalk';
+import VoiceErrorBoundary from '../voice/VoiceErrorBoundary';
+import {VoicePageProvider} from '../../context/VoicePageContext';
+import {voiceEverywhereEnabled} from '../../services/voicePages';
 
 
 const pageTitles = {
@@ -28,7 +32,7 @@ const pageTitles = {
   "/sales": "Sales & Dispatch",
 };
 
-const MainLayout = () => {
+const LayoutBody = () => {
   const location = useLocation();
   const title = pageTitles[location.pathname] || "MetalliSense";
   const [runTour, setRunTour] = useState(false);
@@ -95,6 +99,7 @@ const MainLayout = () => {
       <div className="flex-1 ml-72 flex flex-col overflow-hidden">
         <TopBar title={title} />
         <main className="flex-1 overflow-y-auto p-6">
+          {voiceEverywhereEnabled() && <VoiceErrorBoundary><PushToTalk shared /></VoiceErrorBoundary>}
           <Outlet />
         </main>
       </div>
@@ -102,4 +107,6 @@ const MainLayout = () => {
   );
 };
 
-export default MainLayout;
+export default function MainLayout() {
+  return voiceEverywhereEnabled()?<VoicePageProvider><LayoutBody /></VoicePageProvider>:<LayoutBody />;
+}

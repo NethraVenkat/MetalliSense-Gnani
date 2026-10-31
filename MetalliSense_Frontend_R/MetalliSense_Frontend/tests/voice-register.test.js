@@ -111,7 +111,7 @@ it('chosen Tamil counts stay quantities, with furnace/pending/opener and unchang
  for(const sentence of spoken.split('.').filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);
  expect(spokenShiftSummary(summary,'hi',{clarity:true,register:'colloquial'})).toContain('एक हीट भट्टी में है');
 });
-it('chosen blocked speech is exact but original safety text remains on screen',()=>{
- expect(clarityText('திரையில் approve செய்யவும்','ta','colloquial')).toBe('இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல அப்ரூவ் பண்ணுங்க.');
+it('legacy refusal uses neutral colloquial wording; historical formal rendering stays unchanged',()=>{
+ expect(clarityText('திரையில் approve செய்யவும்','ta','colloquial')).toBe('இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.');
  expect(clarityText('திரையில் approve செய்யவும்','ta','formal')).toBe('திரையில் அப்ரூவ் செய்யவும்.');
 });
