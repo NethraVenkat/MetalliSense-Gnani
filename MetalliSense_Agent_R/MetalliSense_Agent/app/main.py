@@ -849,11 +849,13 @@ class EvonPhraseRequest(BaseModel):
     facts: dict
     kind: Literal["hold", "warn", "status"]
     lang: Literal["ta", "en"]
+    english_source: Optional[str] = None
+    mode: Optional[Literal["translate", "phrase"]] = None
 
 
 @app.post("/copilot/evon/phrase", tags=["Copilot"])
 async def evon_phrase(request: EvonPhraseRequest):
-    return await phrase_gate_facts(request.facts, request.kind, request.lang)
+    return await phrase_gate_facts(request.facts, request.kind, request.lang, request.english_source, request.mode)
 
 
 @app.websocket("/copilot/voice/stream")

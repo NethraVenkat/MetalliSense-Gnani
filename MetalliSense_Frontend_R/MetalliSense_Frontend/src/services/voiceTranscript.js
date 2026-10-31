@@ -27,9 +27,10 @@ export function createTranscriptHandler({ lang, setHeard, say, navigate, resolve
     const heat = await resolveHeat(params);
     const answer = heatVoiceAnswer(intent, heat, params, lang);
     if (intent === 'gate_reason') {
-      if (['HOLD', 'WARN'].includes(heat.gateResult?.decision)) {
+      if (lang === 'ta' && ['HOLD', 'WARN'].includes(heat.gateResult?.decision)) {
         try {
-          const phrased = await phraseGateFacts(gatePhraseFacts(heat), heat.gateResult.decision.toLowerCase(), lang);
+          const phrased = await phraseGateFacts(gatePhraseFacts(heat), heat.gateResult.decision.toLowerCase(), lang,
+            spokenGateReasonAnswer(heat.gateResult, 'en'));
           if (phrased?.source === 'evon' && typeof phrased.text === 'string' && phrased.text.trim()) {
             setPhraseSource('evon');
             return say(phrased.text, phrased.text);
