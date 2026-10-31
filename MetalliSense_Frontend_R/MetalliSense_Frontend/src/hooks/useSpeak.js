@@ -16,21 +16,34 @@ let echoGuardUntil = 0;
 export const isSpeechEchoGuarded = (now = Date.now()) => speaking || now < echoGuardUntil;
 function persist(key, value) { try { localStorage.setItem(key, value); } catch { /* optional storage */ } listeners.forEach(fn => fn()); }
 const subscribe = fn => { listeners.add(fn); return () => listeners.delete(fn); };
+const tourLanguageEnabled=()=>import.meta.env.VITE_VOICE_EVERYWHERE==='true'&&import.meta.env.VITE_VOICE_TOUR==='true';
 export function useVoiceLanguage() {
-  const lang = useSyncExternalStore(subscribe, () => language);
-  const setLang = useCallback(value => { language = value === 'en' ? 'en' : 'ta'; persist('metallisense.voice.language', language); }, []);
+  const lang = useSyncExternalStore(subscribe, () => language==='hi'&&!tourLanguageEnabled()?'ta':language);
+  const setLang = useCallback(value => { language = value==='hi'&&tourLanguageEnabled()?'hi':value === 'en' ? 'en' : 'ta'; persist('metallisense.voice.language', language); }, []);
   return [lang, setLang];
 }
+async function preparationOrAbort(prepared,signal) {
+  if(!signal)return prepared;
+  if(signal.aborted)return {failed:true};
+  let cancel;
+  try{return await Promise.race([prepared,new Promise(resolve=>{cancel=()=>resolve({failed:true});signal.addEventListener('abort',cancel,{once:true});})]);}
+  finally{signal.removeEventListener('abort',cancel);}
+}
 export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
-  if (muted || !text) return Promise.resolve();
-  if (voiceClarityEnabled()) text = clarityText(text,lang);
-  else if (import.meta.env.VITE_SPOKEN_NORMALIZE === 'true') text = toSpokenText(text,lang);
+  if (muted || !text || timing?.signal?.aborted) return Promise.resolve();
+  // Reviewed tour narration has already had digit-ID pronunciation applied.
+  // Its wording and punctuation must survive every enabled speech flag.
+  if (!timing?.pronunciationOnly) {
+    if (voiceClarityEnabled()) text = clarityText(text,lang);
+    else if (import.meta.env.VITE_SPOKEN_NORMALIZE === 'true') text = toSpokenText(text,lang);
+  }
   const ticket = generation;
   const queuedAt = performance.now();
   if (import.meta.env.VITE_TTS_STREAM === 'true' && (globalThis.AudioContext || globalThis.webkitAudioContext)) {
     queue = queue.then(async () => {
-      if (muted || ticket !== generation || timing?.isCurrent?.()===false) return;
+      if (muted || ticket !== generation || timing?.signal?.aborted || timing?.isCurrent?.()===false) return;
       const controller = new AbortController(); cancelPlayback = () => controller.abort();
+      const abort=()=>controller.abort();timing?.signal?.addEventListener('abort',abort,{once:true});
       const queue_ms = performance.now()-queuedAt;
       try {
         const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,isCurrent:timing?.isCurrent,onAudioStart:() => { speaking = true; }});
@@ -40,7 +53,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,
           time_to_first_audio_ms:null,total_audio_ms:0,total_ms:performance.now()-queuedAt,queue_ms,
           path:controller.signal.aborted?'cancelled':'error',language:lang});
-      } finally { cancelPlayback = undefined; speaking = false; echoGuardUntil = Date.now()+400; }
+      } finally { timing?.signal?.removeEventListener('abort',abort);cancelPlayback = undefined; speaking = false; echoGuardUntil = Date.now()+400; }
     }).catch(() => {});
     return queue;
   }
@@ -51,9 +64,9 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
     meta => ({ ...meta, tts_ms: performance.now() - queuedAt }),
     () => ({ failed: true, tts_ms: performance.now() - queuedAt }));
   queue = queue.then(async () => {
-    if (muted || ticket !== generation || timing?.isCurrent?.()===false) return;
+    if (muted || ticket !== generation || timing?.signal?.aborted || timing?.isCurrent?.()===false) return;
     const queue_ms = performance.now() - queuedAt;
-    const { blob, provider, source, tts_ms, failed } = await prepared;
+    const { blob, provider, source, tts_ms, failed } = await preparationOrAbort(prepared,timing?.signal);
     const instrument = import.meta.env.VITE_TTS_STREAM === 'true' || import.meta.env.VITE_SPOKEN_NORMALIZE === 'true';
     if (!instrument || failed) console.info('voice_turn_timing', { stt_ms: timing?.stt_ms ?? null, answer_ms: timing?.answer_ms ?? null,
       tts_ms, queue_ms,
@@ -61,7 +74,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         : provider?.includes('timbre-v2.5') ? 'v2.5 fallback' : provider === 'gtts' ? 'gTTS' : 'unknown', language: lang,
       ...(instrument && failed ? {time_to_first_audio_ms:null,total_audio_ms:0,total_ms:performance.now()-queuedAt,path:'error'} : {}) });
     if (failed) return;
-    if (muted || ticket !== generation || timing?.isCurrent?.()===false) return;
+    if (muted || ticket !== generation || timing?.signal?.aborted || timing?.isCurrent?.()===false) return;
     const url = URL.createObjectURL(blob);
     try {
       speaking = true;
@@ -71,7 +84,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         let first = null, finished = false;
         const finish = () => {
           if (finished) return; finished = true;
-          clearTimeout(timer); audio.pause(); audio.onended = null; audio.onerror = null; cancelPlayback = undefined;
+          clearTimeout(timer);timing?.signal?.removeEventListener('abort',finish); audio.pause(); audio.onended = null; audio.onerror = null; cancelPlayback = undefined;
           if (instrument) {
             audio.onplaying = null;
             console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,tts_ms,queue_ms,
@@ -85,7 +98,8 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         audio.onerror = finish;
         if (instrument) audio.onplaying = () => { first ??= performance.now()-queuedAt; };
         timer = setTimeout(finish, 120000);
-        Promise.resolve(audio.play()).catch(finish);
+        timing?.signal?.addEventListener('abort',finish,{once:true});
+        if(timing?.signal?.aborted)finish();else Promise.resolve(audio.play()).catch(finish);
       });
     } finally { speaking = false; echoGuardUntil = Date.now() + 400; URL.revokeObjectURL(url); }
   }).catch(() => {});

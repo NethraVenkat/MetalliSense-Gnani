@@ -17,7 +17,7 @@ export function VoicePageProvider({children}) {
   },[]);
   const active=registrations.filter(entry=>entry.scope===scope);
   const registration=active.filter(entry=>Object.values(entry.details.selected).some(Boolean)).at(-1)||active.at(-1);
-  const value={...routeSnapshot,...registration?.details,scope,register,isCurrent:token=>token===current.current};
+  const value={...routeSnapshot,...registration?.details,scope,register,tourNavigationToken:location.state?.kuralTour,isCurrent:token=>token===current.current};
   return <VoicePageContext.Provider value={value}>{children}</VoicePageContext.Provider>;
 }
 // Register only metadata already shown by a page. No requests or factory store.

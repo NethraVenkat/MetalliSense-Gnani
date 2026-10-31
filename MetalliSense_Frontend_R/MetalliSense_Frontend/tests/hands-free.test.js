@@ -11,9 +11,20 @@ vi.mock('axios', () => ({ default: { create: () => ({ post, get, interceptors: {
 const sessions = [];
 afterEach(() => {
   sessions.splice(0).forEach(session => session.stop());
-  vi.useRealTimers(); vi.unstubAllGlobals(); vi.clearAllMocks();
+  vi.useRealTimers(); vi.unstubAllGlobals();vi.unstubAllEnvs(); vi.clearAllMocks();
 });
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+it('hands-free tour mode handles only tour controls and retains echo guard and safety',async()=>{
+ vi.stubEnv('VITE_VOICE_EVERYWHERE','true');vi.stubEnv('VITE_VOICE_TOUR','true');
+ const say=vi.fn(),resolveHeat=vi.fn(),navigate=vi.fn(),tourControl=vi.fn();let echo=false;
+ const handle=createTranscriptHandler({lang:'en',say,resolveHeat,navigate,tourControl,tourActive:()=>true,setHeard:vi.fn()});
+ const f=fixture({onTranscript:handle,isEchoGuarded:()=>echo}),socket=await f.ready();
+ socket.message({type:'final',text:'heat 1053 status'});await flush();expect(resolveHeat).not.toHaveBeenCalled();expect(say.mock.lastCall[0]).toContain('Tour is running');
+ socket.message({type:'final',text:'pause'});await flush();expect(tourControl).toHaveBeenCalledWith('pause',undefined);
+ socket.message({type:'final',text:'start melting'});await flush();expect(say.mock.lastCall[0]).toContain("can't be done by voice");
+ echo=true;f.mics[0].onFrame(new ArrayBuffer(1024));expect(socket.sent.filter(value=>value instanceof ArrayBuffer)).toHaveLength(0);
+ expect(navigate).not.toHaveBeenCalled();
+});
 class Socket {
   readyState = 0;
   bufferedAmount = 0;

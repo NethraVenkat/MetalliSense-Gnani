@@ -8,10 +8,11 @@ import { hindiHeatAnswer } from './hindiVoice';
 import { voiceClarityEnabled, clarityReply } from './voiceClarity';
 import { buildShiftSummary, spokenShiftSummary, isSummaryActive } from './shiftSummary';
 import {voiceEverywhereEnabled,navigationAnswer,pageHelp} from './voicePages';
+import {tourRunningReply} from './voiceTour';
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
-export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false, pageContext = null }) {
+export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false, pageContext = null, tourControl = () => false, tourActive = () => false }) {
   return async function handleTranscript(text, metadata = {}) {
     const started = performance.now();
     const lang = pickReplyLanguage(text, metadata.detected_language_code, currentLang, langBridge);
@@ -30,6 +31,11 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
       const refusal=blockedVoiceReplies[replyLang];
       return output(refusal,refusal,replyLang,...(metadata.voiceTiming?[{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}]:[]));
+    }
+    if(intent==='tour_control')return tourControl(params.action,params.action==='start'?questionReplyLanguage(text,metadata.detected_language_code,currentLang):undefined);
+    if(tourActive()){
+      const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang),message=tourRunningReply[replyLang];
+      return output(message,message,replyLang);
     }
     if(voiceEverywhereEnabled() && (intent==='page_help'||params.pageAware)) {
       // New navigation/help language picking does not alter F2/global answers.

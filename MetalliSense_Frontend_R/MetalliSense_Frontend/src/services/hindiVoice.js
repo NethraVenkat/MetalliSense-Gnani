@@ -1,5 +1,5 @@
-import { gatePhraseFacts } from './gatePhraseFacts';
-import { hindiNotUnderstood } from './languageBridge';
+import { gatePhraseFacts } from './gatePhraseFacts.js';
+import { hindiNotUnderstood } from './languageBridge.js';
 
 export const hindiElements = { C: 'कार्बन', Si: 'सिलिकॉन', Mn: 'मैंगनीज़', P: 'फॉस्फोरस', S: 'सल्फर', Cu: 'कॉपर', Cr: 'क्रोमियम', Ni: 'निकल', Mo: 'मॉलिब्डेनम' };
 export function formatGateLimit(value, low = false) {

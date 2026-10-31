@@ -94,9 +94,9 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
  const root=process.cwd();
  const fixturePlugin={name:'voice-fixture-mocks',enforce:'pre',load(id){
   const path=id.replaceAll('\\','/').split('?')[0];
-  if(path.endsWith('/src/hooks/useSpeak.js'))return `window.spoken ||= []; export const speakText=(...args)=>{window.spoken.push(args);return Promise.resolve();}; export const isSpeechEchoGuarded=()=>false; export const useVoiceLanguage=()=>['en',()=>{}];export default function(){return {speak:speakText,muted:false,toggleMute:()=>{}};}`;
+  if(path.endsWith('/src/hooks/useSpeak.js'))return readFileSync('src/hooks/useSpeak.js','utf8').replace("export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {", "export function speakText(text, lang = 'ta', style = 'normal', timing = {}) { if(timing?.signal)window.lastTourSignal=timing.signal;");
   if(path.endsWith('/src/context/MeltFlowContext.jsx'))return `export const useMeltFlow=()=>({flow:{}});`;
-  if(path.endsWith('/src/services/copilotService.js'))return `export const transcribeAudio=()=>new Promise(resolve=>{window.finishSTT=()=>resolve({data:{success:true,text:'heat 1053 status'}});});export const transliterateAudio=async()=>({data:{unavailable:true}});export const sendChatMessage=async()=>({data:{response:''}});export const phraseGateFacts=async()=>({source:'template'});export const synthesizeSpeechWithMeta=async()=>{throw Error('No real TTS');};`;
+  if(path.endsWith('/src/services/copilotService.js'))return `export const transcribeAudio=()=>new Promise(resolve=>{window.sttCalls=(window.sttCalls||0)+1;window.finishSTT=()=>resolve({data:{success:true,text:window.nextTranscript||'heat 1053 status'}});});export const transliterateAudio=async()=>({data:{unavailable:true}});export const sendChatMessage=async()=>({data:{response:''}});export const phraseGateFacts=async()=>({source:'template'});export const synthesizeSpeechWithMeta=async(text,lang,style)=>{window.spoken||=[];window.spoken.push([text,lang,style]);return {blob:new Blob(['mock audio']),provider:'mock',source:'mock'};};`;
   if(path.endsWith('/src/components/layout/Sidebar.jsx')||path.endsWith('/src/components/layout/TopBar.jsx'))return `export default function(){return null;}`;
   if(path.endsWith('/src/services/premeltService.js'))return `const heat={heatId:'H-1053',status:'PLANNED',gateResult:{decision:'HOLD',checks:[]}};const wrap=x=>({data:{data:x}});export const getHeat=async()=>window.deferHeat?new Promise(r=>{window.finishHeat=()=>r(wrap(heat));}):wrap(heat);export const getHeats=async()=>wrap([heat]);export const getShiftSummaryHeats=getHeats;export const getAdditives=async()=>wrap([]);`;
  }};
@@ -105,12 +105,13 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
   // Run both modes against real component mounts without local env overrides.
   for(const flag of ['true','false']){
    const outDir=`node_modules/.cache/f13-voice-${flag}`;
-   await build({root,configFile:false,envFile:false,logLevel:'error',plugins:[fixturePlugin],define:{'import.meta.env.VITE_VOICE_EVERYWHERE':JSON.stringify(flag),'import.meta.env.VITE_SHOW_VOICE_PANEL':'"true"','import.meta.env.VITE_MOCK_MODE':'"true"','import.meta.env.VITE_TRANSLITERATE':'"false"','import.meta.env.VITE_VOICE_CLARITY':'"false"'},build:{outDir,emptyOutDir:false,target:'esnext',rollupOptions:{input:root+'/tests/fixtures/voice-everywhere.html'}}});
+   await build({root,configFile:false,envFile:false,logLevel:'error',plugins:[fixturePlugin],define:{'import.meta.env.VITE_VOICE_EVERYWHERE':JSON.stringify(flag),'import.meta.env.VITE_VOICE_TOUR':'"true"','import.meta.env.VITE_HANDOVER':'"true"','import.meta.env.VITE_SHOW_VOICE_PANEL':'"true"','import.meta.env.VITE_MOCK_MODE':'"true"','import.meta.env.VITE_TRANSLITERATE':'"false"','import.meta.env.VITE_VOICE_CLARITY':'"false"'},build:{outDir,emptyOutDir:false,target:'esnext',rollupOptions:{input:root+'/tests/fixtures/voice-everywhere.html'}}});
    const hosted=await preview({root,configFile:false,logLevel:'error',build:{outDir},preview:{port:0,host:'127.0.0.1'}});
    server={httpServer:hosted.httpServer,close:()=>new Promise(resolve=>{hosted.httpServer.closeAllConnections();hosted.httpServer.close(resolve);})};
    const base=`http://127.0.0.1:${server.httpServer.address().port}`;
    browser=await chromium.launch({headless:true});const page=await browser.newPage();
    await page.addInitScript(()=>{
+    window.spoken=[];localStorage.setItem('metallisense.voice.language','en');window.Audio=class{constructor(){this.duration=.1;}play(){this.onended?.();return Promise.resolve();}pause(){}};
     window.voiceKeys=new Set();const add=window.addEventListener.bind(window),remove=window.removeEventListener.bind(window);
     window.addEventListener=(type,fn,...rest)=>{if(type==='keydown')window.voiceKeys.add(fn);return add(type,fn,...rest);};
     window.removeEventListener=(type,fn,...rest)=>{if(type==='keydown')window.voiceKeys.delete(fn);return remove(type,fn,...rest);};
@@ -129,8 +130,8 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
     if(flag==='true'){
      const context=JSON.parse(await page.getByTestId('context').innerText());expect(context.route).toBe(target.route);expect(context.source).toBe('fixture screen');
      if(target.route==='/premelt-gate')expect(context.selected.heatId).toBe('H-1053');else expect(context.selected.heatId).toBeUndefined();
-     if(target.route==='/dashboard')await page.locator('section').evaluate(node=>node.dataset.mountProbe='same');
-     expect(await page.locator('section').getAttribute('data-mount-probe')).toBe('same');
+     if(target.route==='/dashboard')await page.getByRole('region',{name:'Shop floor voice',exact:true}).evaluate(node=>node.dataset.mountProbe='same');
+     expect(await page.getByRole('region',{name:'Shop floor voice',exact:true}).getAttribute('data-mount-probe')).toBe('same');
      expect(await page.evaluate(()=>window.voiceKeys.size)).toBe(1);
     }
    }
@@ -161,14 +162,61 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
     await page.evaluate(()=>window.finishSTT());
     await expect.poll(()=>page.locator('[aria-live="polite"]').innerText()).toBe('');
     expect(await page.evaluate(()=>window.spoken)).toEqual([]);
+    // F14 mounted controls: all provider/media traffic remains mocked.
+    const card=page.locator('[aria-label="Voice onboarding tour"]');
+    const startTour=page.getByRole('button',{name:'Start tour / டூர் / टूर',exact:true});
+    expect(await startTour.count()).toBe(1);expect(await card.count()).toBe(0);
+    await page.getByText('Take the tour',{exact:true}).waitFor();
+    for(const language of ['ta','hi','en']){
+     await page.getByLabel('Voice language',{exact:true}).selectOption(language);
+     await startTour.click();await expect.poll(()=>card.innerText()).toContain('Step 1/22');
+     await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
+     await page.getByRole('button',{name:'Next',exact:true}).click();await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/spectrometer');
+     await page.getByRole('button',{name:'Repeat',exact:true}).click();
+     expect(await page.evaluate(()=>window.spoken.at(-1)[1])).toBe(language);
+     await page.getByRole('button',{name:'Back',exact:true}).click();await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
+     await page.getByRole('button',{name:'Stop',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);
+    }
+    const voice=async(text)=>{
+     const count=await page.evaluate(()=>window.sttCalls||0);
+     await page.evaluate(text=>window.nextTranscript=text,text);
+     const button=page.getByRole('button',{name:/^(?:Hold to talk|பேச அழுத்திப் பிடிக்கவும்)$/});
+     await expect.poll(()=>button.isEnabled()).toBe(true);await button.hover();await page.mouse.down();await expect.poll(()=>button.getAttribute('aria-pressed')).toBe('true');await page.mouse.up();
+     await expect.poll(()=>page.evaluate(()=>window.sttCalls)).toBe(count+1);await page.evaluate(()=>window.finishSTT());
+    };
+    for(const commands of [['டூர் ஆரம்பி','அடுத்தது','முன்னாடி','திரும்ப சொல்லு','டூர் நிறுத்து'],['tour start karo','aage','peeche','dobara','tour band karo'],['start tour','next','back','repeat','stop tour']]){
+     await voice(commands[0]);await expect.poll(()=>card.innerText()).toContain('Step 1/22');
+     await voice(commands[1]);await expect.poll(()=>card.innerText()).toContain('Step 2/22');
+     await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/spectrometer');
+     await voice(commands[2]);await expect.poll(()=>card.innerText()).toContain('Step 1/22');
+     await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
+     await voice(commands[3]);await voice(commands[4]);await expect.poll(()=>card.count()).toBe(0);
+    }
+    await startTour.click();
+    for(let step=2;step<=22;step++){
+     await page.getByRole('button',{name:'Next',exact:true}).click();await expect.poll(()=>card.innerText()).toContain(`Step ${step}/22`);
+     // Wait for each requested page before advancing to exercise the real router.
+     const route=['/dashboard','/spectrometer','/grades','/supplier-scorecard','/raw-material-stock','/yard-inspection','/premelt-gate','/premelt-gate','/anomaly','/recommendation','/rl-optimizer','/full-analysis','/agent','/energy','/mechanical-properties','/sales','/inventory-forecast','/cost-analysis','/synthetic','/training-data','/semantic-search'][step-1];
+     if(route)await expect.poll(()=>page.getByTestId('route').innerText()).toBe(route);
+    }
+    expect(await page.evaluate(()=>localStorage.getItem('metallisense.voice.tour.done'))).toBe('true');
+    await page.getByRole('button',{name:'Stop',exact:true}).click();expect(await page.getByText('Take the tour',{exact:true}).count()).toBe(0);
+    await page.getByRole('button',{name:'Mute voice',exact:true}).click();await page.evaluate(()=>window.spoken=[]);
+    await startTour.click();await expect.poll(()=>card.count()).toBe(1);expect(await card.innerText()).toContain('Step 1/22');expect(await page.evaluate(()=>window.spoken)).toEqual([]);
+    await page.getByRole('link',{name:'/energy',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);
+    await page.getByRole('button',{name:'Unmute voice',exact:true}).click();await startTour.click();
+    await expect.poll(()=>page.evaluate(()=>Boolean(window.lastTourSignal))).toBe(true);
+    await page.getByRole('link',{name:'/grades',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);
+    expect(await page.evaluate(()=>window.lastTourSignal.aborted)).toBe(true);
    }
+   if(flag==='false')expect(await page.getByRole('button',{name:'Start tour / டூர் / टूर',exact:true}).count()).toBe(0);
    await page.getByRole('link',{name:'/login',exact:true}).click();
    await expect.poll(()=>page.getByRole('region',{name:'Shop floor voice'}).count()).toBe(0);
    expect(await page.evaluate(()=>window.voiceKeys.size)).toBe(0);
    await browser.close();browser=null;await server.close();server=null;
   }
  }finally{await browser?.close();await server?.close();}
-},60000);
+},90000);
 
 it('all route pages register metadata and the existing Pre-Melt HOLD effect remains',()=>{
  const app=readFileSync('src/App.jsx','utf8');for(const page of voicePages)expect(app).toContain(`path="${page.route.slice(1)}"`);

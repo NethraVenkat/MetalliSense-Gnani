@@ -8,6 +8,8 @@ import { useMeltFlow } from '../../context/MeltFlowContext';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import {useVoicePage} from '../../context/VoicePageContext';
 import {voiceEverywhereEnabled,scopeVoiceCallbacks} from '../../services/voicePages';
+import useVoiceTour from '../../hooks/useVoiceTour';
+import VoiceTourCard from './VoiceTourCard';
 import useHandsFree from '../../hooks/useHandsFree';
 import { langBridgeEnabled } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
@@ -41,6 +43,7 @@ function VoicePanel({ heatId }) {
   const { flow } = useMeltFlow();
   const { speak, muted, toggleMute } = useSpeak();
   const [lang, setLang] = useVoiceLanguage();
+  const tour=useVoiceTour({pageContext,navigate,speak,muted,lang});
   const [state, setState] = useState('idle');
   const [heard, setHeard] = useState('');
   const [showLatin,setShowLatin]=useState(readTransliteratePreference);
@@ -75,11 +78,18 @@ function VoicePanel({ heatId }) {
     return unwrap(await getHeat(selected.heatId));
   }
   const recordHeard=text=>{if(isCurrent()){setHeard(text);setHeardLatin('');}};
-  const callbacks=voiceEverywhereEnabled()?scopeVoiceCallbacks({say,navigate,setPhraseSource},isCurrent):{say,navigate,setPhraseSource};
+  const callbacks=voiceEverywhereEnabled()?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
   const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, ...callbacks, resolveHeat, pageContext });
   // REST bridge only: hands-free retains the current single-locale Tamil path.
   const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, langBridge: langBridgeEnabled() });
   const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
+  const tourListening=useRef(false);
+  useEffect(()=>{
+    if(tour.state.active&&!tourListening.current&&navigator.mediaDevices?.getUserMedia&&globalThis.WebSocket&&(globalThis.AudioContext||globalThis.webkitAudioContext)){
+      tourListening.current=true;
+      if(!handsFree.enabled){tourListening.current='owned';handsFree.start();}
+    }else if(!tour.state.active&&tourListening.current){if(tourListening.current==='owned')handsFree.stop();tourListening.current=false;}
+  },[tour.state.active]);
   async function run(text) {
     if (busy.current) return;
     busy.current = true; setState('processing');
@@ -160,7 +170,7 @@ function VoicePanel({ heatId }) {
       window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur);
     };
   }, []);
-  return <section ref={panel} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" className="rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2">
+  return <section ref={panel} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" className={`${tour.visible?'relative ':''}rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2`}>
     {voiceEverywhereEnabled()&&<p className="text-xs text-slate-500">Kural · {pageContext?.pageName?.[lang] || pageContext?.pageName?.en}</p>}
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" aria-label={choose('பேச அழுத்திப் பிடிக்கவும்', 'Hold to talk')} aria-pressed={state === 'listening'} disabled={state === 'processing'}
@@ -171,7 +181,7 @@ function VoicePanel({ heatId }) {
         className={`min-h-16 min-w-16 touch-none select-none rounded-xl px-4 font-semibold text-white ${state === 'listening' ? 'bg-red-600' : 'bg-emerald-700'} disabled:opacity-50`}>
         <Mic className="inline mr-2" size={22} />{choose('பேச பிடிக்கவும்', 'Hold to talk')}
       </button>
-      <select aria-label="Voice language" value={lang} disabled={state === 'listening' || state === 'processing'} onChange={e => setLang(e.target.value)} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option></select>
+      <select aria-label="Voice language" value={lang} disabled={state === 'listening' || state === 'processing'} onChange={e => setLang(e.target.value)} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option>{tour.visible&&<option value="hi">हिन्दी</option>}</select>
       <button type="button" onClick={toggleMute} aria-label={muted ? 'Unmute voice' : 'Mute voice'} aria-pressed={muted} className="rounded border p-3">{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
       <button type="button" aria-pressed={handsFree.enabled} onClick={handsFree.enabled ? handsFree.stop : handsFree.start}
         className={`rounded border px-3 py-2 text-sm ${handsFree.enabled ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : ''}`}>
@@ -183,9 +193,12 @@ function VoicePanel({ heatId }) {
       </span>}
       <span role="status" className="text-xs">{state}</span>
       <TransliterationToggle enabled={showLatin} disabled={state==='listening'||state==='processing'} onChange={value=>{setShowLatin(value);saveTransliteratePreference(value);if(!value)latinDisplay.current.invalidate();}} />
+      {tour.visible&&<button type="button" onClick={()=>tour.control('start',lang)} className="rounded border px-3 py-2 text-sm">Start tour / டூர் / टूर</button>}
+      {tour.visible&&!tour.state.done&&!tour.state.active&&<span className="text-xs text-slate-500">Take the tour</span>}
     </div>
     <div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}<TransliterationLine text={heardLatin} show={showLatin} />{answer && <p>{answer}</p>}</div>
     <VoicePhraseBadge source={phraseSource} />
+    {tour.visible&&<VoiceTourCard state={tour.state} control={tour.control}/>}
     {handsFree.note && <p role="status" className="text-sm text-amber-800">{handsFree.note}</p>}
     {import.meta.env.VITE_MOCK_MODE === 'true' && <details className="text-sm">
       <summary className="cursor-pointer">Demo transcripts</summary>

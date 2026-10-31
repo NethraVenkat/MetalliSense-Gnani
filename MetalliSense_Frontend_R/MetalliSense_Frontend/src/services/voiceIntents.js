@@ -1,5 +1,6 @@
 import { normalizeSpokenNumbers } from './spokenNumbers.js';
 import {pageVoiceIntent,voiceEverywhereEnabled} from './voicePages.js';
+import {tourCommand} from './voiceTour.js';
 const tamilWords = {
   'எப்படி இருக்கு': 'epdi irukku', 'எவ்வளவு': 'evvalavu', 'என்ன': 'enna',
   'காட்டு': 'kaattu', 'நிலை': 'status', 'ஏன்': 'yen',
@@ -29,10 +30,11 @@ const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
 const hasBridgeAction = text => /\b(?:approv\w*|ap+ro+v\w*|apruv\w*|melting|milting|smelting|meltin|melton)\b|\b(?:start|shuru|suru|override|over\s+ride|release|deduct)\s*(?:karo|kro|kar|करो)?\b|(?:\bstock|स्टॉक)\s+(?:kam\b|kum\b|कम)|अप्रूव|एप्रूव|मंजूर|अनुमोदन|मेल्टिंग|मैल्टिंग|पिघला|शुरू|स्टार्ट|ओवरराइड|रिलीज|कन्फर्म/u.test(text);
 export function mapIntent(transcript, { langBridge = false, shiftSummary = import.meta.env?.VITE_SHIFT_SUMMARY === 'true', everywhere = voiceEverywhereEnabled() } = {}) {
   let text = normalizeIntentTranscript(transcript);
+  const tourAction=tourCommand(transcript);
   const params = {};
   if (langBridge) {
     // These action checks precede every read-only alias, slot and navigation rule.
-    if (hasBridgeAction(text)) {
+    if (hasBridgeAction(text) && tourAction!=='start') {
       return { intent: 'blocked', params, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen.", hi: 'यह वॉइस से नहीं हो सकता। स्क्रीन पर कीजिए।' } };
     }
     const aliases = { 'हीट': 'heat', 'होल्ड': 'hold', 'स्टेटस': 'status', 'क्यों': 'yen', 'क्यूं': 'yen', 'क्या': 'enna', 'कितना': 'evvalavu', 'कार्बन': 'carbon', 'सिलिकॉन': 'silicon', 'मैंगनीज़': 'manganese', 'फॉस्फोरस': 'phosphorus', 'सल्फर': 'sulphur', 'कॉपर': 'copper', 'क्रोमियम': 'chromium', 'निकल': 'nickel', 'मॉलिब्डेनम': 'molybdenum' };
@@ -45,6 +47,9 @@ export function mapIntent(transcript, { langBridge = false, shiftSummary = impor
   // runs before slots, stock, navigation or copilot, including "stock melting".
   const actionText = text.replace(/\bpre\s+melt\b/g, 'premelt');
   if (/approve|approval|confirm|release|deduct|start\s+melt|\bmelt(?:ing)?\b|\bstart\s+pann[ua]\b|override|invoice|delete|உருக்க|அனுமதி|ஒப்புதல்/u.test(actionText)) return { intent: 'blocked', params, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen." } };
+  // Only an exact, flag-gated tour start is exempt from the existing broad
+  // Hindi "start" action predicate. Dispatch still follows both safety checks.
+  if(tourAction)return {intent:'tour_control',params:{action:tourAction}};
   if(everywhere) {
     const pageIntent=pageVoiceIntent(transcript);
     if(pageIntent && hasBridgeAction(normalizeIntentTranscript(transcript))) return { intent: 'blocked', params, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen.", hi: 'यह वॉइस से नहीं हो सकता। स्क्रीन पर कीजिए।' } };
