@@ -1,4 +1,3 @@
-import { toSpokenText } from './spokenText.js';
 
 export const decimalDigits = {
   ta: ['ஜீரோ','ஒன்','டூ','த்ரீ','ஃபோர்','ஃபைவ்','சிக்ஸ்','செவன்','எய்ட்','நைன்'],
@@ -17,6 +16,8 @@ export const registerLexicon = {
     'வரம்பை நெருங்குகிறது':'லிமிட்டுக்கு பக்கத்துல இருக்கு',
     'மேலும் விவரம் திரையில்':'மீதி ஸ்கிரீன்ல பாருங்க',
     'மீண்டும் சொல்லுங்கள்':'சரியா கேக்கல, திரும்ப சொல்லுங்க',
+    'மெல்டிங்ல இருக்கு':'ஃபர்னஸ்ல இருக்கு', 'MELTING':'ஃபர்னஸ்ல இருக்கு',
+    'இன்னும் செக் பண்ணல':'செக் பெண்டிங்', 'ஷிஃப்ட் சுருக்கம்':'ஷிஃப்ட் சம்மரி',
     'திரையில் பார்க்கவும்':'ஸ்கிரீன்ல பாருங்க', 'கூற்றை திரையில் சரிபார்க்கவும்':'சொன்னதை ஸ்கிரீன்ல செக் பண்ணுங்க',
     'சோதனை விவரம் திரையில்':'செக் விவரம் ஸ்கிரீன்ல', 'தடைகள் இல்லை':'பிரச்சனை இல்லை',
     'முரண்பாடுகள் இல்லை':'சொன்னதுல வித்தியாசம் இல்லை',
@@ -32,11 +33,13 @@ export const registerLexicon = {
     'क्वारंटीन में':'क्वारंटीन में है', 'उपयोग सीमित है':'रिलीज़ नहीं हुआ',
     'उपयोग की अनुमति नहीं':'रिलीज़ नहीं हुआ',
     'सीमा के पास है':'लिमिट के पास है', 'सीमा':'लिमिट','न्यूनतम':'मिनिमम','प्रतिशत':'परसेंट',
+    'मेल्टिंग में है':'भट्टी में है', 'MELTING':'भट्टी में है',
   },
 };
 const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const boundary = body => new RegExp(`(?<![\\p{L}\\p{M}])(?:${body})(?![\\p{L}\\p{M}])`,'gu');
-const digitWords = (text,lang) => [...text].map(digit => decimalDigits[lang][Number(digit)]).join(' ');
+const englishDigits='zero one two three four five six seven eight nine'.split(' ');
+const digitWords = (text,lang) => [...text].map(digit => (decimalDigits[lang]||englishDigits)[Number(digit)]).join(' ');
 
 export function spokenRegister() {
   const selected=import.meta.env.VITE_VOICE_REGISTER;
@@ -45,15 +48,17 @@ export function spokenRegister() {
 }
 
 export function colloquialInput(text,lang) {
-  if(!decimalDigits[lang]) return String(text);
+  if(!['ta','hi','en'].includes(lang)) return String(text);
   // Keep exact written fractional digits before F11/provider TN can normalize.
-  let output=String(text).replace(/(?<![\p{L}\p{N}.])([+-]?)(\d+)\.(\d+)(?!\d|\.\d)/gu,
+  let output=String(text);
+  if(lang!=='en') output=output.replace(/(?<![\p{L}\p{N}.])([+-]?)(\d+)\.(\d+)(?!\d|\.\d)/gu,
     (_,sign,integer,fraction)=>`${sign==='-'?'minus ':sign==='+'?'plus ':''}${digitWords(integer,lang)} ${lang==='ta'?'பாயிண்ட்':'पॉइंट'} ${digitWords(fraction,lang)}`);
   // Existing lot label is replaced as a whole to avoid doubled 'Lot lot number'.
-  output=output.replace(/(?:(?:\bLot|லாட்|लॉट)\s+)?\b([A-Z]{1,8})-(\d{1,8})\b/g,(whole,prefix,value)=>{
-    if(prefix==='H') return whole;
-    const number=toSpokenText('H-'+value,lang).replace(/^(?:ஹீட்|हीट)\s+/u,'');
-    return `${lang==='ta'?'லாட் நம்பர்':'लॉट नंबर'} ${number}`;
+  output=output.replace(/(?:(?:\bHeat|ஹீட்|हीट|\bLot|லாட்|लॉट)\s+)?\b([A-Z]{1,8})-(\d{1,8})\b/g,(whole,prefix,value)=>{
+    const label=prefix==='H'?(lang==='ta'?'ஹீட்':lang==='hi'?'हीट':'heat'):(lang==='ta'?'லாட் நம்பர்':lang==='hi'?'लॉट':'lot');
+    // Full-sentence audition V2/H2: English digit words for IDs only.
+    // Decimal/limit phrases above retain the requested native-script digits.
+    return `${label} ${digitWords(value,'en')}`;
   });
   return output;
 }
