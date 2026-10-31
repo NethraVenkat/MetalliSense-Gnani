@@ -1,9 +1,13 @@
-"""Optional phrasing of caller-supplied gate facts. No gate or mutation APIs.
+"""Optional English-template translation; legacy fact phrasing remains opt-in.
+
+No gate or mutation APIs. Translate mode sends one user message and checks exact
+source IDs/numbers; the legacy phrase validator remains separate and unchanged.
 
 The browser owns the factory snapshot; validation checks its schema and output
 grounding, not the authenticity of the underlying factory measurements.
 """
 import asyncio
+from collections import Counter
 from decimal import Decimal
 import json
 import math
@@ -43,7 +47,9 @@ def phrase_status():
 def validate_facts(facts, kind, lang):
     if kind not in {'hold', 'warn', 'status'} or lang not in {'ta', 'en'} or not isinstance(facts, dict):
         return False
-    if set(facts) - {'heat_id', 'decision', 'status', 'reasons'}:
+    if set(facts) - {'heat_id', 'decision', 'status', 'reasons', 'remaining_reasons'}:
+        return False
+    if 'remaining_reasons' in facts and (type(facts['remaining_reasons']) is not int or not 0 <= facts['remaining_reasons'] <= 100):
         return False
     if not re.fullmatch(r'H-\d{1,8}', str(facts.get('heat_id', ''))):
         return False
@@ -53,7 +59,7 @@ def validate_facts(facts, kind, lang):
     if 'status' in facts and not re.fullmatch(r'[A-Z_]{1,32}', str(facts['status'])):
         return False
     reasons = facts.get('reasons', [])
-    if not isinstance(reasons, list) or len(reasons) > 2:
+    if not isinstance(reasons, list) or len(reasons) > 100:
         return False
     for reason in reasons:
         if not isinstance(reason, dict) or set(reason) - {'check', 'status', 'element', 'value', 'min', 'max', 'direction', 'risk', 'lot_id', 'lot_status'}:
@@ -128,6 +134,119 @@ def prompt_messages(facts, kind, lang):
 def _numbers(text):
     text = ''.join(str(unicodedata.digit(c)) if c.isdigit() else c for c in text)
     return {Decimal(match.group()) for match in NUMBER.finditer(text)}
+
+
+TRANSLATE_PROMPT = ('Translate the following text into simple spoken Tamil for a factory worker. '
+                    'Keep all IDs (like H-1053, PIG-1053) and all numbers exactly as written. '
+                    'Output only the Tamil translation, nothing else.\n\nText: ')
+
+
+def sentence_count(text):
+    return len([part for part in re.split(r'(?<=[.!?।])\s+|\n+', text) if part.strip()])
+
+
+def translation_tokens(text):
+    ids = Counter(ID.findall(text))
+    without_ids = ID.sub(' ', text)
+    numbers = Counter(match.group() for match in NUMBER.finditer(without_ids))
+    return ids, numbers
+
+
+def build_translation_source(facts):
+    """Render verified direction/risk fields, never ask Evon to compare values.
+
+    Preserve precise limits (at least two decimals for maxima and one for
+    minima), and use the same two-decimal values as existing spoken answers.
+    Only the first two reasons are described; all others become a count.
+    """
+    names = {element: aliases[0].capitalize() for element, aliases in ELEMENT_NAMES.items()}
+    names['S'] = 'Sulphur'
+    decision = facts['decision']
+    sentences = [f"Heat {facts['heat_id']} has a warning." if decision == 'WARN'
+                 else f"Heat {facts['heat_id']} is on {decision}."]
+    reasons = facts.get('reasons', [])
+    for reason in reasons[:2]:
+        if reason.get('lot_id'):
+            suffix = {'QUARANTINED': 'is in quarantine', 'HOLD': 'is on hold',
+                      'RESTRICTED': 'has restricted use', 'UNRELEASED': 'is not released for use',
+                      'RELEASED': 'is released for use'}.get(reason.get('lot_status'), 'needs review')
+            sentences.append(f"Lot {reason['lot_id']} {suffix}.")
+        elif reason.get('element'):
+            lead = f"{names[reason['element']]} is {reason['value']:.2f} percent"
+            direction = reason.get('direction')
+            if direction == 'high' and 'max' in reason:
+                raw = Decimal(str(reason['max']))
+                limit = format(raw, 'f') if raw.as_tuple().exponent < -2 else f"{raw:.2f}"
+                suffix = (f", with a risk of exceeding the {limit} percent limit" if reason.get('risk')
+                          else f", which is above the {limit} percent limit")
+            elif direction == 'low' and 'min' in reason:
+                raw = Decimal(str(reason['min']))
+                limit = format(raw, 'f') if raw.as_tuple().exponent < -1 else f"{raw:.1f}"
+                suffix = (f", with a risk of falling below the {limit} percent minimum" if reason.get('risk')
+                          else f", which is below the {limit} percent minimum")
+            else:
+                suffix = ''
+            sentences.append(lead + suffix + '.')
+        else:
+            sentences.append({
+                'stock': 'There is a stock availability issue.',
+                'charge_weight': 'The charge weight needs review.',
+                'yard_inspection': 'The yard inspection needs review.',
+                'dri_quality': 'The DRI quality needs review.',
+            }.get(reason.get('check'), 'The gate check needs review.'))
+    more = facts.get('remaining_reasons', 0) + max(0, len(reasons) - 2)
+    if more:
+        sentences.append(f'{more} more details are on the screen.')
+    return ' '.join(sentences)
+
+
+def validate_english_source(text, facts):
+    if not isinstance(text, str) or not text.strip() or len(text) > 1500:
+        return False
+    if re.search(r'[{}<>`\n]|\b(?:ignore|instructions|system|prompt|translate)\b', text, re.I):
+        return False
+    ids, _ = translation_tokens(text)
+    allowed_ids = {facts['heat_id'], *[r['lot_id'] for r in facts.get('reasons', []) if r.get('lot_id')]}
+    if ids.keys() - allowed_ids:
+        return False
+    allowed = _numbers(json.dumps(facts))
+    allowed.update(Decimal(f"{r[k]:.2f}") for r in facts.get('reasons', []) for k in ('value', 'min', 'max') if k in r)
+    return not (_numbers(text) - allowed)
+
+
+def validate_translation(raw, english_source, facts):
+    if not isinstance(raw, str) or not raw.strip() or len(raw) > 2500:
+        return '', 'invalid_output'
+    text = raw.strip().strip('"\'“”‘’').strip()
+    text = text.replace('வெப்பம் H-', 'ஹீட் H-').replace('வெப்பம் (H-', 'ஹீட் (H-')
+    text = text.replace('வெப்பநிலை H-', 'ஹீட் H-').replace('வெப்பநிலை (H-', 'ஹீட் (H-')
+    if text == english_source.strip():
+        return '', 'english_echo'
+    if not re.search(r'[\u0b80-\u0bff]', text):
+        return '', 'missing_tamil'
+    if re.search(r'[{}<>`]|\b(?:Translate the following|Output only|Text:|system|assistant)\b', text, re.I):
+        return '', 'prompt_echo'
+    source_ids, source_numbers = translation_tokens(english_source)
+    output_ids, output_numbers = translation_tokens(text)
+    if source_ids - output_ids:
+        return '', 'missing_id'
+    if output_ids - source_ids:
+        return '', 'invented_id'
+    if source_numbers - output_numbers:
+        return '', 'missing_number'
+    if output_numbers - source_numbers:
+        return '', 'invented_number'
+    if sentence_count(text) > sentence_count(english_source) + 1:
+        return '', 'too_many_sentences'
+    allowed_elements = {r['element'] for r in facts.get('reasons', []) if r.get('element')}
+    for element, names in ELEMENT_NAMES.items():
+        for alias in [element, *names]:
+            if re.search(r'(?<!\w)' + re.escape(alias) + r'(?!\w)', text, 0 if alias == element else re.I) and element not in allowed_elements:
+                return '', 'invented_element'
+    actions = re.sub(r'திரையில்\s+approve', '', text, flags=re.I)
+    if re.search(r'\b(?:approv\w*|confirm\w*|releas\w*|deduct\w*|override\w*|melt\w*|start)\b|அனுமதி|ஒப்புதல்|உருக்க|தொடங்கு|ஆரம்பி', actions, re.I):
+        return '', 'unsafe_instruction'
+    return text, None
 
 
 def validate_output(raw, facts, lang):
@@ -218,7 +337,7 @@ def validate_output(raw, facts, lang):
     return trimmed, None
 
 
-async def phrase(facts: dict, kind: str, lang: str):
+async def phrase(facts: dict, kind: str, lang: str, english_source=None, mode=None):
     began = time.perf_counter()
     fallback = 'திரையில் விவரங்களைப் பார்க்கவும்' if lang == 'ta' else 'Check the screen'
     def finish(text, source, reason=None, mode=None):
@@ -233,7 +352,22 @@ async def phrase(facts: dict, kind: str, lang: str):
     try:
         if not validate_facts(facts, kind, lang):
             return finish(fallback, 'template', 'invalid_facts')
+        # Bound the snapshot passed to the model/validators, retaining the count
+        # when a direct caller supplied more reasons than the browser does.
+        reasons = facts.get('reasons', [])
+        if len(reasons) > 2:
+            facts = {**facts, 'reasons': reasons[:2],
+                     'remaining_reasons': facts.get('remaining_reasons', 0) + len(reasons) - 2}
         fallback = template(facts, lang)
+        selected_mode = mode or os.getenv('EVON_PHRASE_MODE', 'translate').strip() or 'translate'
+        if selected_mode not in {'translate', 'phrase'}:
+            return finish(fallback, 'template', 'invalid_mode')
+        if selected_mode == 'translate':
+            if lang != 'ta':
+                return finish(fallback, 'template', 'translation_not_needed')
+            english_source = build_translation_source(facts)
+            if not validate_english_source(english_source, facts):
+                return finish(fallback, 'template', 'invalid_english_source')
         if not _on('EVON_PHRASE_ENABLED'):
             return finish(fallback, 'template', 'disabled', 'mock')
         if _on('EVON_MOCK'):
@@ -250,6 +384,9 @@ async def phrase(facts: dict, kind: str, lang: str):
         payload = {'model': os.getenv('EVON_MODEL', '').strip() or 'evon',
                    'messages': prompt_messages(facts, kind, lang), 'temperature': 0.6,
                    'top_p': 0.95, 'max_tokens': 100, 'chat_template_kwargs': {'enable_thinking': False}}
+        if selected_mode == 'translate':
+            payload.update(messages=[{'role': 'user', 'content': TRANSLATE_PROMPT + english_source}],
+                           temperature=0.2, top_p=0.9, max_tokens=120)
         async with asyncio.timeout(TIMEOUT_SECONDS):
             async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS, follow_redirects=False) as client:
                 response = await client.post(base + '/chat/completions', headers=headers, json=payload)
@@ -258,7 +395,8 @@ async def phrase(facts: dict, kind: str, lang: str):
                 raw = response.json()['choices'][0]['message']['content']
         if key and key in str(raw):
             return finish(fallback, 'template', 'secret_in_output', 'live')
-        text, reason = validate_output(raw, facts, lang)
+        text, reason = (validate_translation(raw, english_source, facts) if selected_mode == 'translate'
+                        else validate_output(raw, facts, lang))
         return finish(fallback if reason else text, 'template' if reason else 'evon', reason, 'live')
     except (TimeoutError, httpx.TimeoutException):
         return finish(fallback, 'template', 'timeout', 'offline')
