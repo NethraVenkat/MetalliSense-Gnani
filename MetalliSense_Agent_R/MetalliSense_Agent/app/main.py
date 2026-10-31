@@ -709,6 +709,25 @@ async def clear_chat_history():
         )
 
 
+@app.post('/copilot/handover', tags=['Voice'])
+async def transcribe_handover(audio: UploadFile = File(...)):
+    import asyncio
+    from copilot.gnani_batch import GnaniBatchClient, HandoverError, MAX_BYTES, validate_audio
+    from copilot.gnani_client import _env_bool
+    if not _env_bool('HANDOVER_ENABLED'):
+        raise HTTPException(status_code=404, detail={'code': 'handover_disabled'})
+    try:
+        data = await audio.read(MAX_BYTES + 1)
+        wav, duration = await asyncio.to_thread(validate_audio, data)
+        return await GnaniBatchClient().transcribe(wav, duration)
+    except HandoverError as error:
+        raise HTTPException(status_code=error.status, detail={'code': error.code}) from None
+    except Exception:
+        raise HTTPException(status_code=502, detail={'code': 'handover_unavailable'}) from None
+    finally:
+        await audio.close()
+
+
 @app.post("/copilot/voice/transcribe", response_model=TranscriptionResponse, tags=["Voice"])
 async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = None):
     """
