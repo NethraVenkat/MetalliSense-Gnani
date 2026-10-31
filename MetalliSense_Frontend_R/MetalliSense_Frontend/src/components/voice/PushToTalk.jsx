@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Volume2, VolumeX } from 'lucide-react';
-import { transcribeAudio, sendChatMessage } from '../../services/copilotService';
-import { getHeat, getHeats, getAdditives } from '../../services/premeltService';
-import { mapIntent } from '../../services/voiceIntents';
-import { heatVoiceAnswer, spokenGateReasonAnswer } from '../../services/voiceGateAnswers';
+import { transcribeAudio } from '../../services/copilotService';
+import { getHeat, getHeats } from '../../services/premeltService';
+import { createTranscriptHandler } from '../../services/voiceTranscript';
 import { useMeltFlow } from '../../context/MeltFlowContext';
 import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
+import useHandsFree from '../../hooks/useHandsFree';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
@@ -36,28 +36,12 @@ export default function PushToTalk({ heatId }) {
     if (!selected) throw new Error('Heat not found');
     return unwrap(await getHeat(selected.heatId));
   }
-  async function respond(text) {
-    setHeard(text);
-    const { intent, params, reply } = mapIntent(text);
-    if (intent === 'blocked') return say(reply[lang]);
-    if (intent === 'open_screen') { say(choose('திரை திறக்கப்படுகிறது', 'Opening screen')); navigate(params.route); return; }
-    if (intent === 'stock_check') {
-      const additives = unwrap(await getAdditives());
-      const matches = additives.filter(a => !params.alloy || a.alloyName.toLowerCase().replace(/\s/g, '').includes(params.alloy.toLowerCase()));
-      return say(matches.length ? matches.map(a => `${a.alloyName}: ${a.availableKg} kg${a.lowStock ? choose(', இருப்பு குறைவு', ', low stock') : ''}`).join('. ') : choose('இருப்பு தகவல் இல்லை', 'No stock information found'));
-    }
-    if (intent === 'ask_copilot') {
-      const response = await sendChatMessage(text, true);
-      return say(response.data.response || choose('பதில் கிடைக்கவில்லை', 'No answer available'));
-    }
-    const heat = await resolveHeat(params);
-    const answer = heatVoiceAnswer(intent, heat, params, lang);
-    say(answer, intent === 'gate_reason' ? spokenGateReasonAnswer(heat.gateResult, lang) : answer);
-  }
+  const handleTranscript = createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat });
+  const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
   async function run(text) {
     if (busy.current) return;
     busy.current = true; setState('processing');
-    try { await respond(text); if (alive.current) setState('idle'); }
+    try { await handleTranscript(text); if (alive.current) setState('idle'); }
     catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
     finally { busy.current = false; }
   }
@@ -90,7 +74,7 @@ export default function PushToTalk({ heatId }) {
           const text = response.data.text?.trim();
           if (!text) throw new Error('No speech');
           if (alive.current) {
-            try { await respond(text); if (alive.current) setState('idle'); }
+            try { await handleTranscript(text); if (alive.current) setState('idle'); }
             catch { if (alive.current) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
           }
         } catch { if (alive.current) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }
@@ -133,9 +117,18 @@ export default function PushToTalk({ heatId }) {
       </button>
       <select aria-label="Voice language" value={lang} disabled={state === 'listening' || state === 'processing'} onChange={e => setLang(e.target.value)} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option></select>
       <button type="button" onClick={toggleMute} aria-label={muted ? 'Unmute voice' : 'Mute voice'} aria-pressed={muted} className="rounded border p-3">{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
+      <button type="button" aria-pressed={handsFree.enabled} onClick={handsFree.enabled ? handsFree.stop : handsFree.start}
+        className={`rounded border px-3 py-2 text-sm ${handsFree.enabled ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : ''}`}>
+        கைகள் இல்லாமல் / Hands-free
+      </button>
+      {handsFree.enabled && <span role="status" className="inline-flex items-center gap-1 text-xs text-emerald-800">
+        <span aria-hidden="true" className={`h-2 w-2 rounded-full bg-emerald-600 ${handsFree.state === 'listening' ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
+        {handsFree.state}
+      </span>}
       <span role="status" className="text-xs">{state}</span>
     </div>
     <div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}{answer && <p>{answer}</p>}</div>
+    {handsFree.note && <p role="status" className="text-sm text-amber-800">{handsFree.note}</p>}
     {import.meta.env.VITE_MOCK_MODE === 'true' && <details className="text-sm">
       <summary className="cursor-pointer">Demo transcripts</summary>
       <p className="my-2 text-xs text-slate-600">Try the voice flow without recording audio. Replies use the selected voice language.</p>

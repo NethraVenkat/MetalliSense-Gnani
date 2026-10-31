@@ -1,6 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mapIntent, normalizeTranscript } from '../src/services/voiceIntents';
 describe('read-only voice intents', () => {
+  it.each(['stock melting', 'start melting', 'melting start pannu', 'உருக்க ஆரம்பி'])('%s -> blocked', text => {
+    expect(mapIntent(text)).toEqual({ intent: 'blocked', params: {}, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } });
+  });
+  it.each([
+    ['FeSi stock evvalavu', { alloy: 'FeSi' }], ['stock evvalavu', {}], ['stock enna', {}],
+  ])('%s -> stock_check', (text, params) => {
+    expect(mapIntent(text)).toEqual({ intent: 'stock_check', params });
+  });
+  it.each(['melt', 'melting', 'start melt', 'stop melting', 'உருக்கு', 'உருக்க', 'approval', 'start pannu', 'start panna'])('blocks the action phrase %s', text => {
+    expect(mapIntent(text)).toMatchObject({ intent: 'blocked', params: {}, reply: { ta: 'திரையில் approve செய்யவும்' } });
+  });
+  it('blocked check runs before every other intent', () => {
+    for (const readOnly of ['FeSi stock evvalavu', 'Heat 1053 status என்ன', 'Heat 1053 carbon evvalavu', 'ஏன் HOLD', 'show dashboard', 'spectrometer kaattu', 'pre-melt open pannu', 'explain the furnace']) {
+      for (const text of [`melting ${readOnly}`, `${readOnly} approval`]) {
+        expect(mapIntent(text)).toEqual({ intent: 'blocked', params: {}, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } });
+      }
+    }
+  });
   it.each([
     ['heat one zero five one status என்ன?', 'heat_status', { heatNumber: 1051 }],
     ['heat forty two எப்படி இருக்கு?', 'heat_status', { heatNumber: 42 }],

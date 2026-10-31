@@ -55,7 +55,10 @@ const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
 export function mapIntent(transcript) {
   const text = normalizeIntentTranscript(transcript);
   const params = {};
-  if (/approve|confirm|release|deduct|start\s+melt|override|invoice|delete|அனுமதி|ஒப்புதல்/u.test(text)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
+  // Keep the read-only Pre-Melt screen name as a compound. Every action check
+  // runs before slots, stock, navigation or copilot, including "stock melting".
+  const actionText = text.replace(/\bpre\s+melt\b/g, 'premelt');
+  if (/approve|approval|confirm|release|deduct|start\s+melt|\bmelt(?:ing)?\b|\bstart\s+pann[ua]\b|override|invoice|delete|உருக்க|அனுமதி|ஒப்புதல்/u.test(actionText)) return { intent: 'blocked', params, reply: { ta: 'திரையில் approve செய்யவும்', en: 'Please approve on screen' } };
   const hasStatusWord = /\b(?:status|epdi|enna|in\s+a|nilai)\b/u.test(text) || has(text, 'நிலை');
   const heat = text.match(/\b(?:heat|heath|sheet|hit|hate|eat|heet|he\s+t|h)[\s-]*(\d+)\b/i)
     || text.match(/^\s*(\d+)\b/)

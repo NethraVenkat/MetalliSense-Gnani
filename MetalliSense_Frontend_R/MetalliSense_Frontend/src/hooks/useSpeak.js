@@ -7,6 +7,10 @@ let language = read('metallisense.voice.language', 'ta');
 let queue = Promise.resolve();
 let cancelPlayback;
 let generation = 0;
+let speaking = false;
+let echoGuardUntil = 0;
+// Synchronous check in the capture callback, including queued HOLD announcements.
+export const isSpeechEchoGuarded = (now = Date.now()) => speaking || now < echoGuardUntil;
 function persist(key, value) { try { localStorage.setItem(key, value); } catch { /* optional storage */ } listeners.forEach(fn => fn()); }
 const subscribe = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 export function useVoiceLanguage() {
@@ -23,6 +27,7 @@ export function speakText(text, lang = 'ta', style = 'normal') {
     if (muted || ticket !== generation) return;
     const url = URL.createObjectURL(blob);
     try {
+      speaking = true;
       await new Promise(resolve => {
         const audio = new Audio(url);
         let timer;
@@ -33,7 +38,7 @@ export function speakText(text, lang = 'ta', style = 'normal') {
         timer = setTimeout(finish, 120000);
         Promise.resolve(audio.play()).catch(finish);
       });
-    } finally { URL.revokeObjectURL(url); }
+    } finally { speaking = false; echoGuardUntil = Date.now() + 400; URL.revokeObjectURL(url); }
   }).catch(() => {});
   return queue;
 }

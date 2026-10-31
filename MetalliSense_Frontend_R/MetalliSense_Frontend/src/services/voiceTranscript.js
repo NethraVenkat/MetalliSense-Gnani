@@ -1,0 +1,29 @@
+import { getAdditives } from './premeltService';
+import { sendChatMessage } from './copilotService';
+import { mapIntent } from './voiceIntents';
+import { heatVoiceAnswer, spokenGateReasonAnswer } from './voiceGateAnswers';
+
+// Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
+// the existing read-only answer path; it exposes no approve/start mutations.
+export function createTranscriptHandler({ lang, setHeard, say, navigate, resolveHeat }) {
+  const choose = (ta, en) => lang === 'ta' ? ta : en;
+  return async function handleTranscript(text) {
+    setHeard(text);
+    const { intent, params, reply } = mapIntent(text);
+    if (intent === 'blocked') return say(reply[lang]);
+    if (intent === 'open_screen') { say(choose('திரை திறக்கப்படுகிறது', 'Opening screen')); navigate(params.route); return; }
+    if (intent === 'stock_check') {
+      const response = await getAdditives();
+      const additives = response.data?.data ?? response.data;
+      const matches = additives.filter(a => !params.alloy || a.alloyName.toLowerCase().replace(/\s/g, '').includes(params.alloy.toLowerCase()));
+      return say(matches.length ? matches.map(a => `${a.alloyName}: ${a.availableKg} kg${a.lowStock ? choose(', இருப்பு குறைவு', ', low stock') : ''}`).join('. ') : choose('இருப்பு தகவல் இல்லை', 'No stock information found'));
+    }
+    if (intent === 'ask_copilot') {
+      const response = await sendChatMessage(text, true);
+      return say(response.data.response || choose('பதில் கிடைக்கவில்லை', 'No answer available'));
+    }
+    const heat = await resolveHeat(params);
+    const answer = heatVoiceAnswer(intent, heat, params, lang);
+    return say(answer, intent === 'gate_reason' ? spokenGateReasonAnswer(heat.gateResult, lang) : answer);
+  };
+}
