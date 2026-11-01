@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {afterEach,expect,it,vi} from 'vitest';
-import {voiceTourEnabled,voiceTourSteps,tourCommand,tourStepText,tourFinish,createVoiceTour,tourSpokenText,tourRunningReply,tourPronunciation} from '../src/services/voiceTour';
+import {voiceTourEnabled,voiceTourSteps,tourCommand,tourStepText,tourFinish,createVoiceTour,tourSpokenText,tourRunningReply,tourPronunciation,tourSpokenOverrides} from '../src/services/voiceTour';
 import {pageHelp,voicePages} from '../src/services/voicePages';
 import {clarityText} from '../src/services/voiceClarity';
 import {mapIntent} from '../src/services/voiceIntents';
@@ -23,9 +23,68 @@ it.each(['ta','hi','en'])('tour and help preserve authored sentence boundaries: 
  for(const page of voicePages)expect(clarityText(pageHelp(page,lang),lang,'colloquial')).not.toMatch(/\.\s+[a-z]/);
 });
 const reviewed=JSON.parse(readFileSync('tests/fixtures/f14-v4-script.json','utf8'));
+const approvedTamilB=[ ['\u0b9f\u0bbe\u0bb7\u0bcd\u0baa\u0bcb\u0bb0\u0bcd\u0b9f\u0bc1',"dashboard"],
+ ['\u0bb8\u0bcd\u0baa\u0bc6\u0b95\u0bcd\u0b9f\u0bcd\u0bb0\u0bcb\u0020\u0bae\u0bc0\u0b9f\u0bcd\u0b9f\u0bb0\u0bcd',"spectrometer"],
+ ['\u0b95\u0bbf\u0bb0\u0bc7\u0b9f\u0bc1\u0020\u0bb8\u0bcd\u0baa\u0bc6\u0b95\u0bcd\u0bb8\u0bcd',"grade specs"],
+ ['\u0b9a\u0baa\u0bcd\u0bb3\u0bc8\u0baf\u0bb0\u0bcd\u0020\u0bb8\u0bcd\u0b95\u0bcb\u0bb0\u0bcd\u0020\u0b95\u0bbe\u0bb0\u0bcd\u0b9f\u0bc1',"supplier scorecard"],
+ ['\u0bb0\u0bbe\u0020\u0bae\u0bc6\u0b9f\u0bcd\u0b9f\u0bc0\u0bb0\u0bbf\u0baf\u0bb2\u0bcd\u0020\u0bb8\u0bcd\u0b9f\u0bbe\u0b95\u0bcd',"raw material stock"],
+ ['\u0baf\u0bbe\u0bb0\u0bcd\u0b9f\u0bc1\u0020\u0b87\u0ba9\u0bcd\u0bb8\u0bcd\u0baa\u0bc6\u0b95\u0bcd\u0bb7\u0ba9\u0bcd',"yard inspection"],
+ ['\u0baa\u0bcd\u0bb0\u0bc0\u0020\u0bae\u0bc6\u0bb2\u0bcd\u0b9f\u0bcd\u0020\u0b95\u0bc7\u0b9f\u0bcd',"pre-melt gate"],
+ ['\u0bb7\u0bbf\u0b83\u0baa\u0bcd\u0b9f\u0bcd\u0020\u0bb9\u0bc7\u0ba3\u0bcd\u0b9f\u0bcb\u0bb5\u0bb0\u0bcd',"shift handover"],
+ ['\u0b95\u0bbe\u0bae\u0bcd\u0baa\u0bcb\u0b9a\u0bbf\u0bb7\u0ba9\u0bcd\u0020\u0b9f\u0bbf\u0bb5\u0bbf\u0baf\u0bc7\u0bb7\u0ba9\u0bcd',"composition deviation"],
+ ['\u0bae\u0bc6\u0bb2\u0bcd\u0b9f\u0bcd\u0020\u0b95\u0bb0\u0bc6\u0b95\u0bcd\u0bb7\u0ba9\u0bcd\u0020\u0baa\u0bbf\u0bb3\u0bbe\u0ba9\u0bb0\u0bcd',"melt correction planner"],
+ ['\u0b85\u0b9f\u0bbe\u0baa\u0bcd\u0b9f\u0bbf\u0bb5\u0bcd\u0020\u0bb8\u0bcd\u0b9f\u0bcd\u0bb0\u0bbe\u0b9f\u0b9c\u0bbf\u0020\u0b86\u0baa\u0bcd\u0b9f\u0bbf\u0bae\u0bc8\u0b9a\u0bb0\u0bcd',"adaptive strategy optimizer"],
+ ['\u0b83\u0baa\u0bc1\u0bb2\u0bcd\u0020\u0b85\u0ba9\u0bbe\u0bb2\u0bbf\u0b9a\u0bbf\u0bb8\u0bcd',"full analysis"],
+ ['\u0bae\u0bc6\u0b95\u0bcd\u0b95\u0bbe\u0ba9\u0bbf\u0b95\u0bcd\u0b95\u0bb2\u0bcd\u0020\u0baa\u0bcd\u0bb0\u0bbe\u0baa\u0bcd\u0baa\u0bb0\u0bcd\u0b9f\u0bcd\u0b9f\u0bc0\u0bb8\u0bcd',"mechanical properties"],
+ ['\u0b9a\u0bc7\u0bb2\u0bcd\u0bb8\u0bcd\u0020\u0b85\u0ba3\u0bcd\u0b9f\u0bcd\u0020\u0b9f\u0bbf\u0bb8\u0bcd\u0baa\u0bc7\u0b9f\u0bcd\u0b9a\u0bcd',"sales and dispatch"],
+ ['\u0b87\u0ba9\u0bcd\u0bb5\u0bc6\u0ba9\u0bcd\u0b9f\u0bb0\u0bbf\u0020\u0b83\u0baa\u0bcb\u0bb0\u0bcd\u0b95\u0bbe\u0bb8\u0bcd\u0b9f\u0bcd',"inventory forecast"],
+ ['\u0b95\u0bbe\u0bb8\u0bcd\u0b9f\u0bcd\u0020\u0b85\u0ba9\u0bbe\u0bb2\u0bbf\u0b9a\u0bbf\u0bb8\u0bcd',"cost analysis"],
+ ['\u0b9a\u0bbf\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bbf\u0b95\u0bcd\u0020\u0b9f\u0bc7\u0b9f\u0bcd\u0b9f\u0bbe',"synthetic data"],
+ ['\u0b9f\u0bcd\u0bb0\u0bc6\u0baf\u0bbf\u0ba9\u0bbf\u0b99\u0bcd\u0020\u0b9f\u0bc7\u0b9f\u0bcd\u0b9f\u0bbe',"training data"],
+ ['\u0b9a\u0bc6\u0bae\u0bbe\u0ba9\u0bcd\u0b9f\u0bbf\u0b95\u0bcd\u0020\u0b9a\u0bb0\u0bcd\u0b9a\u0bcd',"semantic search"],
+ ['\u0b8e\u0bb2\u0bbf\u0bae\u0bc6\u0ba9\u0bcd\u0b9f\u0bcd',"element"]];
+it('applies user overrides',()=>{
+ expect(approvedTamilB).toHaveLength(20);
+ for(const [source,term] of approvedTamilB){
+  const expected=`\u0b87\u0ba4\u0bc1 ${term}. \u0b87\u0b99\u0bcd\u0b95\u0bc7 \u0baa\u0bbe\u0b95\u0bcd\u0b95\u0bb2\u0bbe\u0bae\u0bcd.`;
+  const step={texts:{ta:`\u0b87\u0ba4\u0bc1 ${source}. \u0b87\u0b99\u0bcd\u0b95\u0bc7 \u0baa\u0bbe\u0b95\u0bcd\u0b95\u0bb2\u0bbe\u0bae\u0bcd.`}};
+  expect(tourSpokenText(step,'ta')).toBe(expected);
+  expect(tourStepText(step,'ta')).toBe(step.texts.ta);
+ }
+});
+it('override map contains exactly the twenty approved B spellings',()=>{
+ expect(Object.keys(tourSpokenOverrides.ta)).toHaveLength(20);
+ expect(Object.values(tourSpokenOverrides.ta)).toEqual(approvedTamilB.map(([,term])=>term));
+});
+it('approved speech overrides never change authored display text',()=>{
+ const steps=voiceTourSteps(true),before=structuredClone(steps);
+ for(const step of steps)tourSpokenText(step,'ta');
+ expect(steps).toEqual(before);
+ expect(steps.map(step=>tourStepText(step,'ta'))).toEqual(before.map(step=>step.texts.ta));
+});
+it('spoken overrides affect only Tamil speech',()=>{
+ expect(tourSpokenOverrides.ta).toBeDefined();expect(Object.keys(tourSpokenOverrides.ta)).toHaveLength(20);
+ const step=voiceTourSteps(true)[0],before=structuredClone(step);
+ const overrides={ta:{'டாஷ்போர்டு':'டேஷ் போர்டு'},hi:{'डैशबोर्ड':'dashboard'},en:{dashboard:'dashboard replacement'}};
+ expect(tourSpokenText(step,'ta',overrides)).toBe(step.texts.ta.replace('டாஷ்போர்டு','டேஷ் போர்டு'));
+ for(const lang of ['hi','en'])expect(tourSpokenText(step,lang,overrides)).toBe(step.texts[lang]);
+ expect(tourStepText(step,'ta')).toBe(before.texts.ta);expect(step).toEqual(before);
+ expect(tourSpokenText(step,'ta')).toBe(Object.entries(tourSpokenOverrides.ta).reduce((value,[term,replacement])=>value.replaceAll(term,replacement),before.texts.ta));
+});
+it('Tamil overrides match literal whole phrases once without changing punctuation or digit IDs',()=>{
+ const step={texts:{ta:"காஸ்ட் அனாலிசிஸ். காஸ்ட் அனாலிசிஸ்ல. 'H-1053'?"}};
+ const overrides={ta:{'காஸ்ட்':'cost','காஸ்ட் அனாலிசிஸ்':'cost analysis','cost analysis':'do not chain'}};
+ expect(tourSpokenText(step,'ta',overrides)).toBe("cost analysis. cost அனாலிசிஸ்ல. 'ஹீட் one zero five three'?");
+ expect(step.texts.ta).toContain('காஸ்ட் அனாலிசிஸ்.');
+});
 it.each(reviewed.flatMap((row,n)=>['ta','hi','en'].map(lang=>[n,lang,row[lang]])))('verbatim reviewed v4 step %s %s',(n,lang,text)=>{
  const step=voiceTourSteps(true)[n];
- expect(tourStepText(step,lang)).toBe(text);expect(tourSpokenText(step,lang)).toBe(text);
+ expect(tourStepText(step,lang)).toBe(text);
+  const entries=lang==='ta'?Object.entries(tourSpokenOverrides.ta):[];
+  const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const pattern=entries.map(([term])=>term).sort((a,b)=>b.length-a.length).map(escape).join('|');
+  const expected=pattern?text.replace(new RegExp(`(?<![\\p{L}\\p{M}\\p{N}_])(?:${pattern})(?![\\p{L}\\p{M}\\p{N}_])`,'gu'),word=>tourSpokenOverrides.ta[word]):text;
+  expect(tourSpokenText(step,lang)).toBe(tourPronunciation(expected,lang));
  expect(text).not.toMatch(/This page shows/);
  expect(text).not.toContain('இந்த பேஜ்ல');expect(text).not.toMatch(/^यहाँ .*दिख/u);
  expect(tourCommand(text,true)).toBeNull();
@@ -175,7 +234,7 @@ it.each([['நிறுத்தி வை','pause'],['தொடரு','resume'
 it('every spoken line uses the colloquial pipeline and is repeat-safe',()=>{
  for(const step of voiceTourSteps(true))for(const lang of ['ta','hi','en']){
   const spoken=tourSpokenText(step,lang);expect(spoken).toBeTruthy();
-  if(lang!=='en')expect(spoken).not.toMatch(/[A-Za-z]/u);
+  if(lang==='hi')expect(spoken).not.toMatch(/[A-Za-z]/u);
   expect(tourCommand(spoken,true)).toBeNull();
  }
 });

@@ -182,7 +182,42 @@ export function voiceTourSteps(handover=import.meta.env?.VITE_HANDOVER==='true')
 export const tourStepText=(step,lang)=>step.texts[lang];
 // ID pronunciation only: no vocabulary, punctuation, decimal or sentence rewrites.
 export const tourPronunciation=(text,lang)=>String(text).replace(/(?:(?:\bHeat|ஹீட்|हीट|\bLot|லாட்|लॉट)\s+)?\b[A-Z]{1,8}-\d{1,8}\b/g,match=>colloquialInput(match,lang));
-export const tourSpokenText=(step,lang)=>tourPronunciation(tourStepText(step,lang),lang);
+// Fill only after the team selects audition spellings. Cards always use texts.
+export const tourSpokenOverrides={ta:{
+  'டாஷ்போர்டு':'dashboard',
+  'ஸ்பெக்ட்ரோ மீட்டர்':'spectrometer',
+  'கிரேடு ஸ்பெக்ஸ்':'grade specs',
+  'சப்ளையர் ஸ்கோர் கார்டு':'supplier scorecard',
+  'ரா மெட்டீரியல் ஸ்டாக்':'raw material stock',
+  'யார்டு இன்ஸ்பெக்ஷன்':'yard inspection',
+  'ப்ரீ மெல்ட் கேட்':'pre-melt gate',
+  'ஷிஃப்ட் ஹேண்டோவர்':'shift handover',
+  'காம்போசிஷன் டிவியேஷன்':'composition deviation',
+  'மெல்ட் கரெக்ஷன் பிளானர்':'melt correction planner',
+  'அடாப்டிவ் ஸ்ட்ராடஜி ஆப்டிமைசர்':'adaptive strategy optimizer',
+  'ஃபுல் அனாலிசிஸ்':'full analysis',
+  'மெக்கானிக்கல் ப்ராப்பர்ட்டீஸ்':'mechanical properties',
+  'சேல்ஸ் அண்ட் டிஸ்பேட்ச்':'sales and dispatch',
+  'இன்வென்டரி ஃபோர்காஸ்ட்':'inventory forecast',
+  'காஸ்ட் அனாலிசிஸ்':'cost analysis',
+  'சிந்தெடிக் டேட்டா':'synthetic data',
+  'ட்ரெயினிங் டேட்டா':'training data',
+  'செமான்டிக் சர்ச்':'semantic search',
+  'எலிமென்ட்':'element',
+}};
+export function tourSpokenText(step,lang,overrides=tourSpokenOverrides) {
+  let text=tourStepText(step,lang);
+  if(lang==='ta') {
+    const words=Object.entries(overrides?.ta||{}).filter(([word,value])=>word&&typeof value==='string'&&value.length);
+    if(words.length) {
+      // Longest phrase first, literal boundaries, one pass: never chain rewrites.
+      const escape=word=>word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const pattern=words.map(([word])=>word).sort((a,b)=>b.length-a.length).map(escape).join('|');
+      text=text.replace(new RegExp(`(?<![\\p{L}\\p{M}\\p{N}_])(?:${pattern})(?![\\p{L}\\p{M}\\p{N}_])`,'gu'),word=>overrides.ta[word]);
+    }
+  }
+  return tourPronunciation(text,lang);
+}
 export const tourRunningReply={ta:"டூர் நடக்குது. 'டூர் நிறுத்து'னு சொல்லுங்க.",hi:"टूर चल रहा है। 'टूर बंद करो' बोलिए।",en:"Tour is running. Say 'stop tour'."};
 const commandText=text=>String(text).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
 export function tourCommand(text,enabled=voiceTourEnabled()) {
