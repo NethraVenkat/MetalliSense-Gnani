@@ -14,6 +14,7 @@ import useHandsFree from '../../hooks/useHandsFree';
 import { langBridgeEnabled } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
 import {transliterateEnabled,readTransliteratePreference,saveTransliteratePreference,createLatinDisplay} from '../../services/transcriptDisplay';
+import {createPttRecordingLifecycle} from '../../services/pttRecording';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
@@ -32,7 +33,7 @@ export default function PushToTalk(props) {
   // Keep the inner panel unmounted when hidden: no capture, socket or shortcut.
   return import.meta.env.VITE_SHOW_VOICE_PANEL !== 'false' ? <VoicePanel {...props} /> : null;
 }
-function VoicePanel({ heatId }) {
+function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const pageContext=useVoicePage();
   if(voiceEverywhereEnabled())heatId=pageContext?.selected?.heatId || heatId;
   const scope=voiceEverywhereEnabled()?pageContext?.scope:null;
@@ -43,6 +44,9 @@ function VoicePanel({ heatId }) {
   const { flow } = useMeltFlow();
   const { speak, muted, toggleMute } = useSpeak();
   const [lang, setLang] = useVoiceLanguage();
+  const hiddenRef=useRef(hidden);hiddenRef.current=hidden;
+  const languageRef=useRef(lang);languageRef.current=lang;
+  const dashboardRequest=useRef(0);
   const tour=useVoiceTour({pageContext,navigate,speak,muted,lang});
   const [state, setState] = useState('idle');
   const [heard, setHeard] = useState('');
@@ -52,6 +56,7 @@ function VoicePanel({ heatId }) {
   const [phraseSource, setPhraseSource] = useState(null);
   const panel = useRef(null);
   const recorder = useRef(null);
+  const recording = useRef(null);
   const stream = useRef(null);
   const held = useRef(false);
   const busy = useRef(false);
@@ -79,10 +84,14 @@ function VoicePanel({ heatId }) {
   }
   const recordHeard=text=>{if(isCurrent()){setHeard(text);setHeardLatin('');}};
   const callbacks=voiceEverywhereEnabled()?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
-  const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, ...callbacks, resolveHeat, pageContext });
+  const dashboardBriefingLifecycle={
+    begin:()=>++dashboardRequest.current,
+    isCurrent:(token,replyLang,requestScope,panelLang)=>token===dashboardRequest.current&&isCurrent()&&languageRef.current===panelLang&&(requestScope??null)===(scope??null)&&pageContext?.isCurrent?.(requestScope)!==false,
+  };
+  const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, ...callbacks, resolveHeat, pageContext, dashboardBriefingLifecycle });
   // REST bridge only: hands-free retains the current single-locale Tamil path.
-  const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, langBridge: langBridgeEnabled() });
-  const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current });
+  const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, langBridge: langBridgeEnabled(), dashboardBriefingLifecycle });
+  const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current, suspended:hidden });
   const tourListening=useRef(false);
   useEffect(()=>{
     if(tour.state.active&&!tourListening.current&&navigator.mediaDevices?.getUserMedia&&globalThis.WebSocket&&(globalThis.AudioContext||globalThis.webkitAudioContext)){
@@ -100,32 +109,39 @@ function VoicePanel({ heatId }) {
   }
   function stop() {
     held.current = false;
-    if (recorder.current?.state === 'recording') recorder.current.stop();
+    if (recording.current) recording.current.stop();
+    else stream.current?.getTracks().forEach(track => track.stop());
+  }
+  function cancelRecording() {
+    held.current = false;
+    recording.current?.cancel();
+    recording.current = null;
+    recorder.current = null;
     stream.current?.getTracks().forEach(track => track.stop());
   }
   useEffect(()=>{
     if(!voiceEverywhereEnabled())return;
     setHeard('');setHeardLatin('');setAnswer('');setPhraseSource(null);setState('idle');busy.current=false;
     latinDisplay.current.invalidate();
-    return ()=>{latinDisplay.current.invalidate();actions.current.stop();};
+    return ()=>{dashboardRequest.current++;latinDisplay.current.invalidate();actions.current.cancelRecording();};
   },[scope]);
+  useEffect(()=>{if(hidden)cancelRecording();},[hidden]);
   async function start() {
-    if (busy.current || held.current) return;
+    if (hiddenRef.current || busy.current || held.current) return;
     owner = panel.current; held.current = true; busy.current = true;
     const latinTicket=latinDisplay.current.invalidate();
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Microphone unavailable');
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!held.current || !isCurrent()) { media.getTracks().forEach(t => t.stop()); if(isCurrent())busy.current = false; return; }
+      if (hiddenRef.current || !held.current || !isCurrent()) { media.getTracks().forEach(t => t.stop()); if(isCurrent())busy.current = false; return; }
       stream.current = media;
       const type = ['audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
       const rec = new MediaRecorder(media, type ? { mimeType: type } : undefined);
       recorder.current = rec;
       const chunks = [];
       rec.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
-      rec.onerror = () => { if(!isCurrent()){media.getTracks().forEach(t=>t.stop());return;} stop(); setState('error'); busy.current = false; };
-      rec.onstop = async () => {
-        media.getTracks().forEach(t => t.stop());
+      const lifecycle=createPttRecordingLifecycle({recorder:rec,stream:media,onLimit:()=>{held.current=false;},onStop:async()=>{
+        if(recording.current===lifecycle)recording.current=null;
         if (!isCurrent()) return;
         setState('processing');
         try {
@@ -144,12 +160,14 @@ function VoicePanel({ heatId }) {
           }
         } catch { if (isCurrent()) { setState('error'); say(choose('குரல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Could not hear you. Tap a suggestion below.')); } }
         finally { if(isCurrent())busy.current = false; }
-      };
-      rec.start(); setState('listening');
-    } catch { if(!isCurrent())return;stream.current?.getTracks().forEach(track => track.stop()); held.current = false; busy.current = false; setState('error'); setAnswer(choose('மைக்ரோஃபோன் கிடைக்கவில்லை. கீழே தொடவும்.', 'Microphone unavailable. Tap a suggestion below.')); }
+      }});
+      recording.current=lifecycle;
+      rec.onerror = () => { lifecycle.cancel(); if(recording.current===lifecycle)recording.current=null; if(!isCurrent())return; setState('error'); busy.current = false; };
+      lifecycle.start(); setState('listening');
+    } catch { recording.current?.cancel();recording.current=null;recorder.current=null;if(!isCurrent())return;stream.current?.getTracks().forEach(track => track.stop()); held.current = false; busy.current = false; setState('error'); setAnswer(choose('மைக்ரோஃபோன் கிடைக்கவில்லை. கீழே தொடவும்.', 'Microphone unavailable. Tap a suggestion below.')); }
   }
-  const actions = useRef({ start, stop });
-  actions.current = { start, stop };
+  const actions = useRef({ start, stop, cancelRecording });
+  actions.current = { start, stop, cancelRecording };
   useEffect(() => {
     alive.current = true;
     const currentPanel = panel.current;
@@ -164,13 +182,13 @@ function VoicePanel({ heatId }) {
     const blur = () => actions.current.stop();
     window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur);
     return () => {
-      alive.current = false; latinDisplay.current.invalidate();actions.current.stop();
+      alive.current = false; dashboardRequest.current++; latinDisplay.current.invalidate();actions.current.cancelRecording();
       panels.delete(currentPanel);
       if (owner === currentPanel) owner = panels.values().next().value || null;
       window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur);
     };
   }, []);
-  return <section ref={panel} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" className={`${tour.visible?'relative ':''}rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2`}>
+  return <section ref={panel} hidden={hidden} aria-hidden={hidden||undefined} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" className={`${tour.visible?'relative ':''}rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2`}>
     {voiceEverywhereEnabled()&&<p className="text-xs text-slate-500">Kural · {pageContext?.pageName?.[lang] || pageContext?.pageName?.en}</p>}
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" aria-label={choose('பேச அழுத்திப் பிடிக்கவும்', 'Hold to talk')} aria-pressed={state === 'listening'} disabled={state === 'processing'}
@@ -181,7 +199,7 @@ function VoicePanel({ heatId }) {
         className={`min-h-16 min-w-16 touch-none select-none rounded-xl px-4 font-semibold text-white ${state === 'listening' ? 'bg-red-600' : 'bg-emerald-700'} disabled:opacity-50`}>
         <Mic className="inline mr-2" size={22} />{choose('பேச பிடிக்கவும்', 'Hold to talk')}
       </button>
-      <select aria-label="Voice language" value={lang} disabled={state === 'listening' || state === 'processing'} onChange={e => setLang(e.target.value)} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option>{tour.visible&&<option value="hi">हिन्दी</option>}</select>
+      <select aria-label="Voice language" value={lang} disabled={state === 'listening' || state === 'processing'} onChange={e => {dashboardRequest.current++;setLang(e.target.value);if(tour.isActive())tour.control('language',e.target.value);}} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option>{tour.visible&&<option value="hi">हिन्दी</option>}</select>
       <button type="button" onClick={toggleMute} aria-label={muted ? 'Unmute voice' : 'Mute voice'} aria-pressed={muted} className="rounded border p-3">{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
       <button type="button" aria-pressed={handsFree.enabled} onClick={handsFree.enabled ? handsFree.stop : handsFree.start}
         className={`rounded border px-3 py-2 text-sm ${handsFree.enabled ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : ''}`}>

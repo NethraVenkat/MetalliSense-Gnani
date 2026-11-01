@@ -84,6 +84,12 @@ it('opted-in HTTP STT requests never overlap, including across callers',async()=
  expect(post).toHaveBeenCalledTimes(1);expect(post.mock.lastCall[0]).toBe('/copilot/voice/transliterate');
  first.resolve({data:{unavailable:true}});await latin;await main;expect(post.mock.lastCall[0]).toBe('/copilot/voice/transcribe');
 });
+it('a failed serialized STT request releases the queue for the next turn',async()=>{
+ vi.stubEnv('VITE_TRANSLITERATE','true');post.mockRejectedValueOnce(Error('offline')).mockResolvedValueOnce({data:{success:true}});
+ await expect(transcribeAudio(new Blob(['failed']))).rejects.toThrow('offline');
+ await expect(transcribeAudio(new Blob(['next']))).resolves.toMatchObject({data:{success:true}});
+ expect(post).toHaveBeenCalledTimes(2);expect(post.mock.calls.map(call=>call[0])).toEqual(['/copilot/voice/transcribe','/copilot/voice/transcribe']);
+});
 it('speech completes before optional upload without holding the answer handler',async()=>{
  vi.stubEnv('VITE_TRANSLITERATE','true');const speech=deferred(),request=vi.fn().mockResolvedValue({data:{transcript_latin:'Latin'}});
  const controller=createLatinDisplay({request,onText:vi.fn(),afterSpeech:()=>speech.promise});

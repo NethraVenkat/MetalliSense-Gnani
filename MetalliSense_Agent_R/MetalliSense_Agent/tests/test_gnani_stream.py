@@ -2,6 +2,7 @@
 import asyncio
 import json
 import sys
+import threading
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -152,9 +153,24 @@ def test_session_and_idle_timeouts(proxy, monkeypatch, kind):
     api, upstream, _ = proxy
     monkeypatch.setattr(stream, "IDLE_SECONDS", .03 if kind != "session" else 1)
     monkeypatch.setattr(stream, "SESSION_SECONDS", .08 if kind == "session" else 1)
+    waiting_for_audio = threading.Event()
+    if kind == "audio_idle":
+        original_client_message = stream._client_message
+        client_messages = 0
+
+        async def synchronized_client_message(client):
+            nonlocal client_messages
+            client_messages += 1
+            if client_messages == 2:
+                waiting_for_audio.set()
+            return await original_client_message(client)
+
+        monkeypatch.setattr(stream, "_client_message", synchronized_client_message)
     with api.websocket_connect("/copilot/voice/stream", headers=ORIGIN) as socket:
         if kind != "before_start":
             start(socket)
+        if kind == "audio_idle":
+            assert waiting_for_audio.wait(1), "server did not enter the audio-idle receive"
         messages = finish(socket)
     assert messages[0]["code"] == ("session_limit" if kind == "session" else "idle_timeout")
     if kind != "before_start":

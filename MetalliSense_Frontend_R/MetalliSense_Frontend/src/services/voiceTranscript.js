@@ -9,12 +9,19 @@ import { voiceClarityEnabled, clarityReply } from './voiceClarity';
 import { buildShiftSummary, spokenShiftSummary, isSummaryActive } from './shiftSummary';
 import {voiceEverywhereEnabled,navigationAnswer,pageHelp} from './voicePages';
 import {tourRunningReply} from './voiceTour';
+import {answerVoicePageQuestion} from './voicePageAnswers';
+import {getDashboardBriefing} from './voicePageAnswers';
+import * as stockServices from './premeltService';
+import * as spectrometerServices from './spectrometerService';
+import * as gradeServices from './gradeSpecService';
+import * as opcServices from './opcService';
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
-export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false, pageContext = null, tourControl = () => false, tourActive = () => false }) {
+export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false, pageContext = null, tourControl = () => false, tourActive = () => false, pageAnswerServices = null, dashboardBriefingServices=null, dashboardBriefingLifecycle={begin:()=>undefined,isCurrent:()=>true} }) {
   return async function handleTranscript(text, metadata = {}) {
     const started = performance.now();
+    const dashboardRequestId=dashboardBriefingLifecycle.begin();
     const lang = pickReplyLanguage(text, metadata.detected_language_code, currentLang, langBridge);
     const choose = (ta, en) => lang === 'ta' ? ta : en;
     let clarityHeat = null;
@@ -26,7 +33,8 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
     };
     setHeard(text);
     setPhraseSource(null);
-    const { intent, params } = mapIntent(text, { langBridge });
+    const { intent, params } = mapIntent(text, { langBridge, selected:pageContext?.selected||{} });
+
     if (intent === 'blocked') {
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
       const refusal=blockedVoiceReplies[replyLang];
@@ -36,6 +44,22 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
     if(tourActive()){
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang),message=tourRunningReply[replyLang];
       return output(message,message,replyLang);
+    }
+    if(intent==='dashboard_briefing') {
+      const answerLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      const requestScope=pageContext?.scope;
+      const services=dashboardBriefingServices||{getShiftSummaryHeats,getOPCStatus:opcServices.getOPCStatus};
+      const briefing=await getDashboardBriefing({services});
+      if(!dashboardBriefingLifecycle.isCurrent(dashboardRequestId,answerLang,requestScope,currentLang))return;
+      const answer=briefing.textByLanguage[answerLang]||briefing.textByLanguage.en;
+      return output(answer,answer,answerLang,...(metadata.voiceTiming?[{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}]:[]));
+    }
+    if(['stock_lots','stock_lot_detail','spectrometer_heat_reading','grade_ranges'].includes(intent)) {
+      const answerLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      const services=pageAnswerServices||{getLots:stockServices.getLots,getLot:stockServices.getLot,getAllReadings:spectrometerServices.getAllReadings,getAllGradeSpecs:gradeServices.getAllGradeSpecs};
+      const answer=await answerVoicePageQuestion({intent,params,selected:pageContext?.selected||{},lang:answerLang,services});
+      if(!dashboardBriefingLifecycle.isCurrent(dashboardRequestId,answerLang,pageContext?.scope,currentLang))return;
+      return output(answer,answer,answerLang,...(metadata.voiceTiming?[{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}]:[]));
     }
     if(voiceEverywhereEnabled() && (intent==='page_help'||params.pageAware)) {
       // New navigation/help language picking does not alter F2/global answers.

@@ -27,8 +27,46 @@ function normalizeIntentTranscript(transcript) {
 // Mn spellings observed in cached Prisma en-IN transcripts of the benchmark phrases.
 const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு', 'magnus', 'magnes', 'magnis'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
 const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
+export const voicePageDataReadsEnabled = () => import.meta.env?.VITE_VOICE_DATA_READS === 'true';
+export const voiceDashboardBriefingEnabled = () => import.meta.env?.VITE_VOICE_DASHBOARD_BRIEFING === 'true';
+function isDashboardBriefingRequest(transcript) {
+  const text=wordsOnly(transcript);
+  const dashboard=/(?:^|\s)dashboard(?:\s|$)/u.test(text) || /டாஷ்போர்டு|डैशबोर्ड/u.test(text);
+  const request=/(?:^|\s)(?:briefing|brief|summary|overview|report)(?:\s|$)/u.test(text)
+    || /சுருக்கம்|சம்மரி|பிரீஃபிங்|நடக்குது.*சொல்லு|सारांश|ब्रीफिंग|हाल|जानकारी/u.test(text);
+  return dashboard && request;
+}
+const wordsOnly = value => String(value ?? '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim();
+const gradeElementAliases = { C: ['carbon', 'கர்பன்', 'கார்பன்', 'कार्बन'], Si: ['silicon', 'சிலிக்கான்', 'सिलिकॉन'], Mn: ['manganese', 'மாங்கனீஸ்', 'मैंगनीज़'], P: ['phosphorus', 'फॉस्फोरस'], S: ['sulphur', 'sulfur', 'सल्फर'], Fe: ['iron', 'இரும்பு', 'आयरन', 'लोहा'] };
+function pageDataQuestion(raw, normalized, selected = {}) {
+  const original = wordsOnly(raw), text = wordsOnly(normalized);
+  const lotMatches = [...original.matchAll(/\b(?:PIG|SCR|CIS|RET|DRI|ALY|LOT)[-\s]?\d{3,6}\b/gi)];
+  const lotMatch = lotMatches[0]?.[0];
+  const heatMatches = [...original.matchAll(/\bH[-\s]?\d{3,6}\b|\bheat\s+\d{3,6}\b/gi)];
+  const heatMatch = heatMatches[0]?.[0]?.replace(/^heat\s+/i,'');
+  const lotCue = /\b(?:lot|lots|detail|details|raw material|stock lot)\b/u.test(text) || /லாட்|லாட்ட|லாட் விவரம்|लॉट|रॉ मटेरियल|स्टॉक लॉट/u.test(original);
+  if (lotMatch && (lotCue || /\b(?:stock|quantity|available|details?)\b/u.test(text))) return { intent:'stock_lot_detail', params:{lotId:lotMatch.replace(/\s/g,'-').toUpperCase(),ambiguous:lotMatches.length>1} };
+  if (lotCue || selected.lotId && /\b(?:detail|details|quantity|available|stock)\b/u.test(text)) return { intent: /\b(?:detail|details)\b/u.test(text) || /விவரம்|जानकारी/u.test(original) || selected.lotId && !/\blots\b/u.test(text) ? 'stock_lot_detail' : 'stock_lots', params:{lotId:lotMatch?.replace(/\s/g,'-').toUpperCase(),ambiguous:lotMatches.length>1} };
+  const readingCue = /\b(?:spectrometer|reading|readings|composition|element values?)\b/u.test(text) || /ஸ்பெக்ட்ரோ|ரீடிங்|ரீடிங்க|காம்பொசிஷன்|स्पेक्ट्रो|रीडिंग|कंपोज़िशन/u.test(original);
+  if (readingCue) {
+    const rawHeat=heatMatch?.replace(/^heat\s+/i,'').replace(/\s/g,'-').toUpperCase();
+    return { intent:'spectrometer_heat_reading', params:{heatId:rawHeat?( /^\d+$/.test(rawHeat)?`H-${rawHeat}`:rawHeat.replace(/^H-/,'H-')):undefined,ambiguous:heatMatches.length>1} };
+  }
+  const gradeMatches = [...original.matchAll(/\b(?:SG[-\s]?IRON|CI[-\s]?IRON|(?:LOW|MEDIUM|HIGH)[-\s]?CARBON[-\s]?STEEL|GREY[-\s]?IRON|GRADE[-\s]?[A-Z0-9-]+)\b/gi)];
+  const namedGrade=original.match(/\bgrade\s+([a-z0-9]+(?:-[a-z0-9]+)*)\b/i)?.[1];
+  const gradeStopWords=new Set(['range','ranges','spec','specification','composition','carbon','silicon','manganese','iron']);
+  const gradeMatch = gradeMatches[0]?.[0] || (namedGrade&&!gradeStopWords.has(namedGrade.toLowerCase())?namedGrade:null);
+  const gradeCue = /\b(?:grade|range|ranges|spec|specification|composition)\b/u.test(text) || /கிரேடு|ரேஞ்ச்|லிமிட்|கிரேட்|ग्रेड|रेंज|लिमिट|स्पेक/u.test(original);
+  if (gradeCue) {
+    const grade = gradeMatch?.replace(/\s/g,'-').toUpperCase();
+    const padded = ` ${original} `;
+    const element = Object.entries(gradeElementAliases).find(([, aliases]) => aliases.some(alias => padded.includes(` ${wordsOnly(alias)} `)))?.[0];
+    return { intent:'grade_ranges', params:{grade,element,ambiguous:gradeMatches.length>1} };
+  }
+  return null;
+}
 const hasBridgeAction = text => /\b(?:approv\w*|ap+ro+v\w*|apruv\w*|melting|milting|smelting|meltin|melton)\b|\b(?:start|shuru|suru|override|over\s+ride|release|deduct)\s*(?:karo|kro|kar|करो)?\b|(?:\bstock|स्टॉक)\s+(?:kam\b|kum\b|कम)|अप्रूव|एप्रूव|मंजूर|अनुमोदन|मेल्टिंग|मैल्टिंग|पिघला|शुरू|स्टार्ट|ओवरराइड|रिलीज|कन्फर्म/u.test(text);
-export function mapIntent(transcript, { langBridge = false, shiftSummary = import.meta.env?.VITE_SHIFT_SUMMARY === 'true', everywhere = voiceEverywhereEnabled() } = {}) {
+export function mapIntent(transcript, { langBridge = false, shiftSummary = import.meta.env?.VITE_SHIFT_SUMMARY === 'true', everywhere = voiceEverywhereEnabled(), pageDataReads = voicePageDataReadsEnabled(), dashboardBriefing = voiceDashboardBriefingEnabled(), selected = {} } = {}) {
   let text = normalizeIntentTranscript(transcript);
   const tourAction=tourCommand(transcript);
   const params = {};
@@ -50,6 +88,14 @@ export function mapIntent(transcript, { langBridge = false, shiftSummary = impor
   // Only an exact, flag-gated tour start is exempt from the existing broad
   // Hindi "start" action predicate. Dispatch still follows both safety checks.
   if(tourAction)return {intent:'tour_control',params:{action:tourAction}};
+  if(everywhere && dashboardBriefing && isDashboardBriefingRequest(transcript)) return {intent:'dashboard_briefing',params:{}};
+  if(everywhere && pageDataReads) {
+    const dataQuestion=pageDataQuestion(transcript,text,selected);
+    if(dataQuestion) {
+      if(langBridge && hasBridgeAction(normalizeIntentTranscript(transcript))) return { intent: 'blocked', params, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen.", hi: 'यह वॉइस से नहीं हो सकता। स्क्रीन पर कीजिए।' } };
+      return dataQuestion;
+    }
+  }
   if(everywhere) {
     const pageIntent=pageVoiceIntent(transcript);
     if(pageIntent && hasBridgeAction(normalizeIntentTranscript(transcript))) return { intent: 'blocked', params, reply: { ta: 'இது வாய்ஸ்ல செய்ய முடியாது. ஸ்கிரீன்ல செய்யுங்க.', en: "This can't be done by voice. Please use the screen.", hi: 'यह वॉइस से नहीं हो सकता। स्क्रीन पर कीजिए।' } };
