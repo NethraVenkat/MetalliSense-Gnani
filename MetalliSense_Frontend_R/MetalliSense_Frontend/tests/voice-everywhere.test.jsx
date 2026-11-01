@@ -97,7 +97,8 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
   if(path.endsWith('/src/hooks/useSpeak.js'))return readFileSync('src/hooks/useSpeak.js','utf8').replace("export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {", "export function speakText(text, lang = 'ta', style = 'normal', timing = {}) { if(timing?.signal)window.lastTourSignal=timing.signal;");
   if(path.endsWith('/src/context/MeltFlowContext.jsx'))return `export const useMeltFlow=()=>({flow:{}});`;
   if(path.endsWith('/src/services/copilotService.js'))return `export const transcribeAudio=()=>new Promise(resolve=>{window.sttCalls=(window.sttCalls||0)+1;window.finishSTT=()=>resolve({data:{success:true,text:window.nextTranscript||'heat 1053 status'}});});export const transliterateAudio=async()=>({data:{unavailable:true}});export const sendChatMessage=async()=>({data:{response:''}});export const phraseGateFacts=async()=>({source:'template'});export const synthesizeSpeechWithMeta=async(text,lang,style)=>{window.spoken||=[];window.spoken.push([text,lang,style]);return {blob:new Blob(['mock audio']),provider:'mock',source:'mock'};};`;
-  if(path.endsWith('/src/components/layout/Sidebar.jsx')||path.endsWith('/src/components/layout/TopBar.jsx'))return `export default function(){return null;}`;
+  if(path.endsWith('/src/context/AuthContext.jsx'))return `export const useAuth=()=>({user:{displayName:'Fixture user'},mongoUser:null,logout:async()=>{}});`;
+  if(path.endsWith('/src/components/layout/OPCStatusIndicator.jsx'))return `import React from 'react';export default function(){return <button>Fixture connection</button>;}`;
   if(path.endsWith('/src/services/premeltService.js'))return `const heat={heatId:'H-1053',status:'PLANNED',gateResult:{decision:'HOLD',checks:[]}};const wrap=x=>({data:{data:x}});export const getHeat=async()=>window.deferHeat?new Promise(r=>{window.finishHeat=()=>r(wrap(heat));}):wrap(heat);export const getHeats=async()=>wrap([heat]);export const getShiftSummaryHeats=getHeats;export const getAdditives=async()=>wrap([]);`;
  }};
  let server,browser;
@@ -111,7 +112,7 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
    const base=`http://127.0.0.1:${server.httpServer.address().port}`;
    browser=await chromium.launch({headless:true});const page=await browser.newPage();
    await page.addInitScript(()=>{
-    window.spoken=[];localStorage.setItem('metallisense.voice.language','en');window.Audio=class{constructor(){this.duration=.1;}play(){this.onended?.();return Promise.resolve();}pause(){}};
+    window.spoken=[];localStorage.setItem('metallisense.voice.language','en');window.Audio=class{constructor(){this.duration=.1;}play(){if(!window.holdTourAudio)this.onended?.();return Promise.resolve();}pause(){}};
     window.voiceKeys=new Set();const add=window.addEventListener.bind(window),remove=window.removeEventListener.bind(window);
     window.addEventListener=(type,fn,...rest)=>{if(type==='keydown')window.voiceKeys.add(fn);return add(type,fn,...rest);};
     window.removeEventListener=(type,fn,...rest)=>{if(type==='keydown')window.voiceKeys.delete(fn);return remove(type,fn,...rest);};
@@ -162,54 +163,125 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
     await page.evaluate(()=>window.finishSTT());
     await expect.poll(()=>page.locator('[aria-live="polite"]').innerText()).toBe('');
     expect(await page.evaluate(()=>window.spoken)).toEqual([]);
+    await page.evaluate(()=>window.holdTourAudio=true);
     // F14 mounted controls: all provider/media traffic remains mocked.
     const card=page.locator('[aria-label="Voice onboarding tour"]');
-    const startTour=page.getByRole('button',{name:'Start tour / டூர் / टूर',exact:true});
+    const assertSpotlight=async(selector='[data-tour="page-shell"]')=>{
+     await expect.poll(()=>page.evaluate(selector=>{
+      const r=document.querySelector(selector)?.getBoundingClientRect(),h=document.querySelector('[data-tour-highlight]');if(!r||!h)return 999;
+      const left=Math.max(0,r.left),top=Math.max(0,r.top),right=Math.min(document.documentElement.clientWidth,r.right),bottom=Math.min(innerHeight,r.bottom);
+      return Math.max(Math.abs(Number(h.getAttribute('x'))-left-1),Math.abs(Number(h.getAttribute('y'))-top-1),Math.abs(Number(h.getAttribute('width'))-Math.max(0,right-left-2)),Math.abs(Number(h.getAttribute('height'))-Math.max(0,bottom-top-2)));
+     },selector)).toBeLessThan(2);
+    };
+
+    const voicePanel=page.getByRole('region',{name:'Shop floor voice',exact:true});
+    const startTour=page.getByRole('button',{name:'Onboard Tour',exact:true});
     expect(await startTour.count()).toBe(1);expect(await card.count()).toBe(0);
-    await page.getByText('Take the tour',{exact:true}).waitFor();
+    expect(await page.getByRole('button',{name:'Start tour / டூர் / टूर',exact:true}).count()).toBe(0);
     for(const language of ['ta','hi','en']){
      await page.getByLabel('Voice language',{exact:true}).selectOption(language);
-     await startTour.click();await expect.poll(()=>card.innerText()).toContain('Step 1/22');
+     await page.evaluate(()=>window.spoken=[]);
+     await startTour.click();await expect.poll(()=>card.innerText()).toContain('01 / 22');
+     expect(await card.count()).toBe(1);expect(await card.getAttribute('data-guide-layout')).toBe('toolbar');expect(await page.getByRole('button',{name:/focus view/i}).count()).toBe(0);expect(await page.locator('[data-tour="sidebar"]').count()).toBe(1);expect(await page.getByText('Fixture connection',{exact:true}).count()).toBe(0);expect(await voicePanel.isVisible()).toBe(false);
+     expect(await page.getByText('Demo transcripts',{exact:true}).isVisible()).toBe(false);
      await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
-     await page.getByRole('button',{name:'Next',exact:true}).click();await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/spectrometer');
-     await page.getByRole('button',{name:'Repeat',exact:true}).click();
-     expect(await page.evaluate(()=>window.spoken.at(-1)[1])).toBe(language);
-     await page.getByRole('button',{name:'Back',exact:true}).click();await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
-     await page.getByRole('button',{name:'Stop',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);
-    }
-    const voice=async(text)=>{
-     const count=await page.evaluate(()=>window.sttCalls||0);
-     await page.evaluate(text=>window.nextTranscript=text,text);
-     const button=page.getByRole('button',{name:/^(?:Hold to talk|பேச அழுத்திப் பிடிக்கவும்)$/});
-     await expect.poll(()=>button.isEnabled()).toBe(true);await button.hover();await page.mouse.down();await expect.poll(()=>button.getAttribute('aria-pressed')).toBe('true');await page.mouse.up();
-     await expect.poll(()=>page.evaluate(()=>window.sttCalls)).toBe(count+1);await page.evaluate(()=>window.finishSTT());
-    };
-    for(const commands of [['டூர் ஆரம்பி','அடுத்தது','முன்னாடி','திரும்ப சொல்லு','டூர் நிறுத்து'],['tour start karo','aage','peeche','dobara','tour band karo'],['start tour','next','back','repeat','stop tour']]){
-     await voice(commands[0]);await expect.poll(()=>card.innerText()).toContain('Step 1/22');
-     await voice(commands[1]);await expect.poll(()=>card.innerText()).toContain('Step 2/22');
-     await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/spectrometer');
-     await voice(commands[2]);await expect.poll(()=>card.innerText()).toContain('Step 1/22');
-     await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
-     await voice(commands[3]);await voice(commands[4]);await expect.poll(()=>card.count()).toBe(0);
+     await expect.poll(()=>page.evaluate(()=>window.spoken.length)).toBe(1);
+     const dashboardSpeech={ta:'வணக்கம், நான் குரல். இது dashboard. பிளான்ட்ல என்ன நடக்குதுன்னு இங்கே பாக்கலாம்.',hi:'नमस्ते, मैं कुरल हूँ। यह dashboard है। प्लांट में क्या चल रहा है, यहाँ देख सकते हैं।',en:"Hello, I'm Kural. This is the dashboard. You can see what's happening in the plant here."};
+     expect(await page.evaluate(()=>window.spoken[0])).toEqual([dashboardSpeech[language],language,'normal']);
+     await page.setViewportSize({width:390,height:844});
+     expect(await card.evaluate(node=>{const r=node.getBoundingClientRect();return [...node.querySelectorAll('button,select')].every(el=>{const b=el.getBoundingClientRect();return b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom;});})).toBe(true);
+     await page.setViewportSize({width:1280,height:720});
+
+     const changedLanguage=language==='en'?'hi':'en';
+     await page.evaluate(()=>window.previousTourSignal=window.lastTourSignal);
+     await page.getByLabel('Tour language',{exact:true}).selectOption(changedLanguage);
+     await expect.poll(()=>page.evaluate(()=>window.spoken.length)).toBe(2);
+     expect(await page.evaluate(()=>window.previousTourSignal.aborted)).toBe(true);
+     expect(await page.evaluate(()=>window.spoken[1])).toEqual([dashboardSpeech[changedLanguage],changedLanguage,'normal']);
+     if(language==='ta'){
+      await page.screenshot({path:'node_modules/.cache/f14-tour-review-desktop.png'});
+      await page.setViewportSize({width:390,height:844});
+      await page.screenshot({path:'node_modules/.cache/f14-tour-review-narrow.png'});
+      await assertSpotlight();
+      const narrowCard=await card.boundingBox();expect(narrowCard.x).toBeGreaterThanOrEqual(0);expect(narrowCard.y).toBeGreaterThanOrEqual(0);expect(narrowCard.x+narrowCard.width).toBeLessThanOrEqual(390);expect(narrowCard.y+narrowCard.height).toBeLessThanOrEqual(844);
+      await page.setViewportSize({width:1280,height:720});
+     }
+     if(language==='ta'){
+      await page.getByRole('button',{name:'Hide narration',exact:true}).click();expect(await page.locator('[data-tour-narration]').isVisible()).toBe(false);
+      await page.getByRole('button',{name:'Show narration',exact:true}).click();expect(await page.locator('[data-tour-narration]').isVisible()).toBe(true);
+      expect(await page.evaluate(()=>{const g=document.querySelector('[aria-label="Voice onboarding tour"]').getBoundingClientRect(),m=document.querySelector('main').getBoundingClientRect();return m.top>=g.bottom;})).toBe(true);
+      const routeBeforeExplore=await page.getByTestId('route').innerText();
+      await page.locator('main').dispatchEvent('scroll');await card.dispatchEvent('scroll');
+      expect(await page.getByRole('button',{name:'Resume autoplay',exact:true}).count()).toBe(0);
+      await page.locator('main').dispatchEvent('wheel',{deltaY:180});
+      await expect.poll(()=>card.innerText()).toContain('Auto-advance paused while you explore.');
+      expect(await page.getByTestId('route').innerText()).toBe(routeBeforeExplore);
+      await page.getByRole('button',{name:'Resume autoplay',exact:true}).click();
+      await expect.poll(()=>card.innerText()).not.toContain('Auto-advance paused while you explore.');
+      await page.evaluate(()=>{window.fullscreenCalls=0;HTMLElement.prototype.requestFullscreen=()=>{window.fullscreenCalls++;throw new Error('must not be called');};document.exitFullscreen=()=>{window.fullscreenCalls++;};});
+
+      expect(await page.locator('[data-tour="sidebar"]').count()).toBe(1);
+      expect(await page.getByRole('button',{name:/focus view/i}).count()).toBe(0);
+      const calls=await page.evaluate(()=>window.spoken.length);
+      await card.evaluate(node=>window.headerGuide=node);
+      const stepsButton=page.getByRole('button',{name:'Tour steps, step 1 of 22',exact:true});
+      await stepsButton.focus();await page.keyboard.press('Enter');
+      const list=page.getByRole('dialog',{name:'Tour steps',exact:true});await expect.poll(()=>list.count()).toBe(1);
+      expect(await list.locator('[aria-current="step"]').evaluate(node=>node===document.activeElement)).toBe(true);
+      await page.keyboard.press('ArrowDown');expect(await page.evaluate(()=>document.activeElement.textContent)).toContain('Spectrometer');
+      await page.keyboard.press('Escape');expect(await list.count()).toBe(0);expect(await stepsButton.evaluate(node=>node===document.activeElement)).toBe(true);
+      expect(await page.evaluate(()=>window.spoken.length)).toBe(calls);
+      await stepsButton.click();await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
+      await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/supplier-scorecard');await expect.poll(()=>page.evaluate(()=>window.spoken.length)).toBe(calls+1);
+      expect(await card.evaluate(node=>node===window.headerGuide)).toBe(true);
+      await page.getByRole('button',{name:'Tour steps, step 4 of 22',exact:true}).click();
+      expect(await list.getByRole('button',{name:'1. Dashboard, visited',exact:true}).count()).toBe(1);
+      expect(await list.getByRole('button',{name:'2. Spectrometer',exact:true}).count()).toBe(1);
+      await page.keyboard.press('Home');await page.keyboard.press('Enter');await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
+      expect(await page.evaluate(()=>window.fullscreenCalls)).toBe(0);
+
+     }
+     await page.getByRole('button',{name:'Next tour step',exact:true}).click();await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/spectrometer');
+     await page.getByRole('button',{name:'Pause tour narration',exact:true}).click();
+     await page.getByRole('button',{name:'Resume tour narration',exact:true}).click();
+     expect(await page.evaluate(()=>window.spoken.at(-1)[1])).toBe(changedLanguage);
+     await page.getByRole('button',{name:'Previous tour step',exact:true}).click();await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
+     await page.getByRole('button',{name:'Close tour',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);expect(await voicePanel.isVisible()).toBe(true);expect(await page.getByText('Fixture connection',{exact:true}).count()).toBe(1);
     }
     await startTour.click();
+    await page.getByRole('button',{name:'Next tour step',exact:true}).waitFor();
+    await page.evaluate(()=>window.persistentTourCard=document.querySelector('[aria-label="Voice onboarding tour"]'));
+    const stableCardBox=await card.boundingBox();
     for(let step=2;step<=22;step++){
-     await page.getByRole('button',{name:'Next',exact:true}).click();await expect.poll(()=>card.innerText()).toContain(`Step ${step}/22`);
+     await page.getByRole('button',{name:'Next tour step',exact:true}).click();await expect.poll(()=>card.innerText()).toContain(`${String(step).padStart(2,'0')} / 22`);
      // Wait for each requested page before advancing to exercise the real router.
      const route=['/dashboard','/spectrometer','/grades','/supplier-scorecard','/raw-material-stock','/yard-inspection','/premelt-gate','/premelt-gate','/anomaly','/recommendation','/rl-optimizer','/full-analysis','/agent','/energy','/mechanical-properties','/sales','/inventory-forecast','/cost-analysis','/synthetic','/training-data','/semantic-search'][step-1];
      if(route)await expect.poll(()=>page.getByTestId('route').innerText()).toBe(route);
+     expect(await page.evaluate(()=>window.persistentTourCard===document.querySelector('[aria-label="Voice onboarding tour"]'))).toBe(true);
+     if(step<22){await assertSpotlight(step===8?'[aria-label="Shift handover"]':'[data-tour="page-shell"]');}
+     if(step===8){
+      await page.locator('[aria-label="Shift handover"]').evaluate(node=>{node.style.marginTop='140px';});
+      await page.locator('main').dispatchEvent('scroll');await assertSpotlight('[aria-label="Shift handover"]');
+     }
+
+     const routeBox=await card.boundingBox();expect(routeBox.x).toBe(stableCardBox.x);expect(routeBox.width).toBe(stableCardBox.width);expect(routeBox.y).toBe(stableCardBox.y);
     }
     expect(await page.evaluate(()=>localStorage.getItem('metallisense.voice.tour.done'))).toBe('true');
-    await page.getByRole('button',{name:'Stop',exact:true}).click();expect(await page.getByText('Take the tour',{exact:true}).count()).toBe(0);
+    await page.getByRole('button',{name:'Close tour',exact:true}).click();
     await page.getByRole('button',{name:'Mute voice',exact:true}).click();await page.evaluate(()=>window.spoken=[]);
-    await startTour.click();await expect.poll(()=>card.count()).toBe(1);expect(await card.innerText()).toContain('Step 1/22');expect(await page.evaluate(()=>window.spoken)).toEqual([]);
+    await startTour.click();await expect.poll(()=>card.count()).toBe(1);expect(await card.innerText()).toContain('01 / 22');expect(await page.evaluate(()=>window.spoken)).toEqual([]);
     await page.getByRole('link',{name:'/energy',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);
     await page.getByRole('button',{name:'Unmute voice',exact:true}).click();await startTour.click();
     await expect.poll(()=>page.evaluate(()=>Boolean(window.lastTourSignal))).toBe(true);
     await page.getByRole('link',{name:'/grades',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);
     expect(await page.evaluate(()=>window.lastTourSignal.aborted)).toBe(true);
    }
-   if(flag==='false')expect(await page.getByRole('button',{name:'Start tour / டூர் / टूर',exact:true}).count()).toBe(0);
+   if(flag==='false'){
+    expect(await page.getByRole('button',{name:'Start tour / டூர் / टूर',exact:true}).count()).toBe(0);
+    await page.getByRole('button',{name:'Onboard Tour',exact:true}).click();
+    await page.getByText('Welcome to MetalliSense!',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Skip',exact:true}).click();
+   }
    await page.getByRole('link',{name:'/login',exact:true}).click();
    await expect.poll(()=>page.getByRole('region',{name:'Shop floor voice'}).count()).toBe(0);
    expect(await page.evaluate(()=>window.voiceKeys.size)).toBe(0);

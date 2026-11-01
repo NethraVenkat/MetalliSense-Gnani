@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, User, ChevronDown } from "lucide-react";
 import OPCStatusIndicator from "./OPCStatusIndicator";
 
-const TopBar = ({ title, actions }) => {
+const TopBar = ({ title, actions, tourGuide }) => {
   const { user, mongoUser, logout } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -17,6 +17,8 @@ const TopBar = ({ title, actions }) => {
       console.error("Logout failed:", error);
     }
   };
+
+  if(tourGuide)return <div data-tour-navbar className="relative z-[10002] shrink-0">{tourGuide}</div>;
 
   return (
     <div className="bg-white/80 backdrop-blur-sm border-b border-metal-200 px-6 py-4 shadow-sm">

@@ -187,7 +187,7 @@ const sidebarItems = [
   },
 ];
 
-const Sidebar = ({ setRunTour }) => {
+const Sidebar = ({ setRunTour, onStartTour }) => {
   const [isOpen, setIsOpen] = useState(false);
   const sidebarRef = useRef(null);
   const navigate = useNavigate();
@@ -273,7 +273,7 @@ const Sidebar = ({ setRunTour }) => {
                       <button
                         key={item.id}
                         onClick={() => {
-                          setRunTour(true);
+                          if(onStartTour)onStartTour();else setRunTour(true);
                           closeSidebar();
                         }}
                         className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-metal-700 hover:bg-emerald-50 hover:text-emerald-700"

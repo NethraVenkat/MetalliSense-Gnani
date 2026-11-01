@@ -1,13 +1,17 @@
-import React, { useState } from "react";
-import { Outlet } from "react-router-dom";
+import React, { Suspense, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Joyride from "react-joyride";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
-import { useLocation } from "react-router-dom";
 import PushToTalk from '../voice/PushToTalk';
 import VoiceErrorBoundary from '../voice/VoiceErrorBoundary';
 import {VoicePageProvider} from '../../context/VoicePageContext';
 import {voiceEverywhereEnabled} from '../../services/voicePages';
+import {useVoicePage} from '../../context/VoicePageContext';
+import useSpeak,{useVoiceLanguage} from '../../hooks/useSpeak';
+import useVoiceTour from '../../hooks/useVoiceTour';
+import VoiceTourCard from '../voice/VoiceTourCard';
+import TourSpotlight from '../voice/TourSpotlight';
 
 
 const pageTitles = {
@@ -34,9 +38,13 @@ const pageTitles = {
 
 const LayoutBody = () => {
   const location = useLocation();
+  const navigate=useNavigate();
+  const pageContext=useVoicePage();
+  const [lang,setLang]=useVoiceLanguage();
+  const {speak,muted}=useSpeak();
+  const voiceTour=useVoiceTour({pageContext,navigate,speak,muted,lang});
   const title = pageTitles[location.pathname] || "MetalliSense";
   const [runTour, setRunTour] = useState(false);
-
   const tourSteps = [
     {
       target: "body",
@@ -80,27 +88,39 @@ const LayoutBody = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-metal-50 via-metal-100 to-primary-50">
-      <Joyride
+    <div className="flex min-w-0 h-screen bg-gradient-to-br from-metal-50 via-metal-100 to-primary-50">
+      {!voiceTour.visible&&<Joyride
         steps={tourSteps}
-        run={runTour}
-        continuous
-        showProgress
-        showSkipButton
-        callback={handleJoyrideCallback}
+        run={voiceTour.visible?Boolean(voiceTour.state.active&&voiceTour.state.ready&&!voiceTour.state.targetMissing):runTour}
+        disableScrolling={voiceTour.visible}
+        continuous={!voiceTour.visible}
+        showProgress={!voiceTour.visible}
+        showSkipButton={!voiceTour.visible}
+        spotlightClicks={voiceTour.visible}
+        disableOverlayClose={voiceTour.visible}
+        disableCloseOnEsc={voiceTour.visible}
+        callback={voiceTour.visible?()=>{}:handleJoyrideCallback}
         styles={{
           options: {
             primaryColor: "#15c26b",
             zIndex: 10000,
           },
+          spotlight:{borderRadius:14,boxShadow:'0 0 0 2px rgba(5,150,105,.68)'},
+          tooltip:{maxWidth:'calc(100vw - 24px)',padding:0,borderRadius:16},
         }}
-      />
-      <Sidebar setRunTour={setRunTour} />
-      <div className="flex-1 ml-72 flex flex-col overflow-hidden">
-        <TopBar title={title} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {voiceEverywhereEnabled() && <VoiceErrorBoundary><PushToTalk shared /></VoiceErrorBoundary>}
-          <Outlet />
+      />}
+      {voiceTour.visible&&voiceTour.state.active&&voiceTour.state.ready&&!voiceTour.state.targetMissing&&<TourSpotlight target={voiceTour.state.step.id==='handover'?voiceTour.state.step.target:'[data-tour="page-shell"]'} layoutKey={location.key} />}
+      <Sidebar setRunTour={setRunTour} onStartTour={voiceTour.visible?()=>voiceTour.control('start',lang):undefined} />
+      <div data-tour="page-shell" className={`flex min-w-0 flex-1 flex-col overflow-hidden ${voiceTour.state.active?'md:ml-72':'ml-72'}`}>
+        <TopBar title={title} tourGuide={voiceTour.visible&&voiceTour.state.active?<VoiceTourCard
+          state={voiceTour.state} control={voiceTour.control}
+          onResumeAutoplay={()=>voiceTour.control('resume-autoplay')}
+          onLanguageChange={value=>{setLang(value);voiceTour.control('language',value);}}
+          style={{position:'relative',width:'100%',boxSizing:'border-box',zIndex:10002}}
+        />:null}/>
+        <main onPointerDownCapture={event=>{const node=event.currentTarget;if(voiceTour.state.active&&node.scrollHeight>node.clientHeight&&event.clientX>=node.getBoundingClientRect().right-20)voiceTour.control('user-scroll');}} onWheelCapture={()=>voiceTour.state.active&&voiceTour.control('user-scroll')} onTouchMoveCapture={()=>voiceTour.state.active&&voiceTour.control('user-scroll')} onKeyDownCapture={event=>{if(voiceTour.state.active&&['PageDown','PageUp','Home','End','ArrowDown','ArrowUp',' '].includes(event.key)&&!event.target.closest('button,select,input,textarea'))voiceTour.control('user-scroll');}} className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">
+          {voiceEverywhereEnabled() && <VoiceErrorBoundary><PushToTalk shared tour={voiceTour} hidden={voiceTour.state.active} /></VoiceErrorBoundary>}
+          <Suspense fallback={<div role="status" className="p-6">Loading page...</div>}><Outlet /></Suspense>
         </main>
       </div>
     </div>

@@ -1,0 +1,600 @@
+[
+  {
+    "id": "dashboard",
+    "page": "Dashboard",
+    "language": "ta",
+    "spokenText": "வணக்கம், நான் குரல். இது Dashboard. பிளான்ட்ல என்ன நடக்குதுன்னு இங்கே பாக்கலாம்.",
+    "file": "dashboard.wav",
+    "sha256": "ae3bd7113b389af3cd8bb91c31ea1fed7e411cdcc4072e107364cd3fab1b9884",
+    "durationSeconds": 5.68,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "வணக்கம், நான் குரல். இது Dashboard. பிளான்ட்ல என்ன நடக்குதுன்னு இங்கே பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-01/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "spectrometer",
+    "page": "Spectrometer",
+    "language": "ta",
+    "spokenText": "இது Spectrometer. மெட்டல்ல இருக்குற ஒவ்வொரு element அளவையும் இங்கே பாக்கலாம்.",
+    "file": "spectrometer.wav",
+    "sha256": "27c1681a8ccee738693dfb69eebc26bcc2f7a8f7ef1324715c93b3246b7610ba",
+    "durationSeconds": 4.4,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Spectrometer. மெட்டல்ல இருக்குற ஒவ்வொரு element அளவையும் இங்கே பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-02/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "grades",
+    "page": "Grade Specs",
+    "language": "ta",
+    "spokenText": "இது Grade Specs. ஒவ்வொரு இரும்பு கிரேடுக்கும் தேவையான element அளவு இங்கே இருக்கு.",
+    "file": "grades.wav",
+    "sha256": "bd39f23fd3311e7a86cd1a155e1777d6ace9d90bb2c247b67066a2aec1bed043",
+    "durationSeconds": 5.2,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Grade Specs. ஒவ்வொரு இரும்பு கிரேடுக்கும் தேவையான element அளவு இங்கே இருக்கு.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-03/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "supplier-scorecard",
+    "page": "Supplier Scorecard",
+    "language": "ta",
+    "spokenText": "இது Supplier Scorecard. தரம், விலை, டெலிவரி வெச்சு சப்ளையர் ரேட்டிங் பாக்கலாம்.",
+    "file": "supplier-scorecard.wav",
+    "sha256": "4a295358ff413db3ef7405ef992ca8c2c4ec003d8f48513c8a5371d0fd02cbd5",
+    "durationSeconds": 6.32,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Supplier Scorecard. தரம், விலை, டெலிவரி வெச்சு சப்ளையர் ரேட்டிங் பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-04/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "raw-material-stock",
+    "page": "Raw Material Stock",
+    "language": "ta",
+    "spokenText": "இது Raw Material Stock. Pig iron, scrap, alloy — இந்த பொருட்கள் எவ்ளோ இருக்குன்னு இங்கே பாக்கலாம்.",
+    "file": "raw-material-stock.wav",
+    "sha256": "e6854096e4dbb81aa5a30334ef4a9eaca638313559d78f0d992c29b2799f2008",
+    "durationSeconds": 7.2,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Raw Material Stock. Pig iron, scrap, alloy — இந்த பொருட்கள் எவ்ளோ இருக்குன்னு இங்கே பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/05_stock.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json",
+      "stockReuse": {
+        "source": "app/data/tts_cache/stock_pronunciation_audition/run-20261101T172546009819Z/offline-recovery",
+        "sha256": "e6854096e4dbb81aa5a30334ef4a9eaca638313559d78f0d992c29b2799f2008"
+      }
+    }
+  },
+  {
+    "id": "yard-inspection",
+    "page": "Yard Inspection (XRF/LIBS)",
+    "language": "ta",
+    "spokenText": "இது Yard Inspection. வந்த scrap lot எப்படி இருக்கு என்பதை check result மூலம் இங்கே பாக்கலாம்.",
+    "file": "yard-inspection.wav",
+    "sha256": "c2dd066102e6bd9b92628a68f929f1797e5f3cc8199d787a589fec6080206999",
+    "durationSeconds": 5.68,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Yard Inspection. வந்த scrap lot எப்படி இருக்கு என்பதை check result மூலம் இங்கே பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-06/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "premelt-gate",
+    "page": "Pre-Melt Gate",
+    "language": "ta",
+    "spokenText": "இது Pre-melt Gate. உருக்க ஆரம்பிக்கிறதுக்கு முன்னாடி, GO, WARN, HOLD — இந்த முடிவுகளில் ஒண்ணை இங்கே காட்டும். HOLD வந்தா மெல்ட் ஆரம்பிக்க முடியாது, நான் உடனே அலர்ட் சொல்லுவேன்.",
+    "file": "premelt-gate.wav",
+    "sha256": "dfd2e08c12c8f0f65da3fe7a0986b4f84dbd7939f62d6b512713f07134945ea4",
+    "durationSeconds": 12.32,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Pre-melt Gate. உருக்க ஆரம்பிக்கிறதுக்கு முன்னாடி, GO, WARN, HOLD — இந்த முடிவுகளில் ஒண்ணை இங்கே காட்டும். HOLD வந்தா மெல்ட் ஆரம்பிக்க முடியாது, நான் உடனே அலர்ட் சொல்லுவேன்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-07/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "handover",
+    "page": "Shift handover",
+    "language": "ta",
+    "spokenText": "இது Shift Handover. போன ஷிஃப்ட்ல சொன்னது இங்கே வரும், கேட் நிலையோட சரிபாக்கும்.",
+    "file": "handover.wav",
+    "sha256": "d98de03d7994ab7289217305946bb77ba5614b94def50834bcfca0fea429e20f",
+    "durationSeconds": 5.52,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Shift Handover. போன ஷிஃப்ட்ல சொன்னது இங்கே வரும், கேட் நிலையோட சரிபாக்கும்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-08/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "anomaly",
+    "page": "Composition Deviation Analysis",
+    "language": "ta",
+    "spokenText": "இது Composition Deviation. மெட்டல் அளவு லிமிட்ல இருந்து எவ்வளவு மாறியிருக்குன்னு காட்டும்.",
+    "file": "anomaly.wav",
+    "sha256": "d1d2c2e5a5e92d092b6dce8f3574de542326d1d25f3f51e820cd925a19c41d43",
+    "durationSeconds": 5.12,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Composition Deviation. மெட்டல் அளவு லிமிட்ல இருந்து எவ்வளவு மாறியிருக்குன்னு காட்டும்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-09/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "recommendation",
+    "page": "Melt Correction Planner",
+    "language": "ta",
+    "spokenText": "இது Melt Correction Planner. மெட்டல சரியான அளவுக்கு கொண்டு வர என்ன சேர்க்கணும்னு சொல்லும்.",
+    "file": "recommendation.wav",
+    "sha256": "e7db230bcaaafb9ce315e933eb60abce84bdda6206207328271a8b6f5d68fe07",
+    "durationSeconds": 5.44,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Melt Correction Planner. மெட்டல சரியான அளவுக்கு கொண்டு வர என்ன சேர்க்கணும்னு சொல்லும்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-10/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "rl-optimizer",
+    "page": "Adaptive Strategy Optimizer",
+    "language": "ta",
+    "spokenText": "இது Adaptive Strategy Optimizer. பல வழிகளை ஒப்பிட்டு, செலவுக்கும் தரத்துக்கும் சிறந்ததை தேர்ந்தெடுக்கும்.",
+    "file": "rl-optimizer.wav",
+    "sha256": "fdd190c11251ada6feda3f5a3d1f47806d5037f635cfd14fc7d3fbf25ed444b8",
+    "durationSeconds": 7.52,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Adaptive Strategy Optimizer. பல வழிகளை ஒப்பிட்டு, செலவுக்கும் தரத்துக்கும் சிறந்ததை தேர்ந்தெடுக்கும்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-11/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "full-analysis",
+    "page": "Full Analysis",
+    "language": "ta",
+    "spokenText": "இது Full Analysis. எல்லா தகவலும் ஒரே ரிப்போர்ட்ல பாக்கலாம்.",
+    "file": "full-analysis.wav",
+    "sha256": "fa69c4a7c636f622825e2eda2783a763d4b57b28fa41262ac3a2e554a2460c12",
+    "durationSeconds": 4.24,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Full Analysis. எல்லா தகவலும் ஒரே ரிப்போர்ட்ல பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-12/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "agent",
+    "page": "AI Agent Analysis",
+    "language": "ta",
+    "spokenText": "இது AI Agent. முழு மெல்ட்டையும் பாத்து ஒரு சின்ன சுருக்கம் சொல்லும்.",
+    "file": "agent.wav",
+    "sha256": "a3893290037ba97489bc570bd13271a66ec4ac258262f1a86e7511578e210981",
+    "durationSeconds": 4.8,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது AI Agent. முழு மெல்ட்டையும் பாத்து ஒரு சின்ன சுருக்கம் சொல்லும்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-13/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "energy",
+    "page": "Energy per Heat",
+    "language": "ta",
+    "spokenText": "இது Energy. ஒவ்வொரு heat முடிக்க எவ்ளோ current தேவை, எவ்ளோ பயன்படுத்தியிருக்குன்னு இங்கே பாக்கலாம்.",
+    "file": "energy.wav",
+    "sha256": "ab7e9df59cde36cf14297d05b13bb61f6a8dd66c6699d65a1b106561255a474f",
+    "durationSeconds": 6.32,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Energy. ஒவ்வொரு heat முடிக்க எவ்ளோ current தேவை, எவ்ளோ பயன்படுத்தியிருக்குன்னு இங்கே பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-14/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "mechanical-properties",
+    "page": "Mechanical Properties",
+    "language": "ta",
+    "spokenText": "இது Mechanical Properties. கிடைக்குற composition data அடிப்படையில், casting வலிமை மற்றும் கடினத்தன்மையை மதிப்பிடும். உண்மையான மதிப்பை test செய்து உறுதி செய்யணும்.",
+    "file": "mechanical-properties.wav",
+    "sha256": "75e456ee62eca9615f9acaef440dd35e783c1de3382bcbd13eb8dd32fcd3f17a",
+    "durationSeconds": 11.04,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Mechanical Properties. கிடைக்குற composition data அடிப்படையில், casting வலிமை மற்றும் கடினத்தன்மையை மதிப்பிடும். உண்மையான மதிப்பை test செய்து உறுதி செய்யணும்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/mechanical-revision-01/clip/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "sales",
+    "page": "Sales & Dispatch",
+    "language": "ta",
+    "spokenText": "இது Sales and Dispatch. முடிஞ்ச heat, test சர்டிஃபிகேட், கஸ்டமர் பில் இங்கே பாக்கலாம்.",
+    "file": "sales.wav",
+    "sha256": "b725479e3faafa3e76ae567bf9867bbeb709d3a3a8a9e08f9cc1d7d4cb7f2083",
+    "durationSeconds": 5.6,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Sales and Dispatch. முடிஞ்ச heat, test சர்டிஃபிகேட், கஸ்டமர் பில் இங்கே பாக்கலாம்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-16/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "inventory-forecast",
+    "page": "Inventory Forecast",
+    "language": "ta",
+    "spokenText": "இது Inventory Forecast. எந்த மெட்டீரியல் எப்போ தீரும்னு முன்னாடியே காட்டும். அப்ரூவல் அனுமதி உள்ளவங்க ஸ்கிரீன்ல செய்வாங்க.",
+    "file": "inventory-forecast.wav",
+    "sha256": "d5c2a092a2840d19a96e1f8456922a871ccd4471cbf0378cf572028846cdba34",
+    "durationSeconds": 7.44,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Inventory Forecast. எந்த மெட்டீரியல் எப்போ தீரும்னு முன்னாடியே காட்டும். அப்ரூவல் அனுமதி உள்ளவங்க ஸ்கிரீன்ல செய்வாங்க.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-17/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "cost-analysis",
+    "page": "Cost Analysis",
+    "language": "ta",
+    "spokenText": "இது Cost Analysis. மெட்டீரியல், element விலை எல்லாம் இங்கே இருக்கு.",
+    "file": "cost-analysis.wav",
+    "sha256": "500bb8ed6ad6c3e1a0654a97fc2d3cccb43ddd66118fca39d518a3522e0b191d",
+    "durationSeconds": 4.56,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Cost Analysis. மெட்டீரியல், element விலை எல்லாம் இங்கே இருக்கு.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-18/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "synthetic",
+    "page": "Synthetic Data",
+    "language": "ta",
+    "spokenText": "இது Synthetic Data. test செய்ய மாதிரி டேட்டா உருவாக்கும், இது உண்மையான ஃபேக்டரி டேட்டா இல்ல.",
+    "file": "synthetic.wav",
+    "sha256": "088b0d89616a7405f406ce6f0137cb25c93cf9db8eae185de34983ec1819d31e",
+    "durationSeconds": 6.32,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Synthetic Data. test செய்ய மாதிரி டேட்டா உருவாக்கும், இது உண்மையான ஃபேக்டரி டேட்டா இல்ல.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-19/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "training-data",
+    "page": "Training Data",
+    "language": "ta",
+    "spokenText": "இது Training Data. AI மாடல் கத்துக்கிட்ட பழைய ரீடிங் எல்லாம் இங்கே இருக்கு.",
+    "file": "training-data.wav",
+    "sha256": "0a820615f996887a48610f2ecdf67f4430c7bdbcf385c2865b65110db5643870",
+    "durationSeconds": 5.52,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Training Data. AI மாடல் கத்துக்கிட்ட பழைய ரீடிங் எல்லாம் இங்கே இருக்கு.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-20/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "semantic-search",
+    "page": "Semantic Search",
+    "language": "ta",
+    "spokenText": "இது Semantic Search. சாதாரணமா டைப் பண்ணினாலே பழைய ரெக்கார்டு கிடைக்கும்.",
+    "file": "semantic-search.wav",
+    "sha256": "a6e7de1ea28fa667e54888684697ea19f4211f6077ee6b39096a7828cacd7afe",
+    "durationSeconds": 4.8,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "இது Semantic Search. சாதாரணமா டைப் பண்ணினாலே பழைய ரெக்கார்டு கிடைக்கும்.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-21/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  },
+  {
+    "id": "finish",
+    "page": "Finish",
+    "language": "ta",
+    "spokenText": "Tour முடிஞ்சது. தமிழ், Hindi, English — எந்த மொழியில வேணும்னாலும் பேசுங்க. நான் ரெடி.",
+    "file": "finish.wav",
+    "sha256": "1ed7d07db8c697e206eb7ed2d4774d5d1d1cb381c3be0a0851821d1ab0807251",
+    "durationSeconds": 6.64,
+    "approval": "user-approved including revised Mechanical Properties",
+    "generation": {
+      "text": "Tour முடிஞ்சது. தமிழ், Hindi, English — எந்த மொழியில வேணும்னாலும் பேசுங்க. நான் ரெடி.",
+      "model": "timbre-v3.0",
+      "voice": "Kalpana",
+      "language": "hi-IN",
+      "audio_config": {
+        "sample_rate": 22050,
+        "encoding": "linear_pcm",
+        "num_channels": 1,
+        "sample_width": 2,
+        "container": "wav"
+      }
+    },
+    "provenance": {
+      "source": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/step-22/spectrometer_A_tamil.wav",
+      "baseManifest": "MetalliSense_Agent_R/MetalliSense_Agent/app/data/tts_cache/f14_tamil_hi_audition/run-01/manifest.json"
+    }
+  }
+]

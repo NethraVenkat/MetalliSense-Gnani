@@ -8,6 +8,7 @@ import {clarityText} from '../src/services/voiceClarity';
 import {mapIntent} from '../src/services/voiceIntents';
 import {createTranscriptHandler} from '../src/services/voiceTranscript';
 import VoiceTourCard from '../src/components/voice/VoiceTourCard';
+import latinSpeech from './fixtures/f14-latin-speech.json';
 import PushToTalk from '../src/components/voice/PushToTalk';
 const {factoryRead,factoryWrite}=vi.hoisted(()=>({factoryRead:vi.fn(),factoryWrite:vi.fn()}));
 vi.mock('../src/services/premeltService',()=>({getHeat:factoryRead,getHeats:factoryRead,getShiftSummaryHeats:factoryRead,getAdditives:factoryRead,runGateCheck:factoryWrite,startMelting:factoryWrite,updateCharge:factoryWrite}));
@@ -17,7 +18,7 @@ const enable=()=>{vi.stubEnv('VITE_VOICE_EVERYWHERE','true');vi.stubEnv('VITE_VO
 it.each(['ta','hi','en'])('tour and help preserve authored sentence boundaries: %s',lang=>{
  for(const step of voiceTourSteps(true)){
   const text=tourSpokenText(step,lang);
-  expect(text).not.toMatch(/\.\s+[a-z]/);
+  expect(text.match(/[.!?।,]/gu)).toEqual(tourStepText(step,lang).match(/[.!?।,]/gu));
   expect(tourPronunciation(text,lang)).toBe(text);
  }
  for(const page of voicePages)expect(clarityText(pageHelp(page,lang),lang,'colloquial')).not.toMatch(/\.\s+[a-z]/);
@@ -52,9 +53,9 @@ it('applies user overrides',()=>{
   expect(tourStepText(step,'ta')).toBe(step.texts.ta);
  }
 });
-it('override map contains exactly the twenty approved B spellings',()=>{
- expect(Object.keys(tourSpokenOverrides.ta)).toHaveLength(20);
- expect(Object.values(tourSpokenOverrides.ta)).toEqual(approvedTamilB.map(([,term])=>term));
+it('override map preserves all twenty approved B spellings',()=>{
+ expect(Object.keys(tourSpokenOverrides.ta).length).toBeGreaterThanOrEqual(20);
+ for(const [source,term] of approvedTamilB)expect(tourSpokenOverrides.ta[source]).toBe(term);
 });
 it('approved speech overrides never change authored display text',()=>{
  const steps=voiceTourSteps(true),before=structuredClone(steps);
@@ -62,12 +63,13 @@ it('approved speech overrides never change authored display text',()=>{
  expect(steps).toEqual(before);
  expect(steps.map(step=>tourStepText(step,'ta'))).toEqual(before.map(step=>step.texts.ta));
 });
-it('spoken overrides affect only Tamil speech',()=>{
- expect(tourSpokenOverrides.ta).toBeDefined();expect(Object.keys(tourSpokenOverrides.ta)).toHaveLength(20);
+it('per-language spoken overrides leave authored captions unchanged',()=>{
+ expect(tourSpokenOverrides.ta).toBeDefined();expect(Object.keys(tourSpokenOverrides.ta).length).toBeGreaterThanOrEqual(20);
  const step=voiceTourSteps(true)[0],before=structuredClone(step);
  const overrides={ta:{'டாஷ்போர்டு':'டேஷ் போர்டு'},hi:{'डैशबोर्ड':'dashboard'},en:{dashboard:'dashboard replacement'}};
  expect(tourSpokenText(step,'ta',overrides)).toBe(step.texts.ta.replace('டாஷ்போர்டு','டேஷ் போர்டு'));
- for(const lang of ['hi','en'])expect(tourSpokenText(step,lang,overrides)).toBe(step.texts[lang]);
+ expect(tourSpokenText(step,'hi',overrides)).toBe(step.texts.hi.replace('डैशबोर्ड','dashboard'));
+ expect(tourSpokenText(step,'en',overrides)).toBe(step.texts.en.replace('dashboard','dashboard replacement'));
  expect(tourStepText(step,'ta')).toBe(before.texts.ta);expect(step).toEqual(before);
  expect(tourSpokenText(step,'ta')).toBe(Object.entries(tourSpokenOverrides.ta).reduce((value,[term,replacement])=>value.replaceAll(term,replacement),before.texts.ta));
 });
@@ -77,13 +79,30 @@ it('Tamil overrides match literal whole phrases once without changing punctuatio
  expect(tourSpokenText(step,'ta',overrides)).toBe("cost analysis. cost அனாலிசிஸ்ல. 'ஹீட் one zero five three'?");
  expect(step.texts.ta).toContain('காஸ்ட் அனாலிசிஸ்.');
 });
+it.each(latinSpeech)('corrected speech snapshot $clipId leaves visible v4 text intact',row=>{
+ const step=voiceTourSteps(true).find(step=>step.id===row.id),before=structuredClone(step);
+ expect(tourSpokenText(step,row.lang)).toBe(row.after);expect(step).toEqual(before);
+ expect(tourStepText(step,row.lang)).toBe(reviewed.find(item=>item.number===voiceTourSteps(true).findIndex(item=>item.id===row.id)+1)[row.lang]);
+});
+it('explicit Tamil inflections retain grammar without rewriting unrelated stems or எவ்வளவு',()=>{
+ const text='எலிமென்ட்டும் ஹீட்டுக்கும் டெஸ்ட்க்கு டெஸ்ட்க்காக காஸ்டிங்கோட ஸ்க்ராப் லாட்டோட எவ்வளவு';
+ expect(tourSpokenText({texts:{ta:text}},'ta')).toBe('elementஉம் heatக்கும் testக்கு testக்காக castingஓட scrap lotஓட எவ்வளவு');
+ const unrelated='ஹோல்டிங் எனர்ஜியில் கரண்ட்ல எலிமென்ட்டோட கோவில்';
+ expect(tourSpokenText({texts:{ta:unrelated}},'ta')).toBe(unrelated);
+});
+it('Hindi/English replacements use whole phrases once and preserve native grammar and unrelated words',()=>{
+ expect(tourSpokenText({texts:{hi:'स्क्रैप लॉट की जाँच का रिज़ल्ट। एलिमेंटल होल्डिंग'}},'hi')).toBe('scrap lot की जाँच का result। एलिमेंटल होल्डिंग');
+ expect(tourSpokenText({texts:{en:'go, warn, hold; holding goal warning'}},'en')).toBe('GO, WARN, HOLD; holding goal warning');
+ const overrides={hi:{'स्क्रैप लॉट':'scrap lot','scrap lot':'do not chain'}};
+ expect(tourSpokenText({texts:{hi:'स्क्रैप लॉट'}},'hi',overrides)).toBe('scrap lot');
+});
 it.each(reviewed.flatMap((row,n)=>['ta','hi','en'].map(lang=>[n,lang,row[lang]])))('verbatim reviewed v4 step %s %s',(n,lang,text)=>{
  const step=voiceTourSteps(true)[n];
  expect(tourStepText(step,lang)).toBe(text);
-  const entries=lang==='ta'?Object.entries(tourSpokenOverrides.ta):[];
+  const entries=Object.entries(tourSpokenOverrides[lang]||{});
   const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const pattern=entries.map(([term])=>term).sort((a,b)=>b.length-a.length).map(escape).join('|');
-  const expected=pattern?text.replace(new RegExp(`(?<![\\p{L}\\p{M}\\p{N}_])(?:${pattern})(?![\\p{L}\\p{M}\\p{N}_])`,'gu'),word=>tourSpokenOverrides.ta[word]):text;
+  const expected=pattern?text.replace(new RegExp(`(?<![\\p{L}\\p{M}\\p{N}_])(?:${pattern})(?![\\p{L}\\p{M}\\p{N}_])`,'gu'),word=>tourSpokenOverrides[lang][word]):text;
   expect(tourSpokenText(step,lang)).toBe(tourPronunciation(expected,lang));
  expect(text).not.toMatch(/This page shows/);
  expect(text).not.toContain('இந்த பேஜ்ல');expect(text).not.toMatch(/^यहाँ .*दिख/u);
@@ -130,7 +149,9 @@ function fixture({muted=false,denied=false}={}){
  const store=new Map(),storage=()=>denied?{getItem(){throw Error('denied');},setItem(){throw Error('denied');}}:{getItem:key=>store.get(key),setItem:(key,value)=>store.set(key,value)};
  const navigate=vi.fn(),speak=vi.fn().mockResolvedValue(),onChange=vi.fn();
  const tour=createVoiceTour({navigate,speak,onChange,location,steps:voiceTourSteps(true),enabled:()=>true,isMuted:()=>muted,storage,setTimer:vi.fn(),clearTimer:vi.fn()});
- const arrive=()=>{const [route,options]=navigate.mock.lastCall;location={route,scope:String(++number),tourToken:options.state.kuralTour};tour.routeChanged(location);};
+ const rawControl=tour.control.bind(tour);
+ tour.control=(action,lang)=>{const result=rawControl(action,lang);if(action==='start'&&tour.snapshot().step?.route===location.route)rawControl('target-ready');return result;};
+ const arrive=()=>{const [route,options]=navigate.mock.lastCall;location={route,scope:String(++number),tourToken:options.state.kuralTour};tour.routeChanged(location);tour.control('target-ready');};
  return {tour,navigate,speak,onChange,store,arrive,manual(route='/energy'){location={route,scope:String(++number)};tour.routeChanged(location);}};
 }
 it.each(['ta','hi','en'])('button-equivalent controls, language, repeat/back/finish and storage: %s',lang=>{
@@ -167,10 +188,10 @@ it('mute keeps all step text and navigation without speech; storage denial is sa
  while(f.tour.snapshot().index<f.tour.snapshot().total-1){const calls=f.navigate.mock.calls.length;f.tour.control('next');if(f.navigate.mock.calls.length>calls)f.arrive();}
  expect(f.speak).not.toHaveBeenCalled();expect(f.tour.snapshot().done).toBe(true);
 });
-it('tour step card is nonmodal, keyboard-accessible and contains its exact script',()=>{
+it('tour step card is compact, accessible, progress-aware and contains its exact script',async()=>{
  const f=fixture();f.tour.control('start','ta');const html=renderToStaticMarkup(<VoiceTourCard state={f.tour.snapshot()} control={()=>{}}/>);
- expect(html).toContain('Step 1/22');expect(html).toContain('Voice onboarding tour');expect(html).not.toContain('aria-modal');
- for(const label of ['Back','Next','Repeat','Stop'])expect(html).toContain(label);
+ expect(html).toContain('Step 1 of 22');expect(html).toContain('Voice onboarding tour');expect(html).not.toContain('aria-modal');
+ for(const label of ['Pause tour narration','Previous tour step','Next tour step','Close tour','Tour progress','aria-valuenow="1"','Tour language','ஆடியோ தயாராகிறது'])expect(html).toContain(label);
  expect(html).toContain(f.tour.snapshot().text);
 });
 it('entire tour triggers no factory reads, writes or gate checks',()=>{
@@ -215,26 +236,134 @@ it('safety still wins in tour mode and stop restores normal answers',async()=>{
  await handle('start melting');expect(say.mock.lastCall[0]).toContain("can't be done by voice");
  await handle('stop tour');await handle('open stock');expect(navigate).toHaveBeenCalledWith('/raw-material-stock');
 });
-it('auto advance waits for speech completion then exactly two seconds; pause/resume cancels timers',async()=>{
+it('auto advance waits for speech completion without a fixed delay; pause/resume cancels callbacks',async()=>{
  vi.useFakeTimers();let finish;const navigate=vi.fn();
  const tour=createVoiceTour({enabled:()=>true,location:{route:'/dashboard',scope:'one'},navigate,speak:()=>new Promise(resolve=>{finish=resolve;})});
- tour.control('start','en');await vi.advanceTimersByTimeAsync(10000);expect(navigate).not.toHaveBeenCalled();
- finish();await vi.advanceTimersByTimeAsync(1999);expect(navigate).not.toHaveBeenCalled();
- tour.control('pause');await vi.advanceTimersByTimeAsync(5000);expect(tour.snapshot().paused).toBe(true);expect(navigate).not.toHaveBeenCalled();
- tour.control('resume');finish();await vi.advanceTimersByTimeAsync(2000);expect(navigate.mock.lastCall[0]).toBe('/spectrometer');tour.dispose();
+ tour.control('start','en');tour.control('target-ready');await vi.advanceTimersByTimeAsync(10000);expect(navigate).not.toHaveBeenCalled();
+ tour.control('pause');finish();await Promise.resolve();await vi.advanceTimersByTimeAsync(5000);expect(tour.snapshot().paused).toBe(true);expect(navigate).not.toHaveBeenCalled();
+ tour.control('resume');finish();await vi.advanceTimersByTimeAsync(0);expect(navigate.mock.lastCall[0]).toBe('/spectrometer');tour.dispose();
+});
+it('manual page scrolling suspends autoplay without stopping narration until explicit resume',async()=>{
+ vi.useFakeTimers();let finish;const navigate=vi.fn();
+ const tour=createVoiceTour({enabled:()=>true,location:{route:'/dashboard',scope:'one'},navigate,speak:vi.fn(()=>new Promise(resolve=>{finish=resolve;}))});
+ tour.control('start','en');tour.control('target-ready');tour.control('user-scroll');
+ expect(tour.snapshot()).toMatchObject({autoAdvancePaused:true,audioStatus:'loading'});
+ finish();await Promise.resolve();await Promise.resolve();expect(tour.snapshot().audioStatus).toBe('finished');
+ await vi.advanceTimersByTimeAsync(10000);expect(navigate).not.toHaveBeenCalled();
+ tour.control('resume-autoplay');await vi.advanceTimersByTimeAsync(0);expect(navigate.mock.lastCall[0]).toBe('/spectrometer');tour.dispose();vi.useRealTimers();
+});
+it('programmatic readiness does not suspend autoplay and manual Next clears a scroll suspension',()=>{
+ const f=fixture();f.tour.control('start','en');expect(f.tour.snapshot().autoAdvancePaused).toBe(false);
+ f.tour.control('user-scroll');expect(f.tour.snapshot().autoAdvancePaused).toBe(true);
+ f.tour.control('next');expect(f.tour.snapshot()).toMatchObject({index:1,autoAdvancePaused:false});f.tour.dispose();
 });
 it('muted auto advance uses bounded reading delay and manual navigation cancels it',async()=>{
  vi.useFakeTimers();const navigate=vi.fn(),speak=vi.fn();
  const tour=createVoiceTour({enabled:()=>true,location:{route:'/dashboard',scope:'one'},navigate,speak,isMuted:()=>true});
- tour.control('start','ta');const delay=Math.max(4000,Math.ceil(tour.snapshot().text.length/12)*1000);
+ tour.control('start','ta');tour.control('target-ready');const delay=Math.max(4000,Math.ceil(tour.snapshot().text.length/12)*1000);
  await vi.advanceTimersByTimeAsync(delay-1);expect(navigate).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(1);expect(navigate.mock.lastCall[0]).toBe('/spectrometer');expect(speak).not.toHaveBeenCalled();
  tour.routeChanged({route:'/energy',scope:'manual'});await vi.advanceTimersByTimeAsync(60000);expect(navigate).toHaveBeenCalledTimes(1);expect(tour.snapshot().active).toBe(false);
+});
+it('language changes abort the old narration and replay the same visual step',()=>{
+ const f=fixture();f.tour.control('start','en');const oldSignal=f.speak.mock.lastCall[3].signal;
+ f.tour.control('language','ta');
+ expect(oldSignal.aborted).toBe(true);expect(f.tour.snapshot()).toMatchObject({index:0,lang:'ta'});
+ expect(f.speak.mock.lastCall[0]).toBe(tourSpokenText(voiceTourSteps(true)[0],'ta'));
+});
+it('a narration failure stays on the step and offers controls instead of auto-skipping',async()=>{
+ vi.useFakeTimers();const navigate=vi.fn(),speak=vi.fn((_text,_lang,_style,timing)=>{timing.onUnavailable();return Promise.resolve();});
+ const tour=createVoiceTour({enabled:()=>true,location:{route:'/dashboard',scope:'one'},navigate,speak});
+ tour.control('start','en');tour.control('target-ready');await Promise.resolve();
+ expect(tour.snapshot().notice).toContain('Audio is unavailable');
+ await vi.advanceTimersByTimeAsync(20000);expect(navigate).not.toHaveBeenCalled();tour.dispose();
+});
+it('playback status follows loading, audio start, pause and completion',async()=>{
+ let resolveSpeech,timing;const tour=createVoiceTour({enabled:()=>true,location:{route:'/dashboard',scope:'one'},navigate:vi.fn(),speak:vi.fn((_text,_lang,_style,options)=>{timing=options;return new Promise(resolve=>{resolveSpeech=resolve;});})});
+ tour.control('start','en');tour.control('target-ready');expect(tour.snapshot().audioStatus).toBe('loading');
+ timing.onAudioStart();expect(tour.snapshot().audioStatus).toBe('playing');
+ tour.control('pause');expect(tour.snapshot().audioStatus).toBe('paused');resolveSpeech();await Promise.resolve();expect(tour.snapshot().audioStatus).toBe('paused');
+ tour.control('resume');expect(tour.snapshot().audioStatus).toBe('loading');tour.dispose();
+});
+it('tour card separates audio pause from autoplay suspension and exposes presentation controls',()=>{
+ const f=fixture();f.tour.control('start','en');f.tour.control('user-scroll');
+ const current=f.tour.snapshot();const state={...current,step:{...current.step,displayName:'Supplier Scorecard'}};
+ const html=renderToStaticMarkup(<VoiceTourCard state={state} control={()=>{}} />);
+ expect(html).toContain('Auto-advance paused while you explore.');expect(html).toContain('Resume autoplay');
+ expect(html).toContain('Pause tour narration');expect(html).not.toContain('Focus view');
+ expect(html).toContain('break-words');expect(html).toContain('Supplier Scorecard');f.tour.dispose();
+});
+it.each([['ta','பின்','நிறுத்து','அடுத்து','மொழி'],['hi','पीछे','रोकें','आगे','भाषा']])('guide controls retain readable native-script labels: %s',(lang,...words)=>{
+ const f=fixture();f.tour.control('start',lang);
+ const html=renderToStaticMarkup(<VoiceTourCard state={f.tour.snapshot()} control={()=>{}} />);
+ for(const word of words)expect(html).toContain(word);
+ expect(html).not.toContain('???');f.tour.dispose();
+});
+it('route and target failures keep the tour usable without speaking an absent step',async()=>{
+ vi.useFakeTimers();const navigate=vi.fn(),speak=vi.fn();
+ const tour=createVoiceTour({enabled:()=>true,location:{route:'/energy',scope:'one'},navigate,speak,navigationTimeoutMs:80});
+ tour.control('start','en');expect(navigate).toHaveBeenCalledWith('/dashboard',expect.anything());
+ await vi.advanceTimersByTimeAsync(80);
+ expect(tour.snapshot()).toMatchObject({active:true,ready:true,targetMissing:true,notice:'This page did not open. Use Next or Close.'});
+ expect(speak).not.toHaveBeenCalled();tour.control('next');expect(navigate.mock.lastCall[0]).toBe('/spectrometer');
+ const navOptions=navigate.mock.lastCall[1];tour.routeChanged({route:'/spectrometer',scope:'two',tourToken:navOptions.state.kuralTour});tour.control('target-missing');
+ expect(tour.snapshot()).toMatchObject({active:true,ready:true,targetMissing:true,notice:'This spot was not found. Use Next or Close.'});
+ expect(speak).not.toHaveBeenCalled();tour.control('stop');tour.dispose();
+});
+it('duplicate sidebar/voice starts do not create a second session',()=>{
+ const f=fixture();f.tour.control('start','en');const count=f.speak.mock.calls.length;
+ f.tour.control('start','ta');expect(f.speak).toHaveBeenCalledTimes(count);expect(f.tour.snapshot().lang).toBe('en');
 });
 it.each([['நிறுத்தி வை','pause'],['தொடரு','resume'],['रुको','pause'],['चलो','resume']])('native pause/resume %s',(text,action)=>{enable();expect(mapIntent(text,{langBridge:true}).params.action).toBe(action);});
 it('every spoken line uses the colloquial pipeline and is repeat-safe',()=>{
  for(const step of voiceTourSteps(true))for(const lang of ['ta','hi','en']){
   const spoken=tourSpokenText(step,lang);expect(spoken).toBeTruthy();
-  if(lang==='hi')expect(spoken).not.toMatch(/[A-Za-z]/u);
+  if(lang==='hi'&&['spectrometer','energy','finish'].includes(step.id))expect(spoken).toMatch(/[A-Za-z]/u);
   expect(tourCommand(spoken,true)).toBeNull();
  }
+});
+
+it('readiness cannot commit before the current navigation arrives, and stale narration cannot advance it',async()=>{
+ vi.useFakeTimers();let finish;const navigate=vi.fn(),speak=vi.fn(()=>new Promise(resolve=>{finish=resolve;}));
+ const tour=createVoiceTour({enabled:()=>true,location:{route:'/dashboard',scope:'initial'},navigate,speak});
+ tour.control('start','en');tour.control('target-ready');const oldFinish=finish;const oldSignal=speak.mock.lastCall[3].signal;
+ tour.control('next');const second=navigate.mock.lastCall;
+ tour.control('back');const latest=navigate.mock.lastCall;
+ expect(oldSignal.aborted).toBe(true);tour.control('target-ready');expect(tour.snapshot().ready).toBe(false);
+ tour.routeChanged({route:second[0],scope:'stale',tourToken:second[1].state.kuralTour});tour.control('target-ready');expect(speak).toHaveBeenCalledTimes(1);
+ tour.routeChanged({route:latest[0],scope:'latest',tourToken:latest[1].state.kuralTour});tour.control('target-ready');expect(speak).toHaveBeenCalledTimes(2);
+ oldFinish();await vi.advanceTimersByTimeAsync(0);expect(tour.snapshot()).toMatchObject({index:0,ready:true});expect(navigate).toHaveBeenCalledTimes(2);
+ tour.control('stop');expect(tour.snapshot()).toMatchObject({active:false});expect(speak.mock.lastCall[3].signal.aborted).toBe(true);tour.dispose();
+});
+
+it('a late matching route recovers from navigation timeout only after real target readiness',async()=>{
+ vi.useFakeTimers();const navigate=vi.fn(),speak=vi.fn(()=>new Promise(()=>{}));
+ const tour=createVoiceTour({enabled:()=>true,location:{route:'/energy',scope:'initial'},navigate,speak,navigationTimeoutMs:80});
+ tour.control('start','en');const [route,options]=navigate.mock.lastCall;
+ await vi.advanceTimersByTimeAsync(80);expect(tour.snapshot()).toMatchObject({targetMissing:true,ready:true});expect(speak).not.toHaveBeenCalled();
+ tour.routeChanged({route,scope:'late',tourToken:options.state.kuralTour});
+ expect(tour.snapshot()).toMatchObject({targetMissing:false,ready:false});expect(speak).not.toHaveBeenCalled();
+ tour.control('target-ready');expect(speak).toHaveBeenCalledTimes(1);tour.dispose();
+});
+it('a target timeout keeps its honest fallback until retry and stable readiness complete',()=>{
+ const f=fixture();f.tour.control('start','en');f.tour.control('next');f.tour.control('next');
+ const [route,options]=f.navigate.mock.lastCall;f.tour.routeChanged({route,scope:'grades',tourToken:options.state.kuralTour});f.tour.control('target-missing');
+ expect(f.tour.snapshot()).toMatchObject({targetMissing:true,ready:true});expect(f.tour.snapshot().step.target).toBe('[data-tour-page="grades"]');
+ const calls=f.speak.mock.calls.length;f.tour.control('retry-target');expect(f.tour.snapshot()).toMatchObject({targetMissing:false,ready:false});expect(f.speak).toHaveBeenCalledTimes(calls);
+ f.tour.control('target-ready');expect(f.speak).toHaveBeenCalledTimes(calls+1);f.tour.dispose();
+});
+
+
+it.each(['loading','playing','paused','finished','muted','unavailable'])('emblem truthfully reflects playback status %s',status=>{
+ const f=fixture();f.tour.control('start','en');const state={...f.tour.snapshot(),audioStatus:status,paused:status==='paused'};
+ const html=renderToStaticMarkup(<VoiceTourCard state={state} control={()=>{}}/>);
+ expect(html).toContain(`data-playback-state="${status}"`);expect(html.includes('data-speaking-bars')).toBe(status==='playing');
+ expect(html).not.toMatch(/Focus view|Exit focus|floating/);expect(html).toContain('prefers-reduced-motion');f.tour.dispose();
+});
+it('direct step selection validates indices, cancels stale speech and records only ready visits',async()=>{
+ const f=fixture();f.tour.control('start','en');const old=f.speak.mock.lastCall[3];
+ expect(f.tour.snapshot().visited).toEqual(['dashboard']);
+ for(const index of [-1,22,1.5,'2'])expect(f.tour.control('select-step',index)).toBe(false);
+ f.tour.control('select-step',3);expect(old.signal.aborted).toBe(true);expect(old.isCurrent()).toBe(false);expect(f.tour.snapshot().visited).toEqual(['dashboard']);
+ f.arrive();expect(f.tour.snapshot()).toMatchObject({index:3,ready:true});expect(f.tour.snapshot().visited).toEqual(['dashboard','supplier-scorecard']);
+ expect(f.tour.snapshot().steps).toHaveLength(22);expect(f.tour.snapshot().steps.map(step=>step.id)).not.toContain('charge-optimizer');f.tour.dispose();
 });

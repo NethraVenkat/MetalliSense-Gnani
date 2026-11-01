@@ -143,7 +143,7 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
   return session;
 }
 
-export default function useHandsFree({ onTranscript, lang = 'ta', paused = false }) {
+export default function useHandsFree({ onTranscript, lang = 'ta', paused = false, suspended=false }) {
   const latest = useRef({ onTranscript, paused });
   latest.current = { onTranscript, paused };
   const [status, setStatus] = useState({ state: 'off', enabled: false, message: '' });
@@ -160,9 +160,10 @@ export default function useHandsFree({ onTranscript, lang = 'ta', paused = false
       },
     });
     session.current = controller;
-    if (readPreference()) controller.start();
+    if (readPreference()&&!suspended) controller.start();
     return () => { alive = false; controller.stop(); session.current = null; };
   }, []);
+  useEffect(()=>{if(suspended)session.current?.stop();},[suspended]);
   return {
     ...status, note: handsFreeNote(status.message, lang),
     start() { savePreference(true); session.current?.start(); },

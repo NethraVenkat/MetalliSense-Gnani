@@ -3,6 +3,7 @@ import { synthesizeSpeechWithMeta } from '../services/copilotService';
 import { toSpokenText } from '../services/spokenText';
 import { playSpeechStream } from '../services/ttsStream';
 import { clarityText, voiceClarityEnabled } from '../services/voiceClarity';
+import {playApprovedTourAsset} from '../services/approvedTourAudio';
 const listeners = new Set();
 const read = (key, fallback) => { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } };
 let muted = read('metallisense.voice.muted', 'false') === 'true';
@@ -39,6 +40,17 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
   }
   const ticket = generation;
   const queuedAt = performance.now();
+  if(timing.approvedAsset!==undefined){
+    queue=queue.then(async()=>{
+      if(muted||ticket!==generation||timing.signal?.aborted||timing.isCurrent?.()===false)return;
+      const controller=new AbortController();
+      cancelPlayback=()=>controller.abort();
+      const abort=()=>controller.abort();timing.signal?.addEventListener('abort',abort,{once:true});
+      try{await playApprovedTourAsset(timing.approvedAsset,{...timing,signal:controller.signal,onAudioPause:()=>{speaking=false;echoGuardUntil=Date.now()+400;timing.onAudioPause?.();},onAudioStart:()=>{speaking=true;timing.onAudioStart?.();}});}
+      finally{timing.signal?.removeEventListener('abort',abort);cancelPlayback=undefined;speaking=false;echoGuardUntil=Date.now()+400;}
+    }).catch(()=>{});
+    return queue;
+  }
   if (import.meta.env.VITE_TTS_STREAM === 'true' && (globalThis.AudioContext || globalThis.webkitAudioContext)) {
     queue = queue.then(async () => {
       if (muted || ticket !== generation || timing?.signal?.aborted || timing?.isCurrent?.()===false) return;
@@ -46,10 +58,11 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
       const abort=()=>controller.abort();timing?.signal?.addEventListener('abort',abort,{once:true});
       const queue_ms = performance.now()-queuedAt;
       try {
-        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,isCurrent:timing?.isCurrent,onAudioStart:() => { speaking = true; }});
+        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,isCurrent:timing?.isCurrent,onAudioStart:() => { speaking = true;timing?.onAudioStart?.(); }});
         console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,
           ...metrics,time_to_first_audio_ms:metrics.time_to_first_audio_ms+queue_ms,total_ms:metrics.total_ms+queue_ms,queue_ms,language:lang});
       } catch {
+        if(!controller.signal.aborted&&timing?.isCurrent?.()!==false)timing?.onUnavailable?.();
         console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,
           time_to_first_audio_ms:null,total_audio_ms:0,total_ms:performance.now()-queuedAt,queue_ms,
           path:controller.signal.aborted?'cancelled':'error',language:lang});
@@ -73,7 +86,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
       tts_path: failed ? 'error' : source === 'mock' ? 'mock' : source === 'cache' ? 'cache' : provider?.includes('timbre-v3.0') ? 'timbre-v3.0'
         : provider?.includes('timbre-v2.5') ? 'v2.5 fallback' : provider === 'gtts' ? 'gTTS' : 'unknown', language: lang,
       ...(instrument && failed ? {time_to_first_audio_ms:null,total_audio_ms:0,total_ms:performance.now()-queuedAt,path:'error'} : {}) });
-    if (failed) return;
+    if (failed) { if(!timing?.signal?.aborted&&timing?.isCurrent?.()!==false)timing?.onUnavailable?.();return; }
     if (muted || ticket !== generation || timing?.signal?.aborted || timing?.isCurrent?.()===false) return;
     const url = URL.createObjectURL(blob);
     try {
@@ -96,7 +109,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         cancelPlayback = finish;
         audio.onended = finish;
         audio.onerror = finish;
-        if (instrument) audio.onplaying = () => { first ??= performance.now()-queuedAt; };
+        audio.onplaying = () => { timing?.onAudioStart?.();if(instrument)first ??= performance.now()-queuedAt; };
         timer = setTimeout(finish, 120000);
         timing?.signal?.addEventListener('abort',finish,{once:true});
         if(timing?.signal?.aborted)finish();else Promise.resolve(audio.play()).catch(finish);

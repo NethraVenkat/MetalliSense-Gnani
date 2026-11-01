@@ -4,6 +4,7 @@ import { playSpeechStream, readAudioEvents } from '../src/services/ttsStream';
 import { speakText, isSpeechEchoGuarded } from '../src/hooks/useSpeak';
 import { createHoldAnnouncer } from '../src/services/voiceGateAnswers';
 import {voiceTourSteps,tourSpokenText} from '../src/services/voiceTour';
+import latinSpeech from './fixtures/f14-latin-speech.json';
 
 const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock('axios', () => ({ default: { create: () => ({ post }) } }));
@@ -59,6 +60,23 @@ it.each(['ta','hi','en'])('reviewed tour payload bypasses lexicon and normalizat
  await speakText(text,lang,'normal',{pronunciationOnly:true});expect(post.mock.lastCall[1].text).toBe(text);
  const quoted="HOLD carbon 0.50% Ask 'what can I ask here?' any time.";
  await speakText(quoted,lang,'normal',{pronunciationOnly:true});expect(post.mock.lastCall[1].text).toBe(quoted);
+});
+it.each(latinSpeech)('final REST TTS input retains Latin corrections and native grammar: $clipId',async row=>{
+ vi.stubEnv('VITE_VOICE_CLARITY','true');vi.stubEnv('VITE_VOICE_REGISTER','formal');vi.stubEnv('VITE_SPOKEN_NORMALIZE','true');vi.stubEnv('VITE_TTS_STREAM','false');
+ post.mockResolvedValue({data:new Blob(['wav']),headers:{}});
+ vi.stubGlobal('Audio',class{play(){this.onended();return Promise.resolve();}pause(){}});
+ const step=voiceTourSteps(true).find(step=>step.id===row.id),display=step.texts[row.lang];
+ await speakText(tourSpokenText(step,row.lang),row.lang,'normal',{pronunciationOnly:true});
+ expect(post.mock.lastCall[0]).toBe('/copilot/voice/synthesize');
+ expect(post.mock.lastCall[1]).toMatchObject({text:row.after,language:row.lang,style:'normal',slow:false});
+ expect(step.texts[row.lang]).toBe(display);
+});
+it.each(latinSpeech)('final streaming TTS input retains Latin corrections: $clipId',async row=>{
+ vi.stubEnv('VITE_VOICE_CLARITY','true');vi.stubEnv('VITE_SPOKEN_NORMALIZE','true');vi.stubEnv('VITE_TTS_STREAM','true');
+ webAudio();const request=vi.fn().mockResolvedValue(sse(AUDIO+COMPLETE));vi.stubGlobal('fetch',request);
+ const step=voiceTourSteps(true).find(step=>step.id===row.id);
+ await speakText(tourSpokenText(step,row.lang),row.lang,'normal',{pronunciationOnly:true});
+ expect(JSON.parse(request.mock.calls[0][1].body)).toMatchObject({text:row.after,language:row.lang,style:'normal'});
 });
 it('SSE parser handles fragmented event frames', async () => {
   const events=[];for await (const event of readAudioEvents(sse(AUDIO+COMPLETE))) events.push(event);

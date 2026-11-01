@@ -1,0 +1,107 @@
+[
+  {
+    "id": "spectrometer",
+    "clipId": "02_spectrometer_ta",
+    "lang": "ta",
+    "before": "இது spectrometer. மெட்டல்ல ஒவ்வொரு எலிமென்ட்டும் எவ்வளவு இருக்குன்னு இங்கே பாக்கலாம்.",
+    "after": "இது spectrometer. மெட்டல்ல ஒவ்வொரு elementஉம் எவ்வளவு இருக்குன்னு இங்கே பாக்கலாம்."
+  },
+  {
+    "id": "spectrometer",
+    "clipId": "02_spectrometer_hi",
+    "lang": "hi",
+    "before": "यह स्पेक्ट्रो मीटर है। धातु में हर एलिमेंट कितना है, यहाँ देख सकते हैं।",
+    "after": "यह spectrometer है। धातु में हर element कितना है, यहाँ देख सकते हैं।"
+  },
+  {
+    "id": "raw-material-stock",
+    "clipId": "05_raw-material-stock_ta",
+    "lang": "ta",
+    "before": "இது raw material stock. பிக் அயர்ன், ஸ்க்ராப், அலாய் எவ்வளவு இருக்குன்னு இங்கே பாக்கலாம்.",
+    "after": "இது raw material stock. Pig iron, scrap, alloy எவ்வளவு இருக்குன்னு இங்கே பாக்கலாம்."
+  },
+  {
+    "id": "raw-material-stock",
+    "clipId": "05_raw-material-stock_hi",
+    "lang": "hi",
+    "before": "यह रॉ मटेरियल स्टॉक है। पिग आयरन, स्क्रैप और अलॉय कितना है, यहाँ देख सकते हैं।",
+    "after": "यह raw material stock है। Pig iron, scrap और alloy कितना है, यहाँ देख सकते हैं।"
+  },
+  {
+    "id": "yard-inspection",
+    "clipId": "06_yard-inspection_ta",
+    "lang": "ta",
+    "before": "இது yard inspection. வந்த ஸ்க்ராப் லாட்டோட செக் ரிசல்ட் இங்கே பாக்கலாம்.",
+    "after": "இது yard inspection. வந்த scrap lotஓட check result இங்கே பாக்கலாம்."
+  },
+  {
+    "id": "yard-inspection",
+    "clipId": "06_yard-inspection_hi",
+    "lang": "hi",
+    "before": "यह यार्ड इंस्पेक्शन है। आए हुए स्क्रैप लॉट की जाँच का रिज़ल्ट यहाँ देख सकते हैं।",
+    "after": "यह yard inspection है। आए हुए scrap lot की जाँच का result यहाँ देख सकते हैं।"
+  },
+  {
+    "id": "premelt-gate",
+    "clipId": "07_premelt-gate_ta",
+    "lang": "ta",
+    "before": "இது pre-melt gate. மெல்ட் ஆரம்பிக்கும் முன் கோ, வார்ன், ஹோல்ட் முடிவு காட்டும். ஹோல்ட் வந்தா மெல்ட் ஆரம்பிக்க முடியாது, நான் உடனே அலர்ட் சொல்லுவேன்.",
+    "after": "இது pre-melt gate. மெல்ட் ஆரம்பிக்கும் முன் GO, WARN, HOLD முடிவு காட்டும். HOLD வந்தா மெல்ட் ஆரம்பிக்க முடியாது, நான் உடனே அலர்ட் சொல்லுவேன்."
+  },
+  {
+    "id": "premelt-gate",
+    "clipId": "07_premelt-gate_hi",
+    "lang": "hi",
+    "before": "यह प्री मेल्ट गेट है। मेल्ट से पहले गो, वार्न या होल्ड का रिज़ल्ट दिखाता है। होल्ड आने पर मेल्ट शुरू नहीं होगा, और मैं तुरंत अलर्ट दूँगी।",
+    "after": "यह pre-melt gate है। मेल्ट से पहले GO, WARN या HOLD का result दिखाता है। HOLD आने पर मेल्ट शुरू नहीं होगा, और मैं तुरंत अलर्ट दूँगी।"
+  },
+  {
+    "id": "premelt-gate",
+    "clipId": "07_premelt-gate_en",
+    "lang": "en",
+    "before": "This is the pre-melt gate. It shows go, warn or hold before melting. On hold, melting can't start, and I'll alert you right away.",
+    "after": "This is the pre-melt gate. It shows GO, WARN or HOLD before melting. On HOLD, melting can't start, and I'll alert you right away."
+  },
+  {
+    "id": "energy",
+    "clipId": "14_energy_ta",
+    "lang": "ta",
+    "before": "இது எனர்ஜி. ஒவ்வொரு ஹீட்டுக்கும் எவ்வளவு கரண்ட் தேவை, எவ்வளவு ஆச்சுன்னு பாக்கலாம்.",
+    "after": "இது Energy. ஒவ்வொரு heatக்கும் எவ்வளவு current தேவை, எவ்வளவு ஆச்சுன்னு பாக்கலாம்."
+  },
+  {
+    "id": "energy",
+    "clipId": "14_energy_hi",
+    "lang": "hi",
+    "before": "यह एनर्जी है। हर हीट में कितनी बिजली चाहिए और कितनी लगी, यहाँ देख सकते हैं।",
+    "after": "यह Energy है। हर heat में कितनी बिजली चाहिए और कितनी लगी, यहाँ देख सकते हैं।"
+  },
+  {
+    "id": "mechanical-properties",
+    "clipId": "15_mechanical-properties_ta",
+    "lang": "ta",
+    "before": "இது mechanical properties. டெஸ்ட்க்கு முன்னாடியே காஸ்டிங்கோட வலிமை, கடினம் கணிக்கும்.",
+    "after": "இது mechanical properties. testக்கு முன்னாடியே castingஓட வலிமை, கடினம் கணிக்கும்."
+  },
+  {
+    "id": "mechanical-properties",
+    "clipId": "15_mechanical-properties_hi",
+    "lang": "hi",
+    "before": "यह मैकेनिकल प्रॉपर्टीज़ है। टेस्ट से पहले कास्टिंग की मज़बूती और हार्डनेस का अनुमान देता है।",
+    "after": "यह mechanical properties है। test से पहले casting की मज़बूती और hardness का अनुमान देता है।"
+  },
+  {
+    "id": "finish",
+    "clipId": "22_finish_ta",
+    "lang": "ta",
+    "before": "டூர் முடிஞ்சது. தமிழ், ஹிந்தி, இங்கிலீஷ், எதுல வேணும்னாலும் பேசுங்க. நான் ரெடி.",
+    "after": "Tour முடிஞ்சது. தமிழ், Hindi, English, எதுல வேணும்னாலும் பேசுங்க. நான் ரெடி."
+  },
+  {
+    "id": "finish",
+    "clipId": "22_finish_hi",
+    "lang": "hi",
+    "before": "टूर पूरा हुआ। तमिल, हिंदी या इंग्लिश, किसी में भी बोलिए। मैं तैयार हूँ।",
+    "after": "Tour पूरा हुआ। तमिल, Hindi या English, किसी में भी बोलिए। मैं तैयार हूँ।"
+  }
+]

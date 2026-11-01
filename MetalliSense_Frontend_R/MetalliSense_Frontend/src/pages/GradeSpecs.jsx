@@ -213,7 +213,7 @@ const GradeSpecs = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div data-tour-page="grades" className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
