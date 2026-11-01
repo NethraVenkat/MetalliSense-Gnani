@@ -19,11 +19,13 @@ export const handsFreeNote = (code, lang) => {
 export function createHandsFreeSession({ onTranscript, onChange = () => {},
   createCapture = createMicCapture, createSocket = url => new WebSocket(url),
   url = streamUrl(), isEchoGuarded = isSpeechEchoGuarded, isPaused = () => false,
-  now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
+  now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout, dedupeMode='text-window', rejectGuardedFinals=false } = {}) {
   let enabled = false, generation = 0, socket = null, capture = null, abort = null;
   let activation = 0;
   let retryTimer, connectionTimer, started = false, ready = false, failures = 0;
   let lastFinal = '', lastFinalAt = -Infinity, answers = Promise.resolve();
+  let utterance=0,lastIdentity=null;
+  let closeWaitCleanup=null;
   const publish = (state, message = '') => onChange({ state, enabled, message });
   const canSend = () => enabled && ready && !isPaused() && !isEchoGuarded();
   function cleanup(sendStop = true) {
@@ -39,7 +41,8 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
     abort?.abort(); abort = null;
     capture?.stop(); capture = null;
   }
-  function stop(message = '', state = 'off') {
+  function stop(message = '', state = 'off', keepCloseWait = false) {
+    if(!keepCloseWait)closeWaitCleanup?.();
     enabled = false; generation++; activation++;
     clearTimer(retryTimer); retryTimer = undefined;
     cleanup();
@@ -89,13 +92,17 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
           clearTimer(connectionTimer); connectionTimer = undefined;
           ready = true; publish('listening');
         } else if (message.type === 'partial') {
+          if(message.code==='processing')utterance++;
           publish('processing'); // Processing acknowledgements carry no text.
         } else if (message.type === 'final') {
           const text = typeof message.text === 'string' ? message.text.trim() : '';
           if (!text) return;
+          if(rejectGuardedFinals&&(!canSend()))return;
           failures = 0;
           const at = now();
-          const duplicate = text === lastFinal && at - lastFinalAt < 2000;
+          const identity=message.utterance_id??message.result_id??`${generation}:${utterance}:${text}`;
+          const duplicate = dedupeMode==='utterance'?identity===lastIdentity:text === lastFinal && at - lastFinalAt < 2000;
+          lastIdentity=identity;
           lastFinal = text; lastFinalAt = at;
           if (duplicate) return;
           publish('processing');
@@ -103,7 +110,8 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
           answers = answers.then(async () => {
             if (!enabled || activation !== answerActivation) return;
             try {
-              await onTranscript(text);
+              if(dedupeMode==='utterance')await onTranscript(text,{detected_language_code:message.detected_language_code});
+              else await onTranscript(text);
               if (enabled && ready && activation === answerActivation) publish('listening');
             } catch {
               if (enabled && activation === answerActivation) publish('error', 'answer_failed');
@@ -135,10 +143,22 @@ export function createHandsFreeSession({ onTranscript, onChange = () => {},
       if (enabled) return;
       if (activeSession && activeSession !== session) activeSession.stop();
       activeSession = session;
-      enabled = true; activation++; failures = 0; lastFinal = ''; lastFinalAt = -Infinity;
+      enabled = true; activation++; failures = 0; lastFinal = ''; lastFinalAt = -Infinity;lastIdentity=null;
       void connect();
     },
     stop,
+    stopAndWait(){
+      const old=socket;
+      if(!old||old.readyState===3||!old.addEventListener){stop();return Promise.resolve();}
+      return new Promise((resolve,reject)=>{
+        let timeout;
+        const closed=()=>{clearTimer(timeout);old.removeEventListener('close',closed);closeWaitCleanup=null;resolve();};
+        closeWaitCleanup=closed;
+        old.addEventListener('close',closed,{once:true});
+        timeout=setTimer(()=>{old.removeEventListener('close',closed);closeWaitCleanup=null;reject(new Error('Previous STT socket did not close'));},3000);
+        stop('','off',true);
+      });
+    },
   };
   return session;
 }

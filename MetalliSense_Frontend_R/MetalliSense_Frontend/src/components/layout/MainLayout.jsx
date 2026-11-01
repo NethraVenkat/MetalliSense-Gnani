@@ -12,6 +12,7 @@ import useSpeak,{useVoiceLanguage} from '../../hooks/useSpeak';
 import useVoiceTour from '../../hooks/useVoiceTour';
 import VoiceTourCard from '../voice/VoiceTourCard';
 import TourSpotlight from '../voice/TourSpotlight';
+import useTourMicrophone from '../../hooks/useTourMicrophone';
 
 
 const pageTitles = {
@@ -43,6 +44,7 @@ const LayoutBody = () => {
   const [lang,setLang]=useVoiceLanguage();
   const {speak,muted}=useSpeak();
   const voiceTour=useVoiceTour({pageContext,navigate,speak,muted,lang});
+  const tourMicrophone=useTourMicrophone({tour:voiceTour,lang,scope:pageContext?.scope});
   const title = pageTitles[location.pathname] || "MetalliSense";
   const [runTour, setRunTour] = useState(false);
   const tourSteps = [
@@ -114,6 +116,7 @@ const LayoutBody = () => {
       <div data-tour="page-shell" className={`flex min-w-0 flex-1 flex-col overflow-hidden ${voiceTour.state.active?'md:ml-72':'ml-72'}`}>
         <TopBar title={title} tourGuide={voiceTour.visible&&voiceTour.state.active?<VoiceTourCard
           state={voiceTour.state} control={voiceTour.control}
+          microphone={tourMicrophone}
           onResumeAutoplay={()=>voiceTour.control('resume-autoplay')}
           onLanguageChange={value=>{setLang(value);voiceTour.control('language',value);}}
           style={{position:'relative',width:'100%',boxSizing:'border-box',zIndex:10002}}

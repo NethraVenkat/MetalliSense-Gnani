@@ -11,6 +11,7 @@ import {voiceEverywhereEnabled,navigationAnswer,pageHelp} from './voicePages';
 import {tourRunningReply} from './voiceTour';
 import {answerVoicePageQuestion} from './voicePageAnswers';
 import {getDashboardBriefing} from './voicePageAnswers';
+import {prefixedTourCommand,tourVoiceCommandsEnabled} from './tourVoiceCommands';
 import * as stockServices from './premeltService';
 import * as spectrometerServices from './spectrometerService';
 import * as gradeServices from './gradeSpecService';
@@ -34,7 +35,13 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
     setHeard(text);
     setPhraseSource(null);
     const { intent, params } = mapIntent(text, { langBridge, selected:pageContext?.selected||{} });
-
+    if(tourActive()&&tourVoiceCommandsEnabled()){
+      // Existing global safety stays first; no spoken acknowledgement or data read.
+      if(intent==='blocked'||mapIntent(text,{langBridge:true}).intent==='blocked')return;
+      const action=prefixedTourCommand(text);
+      if(action)return tourControl(action);
+      return;
+    }
     if (intent === 'blocked') {
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
       const refusal=blockedVoiceReplies[replyLang];

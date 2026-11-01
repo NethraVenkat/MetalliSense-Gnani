@@ -17,7 +17,7 @@ const labels={
  hi:{back:'पीछे',next:'आगे',play:'सुनें',pause:'रोकें',resume:'जारी रखें',language:'भाषा',explore:'देखते समय अपने आप आगे नहीं बढ़ेगा।',autoplay:'अपने आप जारी रखें'},
 };
 const quiet='inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2';
-export default function VoiceTourCard({state,control,onLanguageChange,onResumeAutoplay,className='',style}) {
+export default function VoiceTourCard({state,control,onLanguageChange,onResumeAutoplay,microphone,className='',style}) {
  const [expanded,setExpanded]=useState(true),[stepsOpen,setStepsOpen]=useState(false),[position,setPosition]=useState({left:12,top:80,width:320,maxHeight:300});
  const stepButton=useRef(null),stepList=useRef(null);
  useEffect(()=>{
@@ -63,6 +63,15 @@ export default function VoiceTourCard({state,control,onLanguageChange,onResumeAu
     <button type="button" aria-label="Next tour step" onClick={()=>control('next')} className={quiet}>{copy.next}<ChevronRight size={15} aria-hidden="true"/></button>
    </nav>
    <div className="ml-auto flex items-center gap-2">
+    {microphone?.visible&&<>
+     <button type="button" aria-label="Tour microphone" title="Hands-free listens between narration; Hold to talk pauses audio before recording." aria-pressed={microphone.enabled} onClick={microphone.toggle} className={quiet}>{lang==='ta'?'மைக்':lang==='hi'?'माइक':'Mic'} {microphone.enabled?'●':'○'}</button>
+     <button type="button" aria-label="Hold to talk to tour" className={`${quiet} touch-none`}
+      onPointerDown={event=>{if(event.button!==0)return;event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);microphone.startPtt();}}
+      onPointerUp={microphone.stopPtt} onPointerCancel={microphone.stopPtt} onLostPointerCapture={microphone.stopPtt}
+      onKeyDown={event=>{if([' ','Enter'].includes(event.key)){event.preventDefault();if(!event.repeat)microphone.startPtt();}}}
+      onKeyUp={event=>{if([' ','Enter'].includes(event.key)){event.preventDefault();microphone.stopPtt();}}}
+      onBlur={microphone.stopPtt}>{lang==='ta'?'பேச பிடிக்கவும்':lang==='hi'?'बोलने के लिए दबाएँ':'Hold to talk'}</button>
+    </>}
     <label className="flex min-w-0 items-center gap-1.5 text-xs text-slate-500"><span>{copy.language}</span><select aria-label="Tour language" value={lang} onChange={event=>onLanguageChange?onLanguageChange(event.target.value):control('language',event.target.value)} className="min-w-0 rounded-md border border-slate-200 bg-white px-1.5 py-1.5 text-xs text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><option value="ta">{String.fromCharCode(0xba4,0xbae,0xbbf,0xbb4,0xbcd)}</option><option value="hi">{String.fromCharCode(0x939,0x93f,0x928,0x94d,0x926,0x940)}</option><option value="en">English</option></select></label>
     <button type="button" aria-label="Close tour" onClick={()=>control('stop')} className={quiet}><X size={16} aria-hidden="true"/></button>
    </div>
@@ -79,6 +88,13 @@ export default function VoiceTourCard({state,control,onLanguageChange,onResumeAu
   <div role="progressbar" aria-label="Tour progress" aria-valuemin={1} aria-valuemax={state.total} aria-valuenow={state.index+1} className="mx-4 h-px overflow-hidden rounded-full bg-emerald-50"><div className="h-full bg-emerald-700 transition-[width] duration-200 motion-reduce:transition-none" style={{width:`${progress*100}%`}}/></div>
   <p data-tour-narration hidden={!expanded} lang={lang} tabIndex={0} className="min-h-0 overflow-y-auto break-words border-b border-slate-100 bg-slate-50/60 px-4 py-2 text-[14px] leading-7 text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700" style={{maxHeight:'min(5rem, 18dvh)'}}>{state.ready?state.text:null}</p>
   <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1 px-4 py-1.5 text-[11px] leading-4 text-slate-500">
+   {microphone?.visible&&<span role="status" className="text-emerald-800">
+    {microphone.state==='error'?(lang==='ta'?'மைக்/STT கிடைக்கல; பொத்தான்களை பயன்படுத்துங்க.':lang==='hi'?'माइक/STT उपलब्ध नहीं; बटन इस्तेमाल करें।':'Mic/STT unavailable; use buttons.'):
+     ['processing','connecting'].includes(microphone.state)?(lang==='ta'?'காத்திருங்க…':lang==='hi'?'प्रोसेसिंग…':'Processing…'):
+     microphone.enabled&&playing?(lang==='ta'?'ஆடியோ நடக்குது; பேச பிடிக்கவும்':lang==='hi'?'ऑडियो चल रहा है; बोलने के लिए दबाएँ':'Audio playing; hold to talk'):
+     microphone.enabled||microphone.state==='recording'?(lang==='ta'?'கேட்கிறது':lang==='hi'?'सुन रहा है':'Listening'):(lang==='ta'?'மைக் ஆஃப்':lang==='hi'?'माइक बंद':'Mic off')}
+    {' · '}{lang==='ta'?'குரல் அடுத்து போ · குரல் நிறுத்து · குரல் continue பண்ணு':lang==='hi'?'Kural आगे जाओ · Kural रुको · Kural जारी रखो':'Kural next · Kural pause · Kural continue'}
+   </span>}
    <div role="status" aria-live="polite" className="min-w-0 flex-1">{state.notice||statusCopy[status]?.[lang]||statusCopy.ready[lang]}{state.autoAdvancePaused&&<span> / {copy.explore}</span>}</div>
    {state.autoAdvancePaused&&<button type="button" aria-label="Resume autoplay" onClick={onResumeAutoplay||(()=>control('resume-autoplay'))} className="shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">{copy.autoplay}</button>}
    <button type="button" aria-label={expanded?'Hide narration':'Show narration'} aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)} className={quiet}><Captions size={15} aria-hidden="true"/>{expanded?'Hide captions':'Show captions'}</button>
