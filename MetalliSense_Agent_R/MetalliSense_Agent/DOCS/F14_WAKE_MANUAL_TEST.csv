@@ -1,0 +1,13 @@
+condition,output_device,phrase,expected,wake_attempts,wake_hits,false_activations,observation_minutes,correct_commands,total_commands,wake_latency_ms,command_latency_ms,applied_echo_cancellation,applied_noise_suppression,applied_auto_gain_control,status,notes
+quiet room,headphones,Kural then gap then next,one activation and one Next only,,,,,,,,,,,,pending,Run only after a real local detector is installed
+quiet room,headphones,Kural aduthu po,one activation and one Next without clipping,,,,,,,,,,,,pending,Same-phrase capture must retain command onset
+quiet room,headphones,Kural alone,timeout with no command and no advancement,,,,,,,,,,,,pending,Do not resume narration unexpectedly
+quiet room,headphones,next without Kural,no command and no STT upload,,,,,,,,,,,,pending,Check network log
+quiet room,headphones,ordinary conversation,no activation and no STT upload,,,,,,,,,,,,pending,Measure false activations over observation interval
+fan noise,headphones,Kural then gap then next,one activation and one correct command,,,,,,,,,,,,pending,Record noise distance and device
+TV background,headphones,Kural aduthu po,one activation and one correct command,,,,,,,,,,,,pending,Include unrelated TV speech without Kural
+quiet room,speakers,tour narration containing Kural,no self activation or command,,,,,,,,,,,,pending,Playback suppression is not verified barge-in
+quiet room,speakers,Kural during narration,measure interruption or record unsupported,,,,,,,,,,,,pending,Never claim success from mocks
+fan noise,speakers,Kural then pause then continue,one command per wake event,,,,,,,,,,,,pending,Each later command requires a fresh wake event
+quiet room,headphones,Kural next and approve the heat,no action and no write,,,,,,,,,,,,pending,Global safety must precede command execution
+quiet room,headphones,Mic off during processing,no late command and resources released,,,,,,,,,,,,pending,Also test close language change permission denial and teardown

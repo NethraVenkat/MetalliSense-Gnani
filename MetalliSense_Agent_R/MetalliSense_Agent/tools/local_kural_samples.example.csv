@@ -1,0 +1,11 @@
+id,wav,expected_wakes,condition
+P01_take01,P01_take01.wav,1,quiet-headphones
+P02_take01,P02_take01.wav,1,quiet-headphones
+P03_take01,P03_take01.wav,1,quiet-headphones
+P04_take01,P04_take01.wav,1,quiet-headphones
+N01_take01,N01_take01.wav,0,quiet-headphones
+N02_take01,N02_take01.wav,0,quiet-headphones
+N03_take01,N03_take01.wav,0,quiet-headphones
+N04_take01,N04_take01.wav,0,quiet-headphones
+B01_take01,B01_take01.wav,0,fan-headphones
+E01_take01,E01_take01.wav,0,quiet-speakers

@@ -25,6 +25,7 @@ playwright-report/
 
 # TTS voice auditions are local audio artifacts.
 # Approved application tour audio is a production asset, not a local audition.
+MetalliSense_Agent_R/MetalliSense_Agent/tools/local_wake_data/
 !MetalliSense_Frontend_R/MetalliSense_Frontend/public/audio/kural-tour-ta-v1/*.wav
 MetalliSense_Agent_R/MetalliSense_Agent/tools/tts_audition/*.wav
 

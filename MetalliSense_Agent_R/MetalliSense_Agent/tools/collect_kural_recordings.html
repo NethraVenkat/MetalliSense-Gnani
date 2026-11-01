@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:; connect-src 'none'">
+<title>Local Kural recording collection</title>
+<style>body{font:16px/1.7 system-ui;max-width:760px;margin:2rem auto;padding:1rem}button,select{font:inherit;padding:.5rem;margin:.3rem}button:focus-visible{outline:3px solid #065f46}audio{width:100%}</style>
+<h1>Kural collection — local only</h1>
+<p>Turn the tour Mic off and close other recorders first. No detector or cloud service runs here. Record only consenting speakers. Each take downloads as WebM/MP4 plus local metadata; convert to PCM WAV separately. Listen before assigning ground-truth labels.</p>
+<label>Prompt <select id="prompt"></select></label>
+<label>Condition <select id="condition"><option>quiet-headphones</option><option>fan-headphones</option><option>TV-headphones</option><option>quiet-speakers</option><option>fan-speakers</option></select></label>
+<p id="words" lang="ta"></p><button id="record">Record one take</button><button id="stop" disabled>Stop</button>
+<p id="status" role="status">Disabled — microphone access requires Record.</p><audio id="playback" controls></audio>
+<script>
+const prompts=[['P01','Kural'],['P02','குரல்'],['P03','குரல் … அடுத்து போ'],['P04','Kural aduthu po'],['P05','குரல் நிறுத்து'],['P06','Kural continue'],['N01','குரங்கு'],['N02','குழல்'],['N03','குறள்'],['N04','coral'],['N05','cruel'],['N06','neural'],['N07','அடுத்து போ'],['B01','Ordinary Tamil conversation without the wake word'],['B02','Ordinary English conversation without Kural'],['B03','Silence / fan / TV (annotate any actual Kural occurrences)'],['E01','Play approved narration over speakers; do not say Kural yourself']];
+const q=id=>document.getElementById(id),takes=new Map();let stream,rec,timer,url,alive=true;
+for(const [id,text]of prompts){const option=document.createElement('option');option.value=id;option.textContent=id+' — '+text;q('prompt').append(option);}
+function label(){q('words').textContent=prompts.find(p=>p[0]===q('prompt').value)[1];}q('prompt').onchange=label;label();
+function download(blob,name){const link=document.createElement('a');const u=URL.createObjectURL(blob);link.href=u;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function release(){clearTimeout(timer);stream?.getTracks().forEach(t=>t.stop());stream=null;}
+q('record').onclick=async()=>{
+ q('record').disabled=true;q('status').textContent='Requesting microphone…';
+ try{
+ const supported=navigator.mediaDevices.getSupportedConstraints();
+ const audio={channelCount:1};for(const k of ['echoCancellation','noiseSuppression','autoGainControl'])if(supported[k])audio[k]=true;
+ stream=await navigator.mediaDevices.getUserMedia({audio,video:false});
+ if(!alive){release();return;}
+ const applied=stream.getAudioTracks()[0].getSettings();const safe={};for(const k of ['sampleRate','channelCount','echoCancellation','noiseSuppression','autoGainControl'])safe[k]=applied[k]??'not reported';
+ const condition=q('condition').value;const id=q('prompt').value,take=(takes.get(id)||0)+1;takes.set(id,take);const name=id+'_take'+String(take).padStart(2,'0');
+ const type=['audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t));const chunks=[];rec=new MediaRecorder(stream,type?{mimeType:type}:undefined);
+ rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+ rec.onstop=()=>{release();q('record').disabled=false;q('stop').disabled=true;if(!chunks.length){q('status').textContent='No audio saved';return;}
+ const blob=new Blob(chunks,{type:rec.mimeType});if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(blob);q('playback').src=url;
+ download(blob,name+(blob.type.includes('mp4')?'.mp4':'.webm'));
+ download(new Blob([JSON.stringify({id,take,prompt:prompts.find(p=>p[0]===id)[1],condition,supportedConstraints:audio,appliedSettings:safe,groundTruth:'pending listening annotation'},null,2)],{type:'application/json'}),name+'.json');
+ q('status').textContent='Saved locally. Replay and annotate; no upload occurred.';};
+ rec.onerror=()=>{release();q('status').textContent='Recording failed';q('record').disabled=false;q('stop').disabled=true;};
+ rec.start();q('stop').disabled=false;q('status').textContent='Recording actual microphone — maximum 30 seconds';timer=setTimeout(()=>{if(rec.state==='recording')rec.stop();},30000);
+ }catch{release();q('record').disabled=false;q('status').textContent='Microphone unavailable or denied. Nothing uploaded.';}
+};
+q('stop').onclick=()=>{if(rec?.state==='recording')rec.stop();};
+window.addEventListener('pagehide',()=>{alive=false;if(rec?.state==='recording')rec.stop();release();if(url)URL.revokeObjectURL(url);});
+</script></html>
