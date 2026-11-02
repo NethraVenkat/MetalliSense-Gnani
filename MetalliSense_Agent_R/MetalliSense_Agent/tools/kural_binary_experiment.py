@@ -164,7 +164,8 @@ def worker(run, repair=None):
     for s,h in k.read(run/'identity.json')['annotation_hashes'].items():
         if k.digest(k.ROOT/('annotations/'+s+'.annotations.json')) != h:raise ValueError('Labels changed')
     entries={e['recording_id']:e for e in audit['entries']}
-    train_group=groups(audit['entries'],'S01_TRAIN');val_group=groups(audit['entries'],'S02_VALID')
+    train_group=repair.training_groups(audit['entries']) if repair and hasattr(repair,'training_groups') else groups(audit['entries'],'S01_TRAIN');val_group=groups(audit['entries'],'S02_VALID')
+    training_sessions=getattr(repair,'TRAINING_SESSIONS',('S01_TRAIN',))
     feature=build_feature_extractor(fc,tf,np);audio={};pool={};lineage=[];context_specs={};rms_pool={}
     for rid,e in entries.items():
         if k.digest(e['wav']) != e['wav_sha256']:raise ValueError('Audio changed')
@@ -173,7 +174,7 @@ def worker(run, repair=None):
         audio[rid]=samples
         windows=repair.contexts(e,fc) if repair else candidates(e,fc)
         context_specs[rid]=windows
-        if repair and e['session_id']=='S01_TRAIN':
+        if repair and e['session_id'] in training_sessions:
             rms_pool[rid]=[float(np.sqrt(np.mean(causal_context(samples,w['end_sample'],fc['window_samples'],np)**2))) for w in windows]
         pool[rid]=np.stack([feature(causal_context(samples,w['end_sample'],fc['window_samples'],np)) for w in windows])
         lineage.extend(dict(recording_id=rid,session_id=e['session_id'],split=e['split'],echo_case=e['echo_case'],**w) for w in windows)
@@ -212,9 +213,9 @@ def worker(run, repair=None):
                 else:
                     rid,label=item
                     index=epoch%len(pool[rid])
-                if entries[rid]['session_id']!='S01_TRAIN':raise ValueError('Only S01 fitting allowed')
+                if entries[rid]['session_id'] not in training_sessions:raise ValueError('Only explicitly allowed training sessions may fit')
                 x.append(pool[rid][index]);y.append(label)
-                selected=dict(recording_id=rid,session_id='S01_TRAIN',context_index=index,label=label)
+                selected=dict(recording_id=rid,session_id=entries[rid]['session_id'],context_index=index,label=label)
                 if repair:selected.update(stratum=item['stratum'],prefix_seconds=item.get('prefix_seconds'),end_sample=context_specs[rid][index]['end_sample'],rms=rms_pool[rid][index],echo_case=entries[rid]['echo_case'])
                 chosen.append(selected)
             model.train_on_batch(np.stack(x),np.array(y))

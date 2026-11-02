@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const {execFileSync}=require('node:child_process');
 const file=path.join(__dirname,'../tools/collect_kural_recordings.html');
 const html=fs.readFileSync(file,'utf8');
-const old=execFileSync('git',['show','HEAD:MetalliSense_Agent_R/MetalliSense_Agent/tools/collect_kural_recordings.html'],{encoding:'utf8'});
+const old=execFileSync('git',['show','039538d:MetalliSense_Agent_R/MetalliSense_Agent/tools/collect_kural_recordings.html'],{encoding:'utf8'});
 const prompts=text=>vm.runInNewContext(text.match(/const prompts=(\[.*\]);/)[1]);
 assert.deepEqual(JSON.parse(JSON.stringify(prompts(html).slice(0,-1))),JSON.parse(JSON.stringify(prompts(old))));
 assert.deepEqual(JSON.parse(JSON.stringify(prompts(html).at(-1))),['HN01','Hey Nova']);

@@ -4,7 +4,7 @@
 <title>Local Kural recording collection</title>
 <style>body{font:16px/1.7 system-ui;max-width:760px;margin:2rem auto;padding:1rem}button,select{font:inherit;padding:.5rem;margin:.3rem}button:focus-visible{outline:3px solid #065f46}audio{width:100%}</style>
 <main id="legacy"><h1>Kural collection — local only</h1>
-<p>New sets: <a href="?mode=paired-v1">paired-v1 (80 clips)</a> · <a href="?mode=devval-v1">devval-v1 (separate validation)</a></p>
+<p>New sets: <a href="?mode=paired-v1">paired-v1 (80 clips)</a> · <a href="?mode=devval-v1">devval-v1 (separate validation)</a> · <a href="?mode=devval-v2">devval-v2 (fresh pause-v2 evaluation)</a></p>
 <p>Turn the tour Mic off and close other recorders first. No detector or cloud service runs here. Record only consenting speakers. Each take downloads as WebM/MP4 plus local metadata; convert to PCM WAV separately. Listen before assigning ground-truth labels.</p>
 <p><a href="collect_kural_pilot.html">Personal Kural pilot: planned training/validation sessions</a></p>
 <label>Prompt <select id="prompt"></select></label>
@@ -13,7 +13,7 @@
 <p id="words" lang="ta"></p><button id="record">Record one take</button><button id="stop" disabled>Stop</button>
 <p id="status" role="status">Disabled — microphone access requires Record.</p><audio id="playback" controls></audio>
 </main><main id="paired" hidden></main>
-<script src="kural_live_capture.js"></script><script src="kural_paired_collector.js"></script>
+<script src="kural_live_capture.js"></script><script src="kural_paired_collector.js?v=devval-v2-5"></script>
 <script>
 if (!globalThis.KuralPairedMode) {
 const prompts=[['P01','Kural'],['P02','குரல்'],['P03','குரல் … அடுத்து போ'],['P04','Kural aduthu po'],['P05','குரல் நிறுத்து'],['P06','Kural continue'],['N01','குரங்கு'],['N02','குழல்'],['N03','குறள்'],['N04','coral'],['N05','cruel'],['N06','neural'],['N07','அடுத்து போ'],['B01','Ordinary Tamil conversation without the wake word'],['B02','Ordinary English conversation without Kural'],['B03','Silence / fan / TV (annotate any actual Kural occurrences)'],['E01','Play approved narration over speakers; do not say Kural yourself'],['HN01','Hey Nova']];

@@ -4,7 +4,7 @@
 const words=['குரங்கு','குடல்','குளம்','குறை','கூரை','coral','cooler','curl','rural','control'];
 const questions=['H-1053 நிலை என்ன?','ஷிஃப்ட் சம்மரி சொல்லு','எத்தனை ஹீட் ஹோல்ட்ல இருக்கு?','கார்பன் எவ்வளவு?','டாஷ்போர்டு ஓப்பன் பண்ணு','டூர் ஸ்டார்ட் பண்ணு','spectrometer reading என்ன?','stock எவ்வளவு இருக்கு?','அடுத்த பேஜ் போ','H-1053 क्या स्थिति है?'];
 const speakers=['manish','nethra'];
-function designation(mode){if(!['paired-v1','devval-v1'].includes(mode))throw Error('Unknown set');return mode==='paired-v1'?'train-paired-v1':'devval-v1';}
+function designation(mode){if(!['paired-v1','devval-v1','devval-v2'].includes(mode))throw Error('Unknown set');return mode==='paired-v1'?'train-paired-v1':mode;}
 function tasks(mode,speaker){
  designation(mode);if(!speakers.includes(speaker))throw Error('Unknown speaker');
  if(mode==='paired-v1')return [...words,...questions].flatMap((text,i)=>{
@@ -26,6 +26,11 @@ function wav(packets){
 function properties(buffer){const v=new DataView(buffer),str=(at,n)=>String.fromCharCode(...new Uint8Array(buffer,at,n));
  if(buffer.byteLength<=44||str(0,4)!=='RIFF'||str(8,4)!=='WAVE'||str(12,4)!=='fmt '||str(36,4)!=='data'||v.getUint32(16,true)!==16||v.getUint16(20,true)!==1||v.getUint16(22,true)!==1||v.getUint32(24,true)!==16000||v.getUint32(28,true)!==32000||v.getUint16(32,true)!==2||v.getUint16(34,true)!==16||v.getUint32(4,true)!==buffer.byteLength-8||v.getUint32(40,true)!==buffer.byteLength-44||(buffer.byteLength-44)%2)throw Error('Invalid/incomplete PCM16 16k WAV');
  return {frames:(buffer.byteLength-44)/2,duration:(buffer.byteLength-44)/32000};}
+function wallLimit(task){return task.kind==='conversation'?null:task.maximum_seconds*1000;}
+function pcmSink(task){
+ const packets=[];let frames=0;const limit=task.kind==='conversation'?task.maximum_seconds*16000:Infinity;
+ return {packets,get frames(){return frames;},add(packet){if(!packet.byteLength||packet.byteLength%2)throw Error('Incomplete PCM packet');const take=Math.min(packet.byteLength/2,limit-frames);if(take>0){packets.push(packet.slice(0,take*2));frames+=take;}return frames>=limit;}};
+}
 async function hash(buffer){return Array.from(new Uint8Array(await root.crypto.subtle.digest('SHA-256',buffer)),b=>b.toString(16).padStart(2,'0')).join('');}
 function validateSidecar(meta,mode,buffer){
  const task=tasks(mode,meta.speaker).find(t=>t.task_id===meta.task_id);if(!task)throw Error('Unknown task');
@@ -56,11 +61,21 @@ async function writeNew(dir,path,value){
  const saved=await handle.getFile();if(typeof value==='string'?await saved.text()!==value:await hash(await saved.arrayBuffer())!==await hash(value))throw Error('Disk read-back mismatch: '+path);
 }
 async function openSet(rootDir,mode,test){
- const name=(test?'test-':'')+designation(mode),dir=await rootDir.getDirectoryHandle(name,{create:true});let manifest,version=null;
+ const name=(test?'test-':'')+designation(mode);let dir,manifest,version=null;
+ try{dir=await rootDir.getDirectoryHandle(name,{create:false});}catch(e){if(e.name!=='NotFoundError')throw e;return {rootDir,dir:null,manifest:fresh(mode,test),version:null,name};}
  try{const file=await readFile(dir,'manifest.json'),text=await file.text();manifest=validateManifest(JSON.parse(text),mode,test);version=text;}catch(e){if(e.name!=='NotFoundError')throw e;manifest=fresh(mode,test);}
  for(const take of manifest.takes){const buffer=await (await readFile(dir,take.wav)).arrayBuffer(),sidecar=JSON.parse(await (await readFile(dir,take.sidecar)).text());validateSidecar(sidecar,mode,buffer);if(JSON.stringify(sidecar)!==JSON.stringify(take.meta)||await hash(buffer)!==take.meta.sha256)throw Error('Existing file/hash mismatch: '+take.wav);
   if(take.original_take){const original=await (await readFile(dir,take.original_take.wav)).arrayBuffer(),metadata=JSON.parse(await (await readFile(dir,take.original_take.sidecar)).text());validateSidecar(metadata,mode,original);if(await hash(original)!==take.meta.sha256||metadata.sha256!==take.meta.sha256||metadata.recording_id!==take.meta.recording_id||metadata.status!=='pending')throw Error('Original take/hash mismatch');}}
- return {dir,manifest,version,name};
+ return {rootDir,dir,manifest,version,name};
+}
+async function outputRoot(handle,test){
+ const expected='kural-paired-collections-v1';
+ if(test){if(!handle.name.startsWith('kural-collector-test-'))throw Error('TEST mode requires a kural-collector-test-* root');return handle;}
+ if(handle.name===expected)return handle;
+ // Windows pickers can leave the user on the parent; resolve only this known child,
+ // without creating anything or accepting another dataset.
+ if(handle.name==='local_wake_data'){try{return await handle.getDirectoryHandle(expected,{create:false});}catch(e){if(e.name!=='NotFoundError')throw e;}}
+ throw Error('Selected folder '+JSON.stringify(handle.name)+'. Select the prepared kural-paired-collections-v1 output root (or its local_wake_data parent), not another dataset. No marker or existing manifest is required.');
 }
 async function commitUnlocked(store,next){
  validateManifest(next,next.mode,next.test_only);let existing=null;try{existing=await (await readFile(store.dir,'manifest.json')).text();}catch(e){if(e.name!=='NotFoundError')throw e;}
@@ -72,6 +87,7 @@ async function commitUnlocked(store,next){
 async function commit(store,next){return root.navigator?.locks?root.navigator.locks.request('kural-paired-manifest-'+store.name,()=>commitUnlocked(store,next)):commitUnlocked(store,next);}
 async function saveTake(store,meta,buffer){
  validateSidecar(meta,store.manifest.mode,buffer);if(await hash(buffer)!==meta.sha256)throw Error('New WAV hash mismatch');
+ if(!store.dir)store.dir=await store.rootDir.getDirectoryHandle(store.name,{create:true});
  const base='clips/'+meta.speaker+'/'+meta.recording_id,take={meta,wav:base+'.wav',sidecar:base+'.json'};
  await writeNew(store.dir,take.wav,buffer);await writeNew(store.dir,take.sidecar,JSON.stringify(meta,null,2)+'\n');await commit(store,{...store.manifest,takes:[...store.manifest.takes,take]});return take;
 }
@@ -84,10 +100,38 @@ async function decide(store,take,status,changes={}){
  await writeNew(store.dir,next.sidecar,JSON.stringify(meta,null,2)+'\n');
  await commit(store,{...store.manifest,takes:store.manifest.takes.map(t=>t.meta.recording_id===meta.recording_id?next:t)});return next;
 }
-root.KuralPaired={words,questions,speakers,tasks,designation,wav,properties,hash,validateSidecar,validateManifest,fresh,openSet,saveTake,decide};
+function boundaryInterval(start,end,duration,confirmed){
+ if(confirmed!==true)throw Error('Tick boundaries reviewed after listening');
+ if(start===''||end===''||!Number.isFinite(Number(start))||!Number.isFinite(Number(end))||Number(start)<0||Number(end)<=Number(start)||Number(end)>duration)throw Error('Set start < end inside the clip');
+ if(Number(end)-Number(start)>2.000000001)throw Error('Wake interval exceeds 2.0 s; listen and adjust, do not truncate automatically');
+ return {start_seconds:Number(start),end_seconds:Number(end),source:'human'};
+}
+function boundaryTakes(store){
+ if(store.manifest.mode!=='paired-v1')throw Error('Boundary mode only reviews train-paired-v1');
+ const expected=tasks('paired-v1','manish').filter(t=>t.member==='wake');
+ return expected.map(task=>{const take=store.manifest.takes.find(t=>t.meta.task_id===task.task_id&&t.meta.status==='accepted');if(!take)throw Error('Missing accepted wake '+task.task_id);return take;});
+}
+async function boundaryReviews(store){
+ const takes=boundaryTakes(store),done=new Map();let dir;
+ try{dir=await store.dir.getDirectoryHandle('boundary-reviews',{create:false});dir=await dir.getDirectoryHandle('manish',{create:false});}catch(e){if(e.name==='NotFoundError')return done;throw e;}
+ const files=[];for await(const handle of dir.values())if(handle.kind==='file'&&handle.name.endsWith('.json'))files.push(handle);
+ for(const handle of files.sort((a,b)=>a.name.localeCompare(b.name))){const review=JSON.parse(await (await handle.getFile()).text()),take=takes.find(t=>t.meta.task_id===review.task_id);
+  if(!take||review.schema!=='kural-paired-boundary-review-v1'||review.recording_id!==take.meta.recording_id||review.audio_sha256!==take.meta.sha256||review.test_only!==store.manifest.test_only||review.speaker!=='manish'||review.designation!=='train-paired-v1'||review.human_reviewed!==true||review.wake_intervals?.length!==1)throw Error('Invalid/hash-mismatched boundary review: '+handle.name);
+  const w=review.wake_intervals[0];boundaryInterval(w.start_seconds,w.end_seconds,take.meta.duration,true);if(w.source!=='human')throw Error('Non-human boundary source');done.set(review.task_id,review);
+ }return done;
+}
+async function saveBoundary(store,take,start,end,confirmed){
+ if(!boundaryTakes(store).some(t=>t.meta.recording_id===take.meta.recording_id))throw Error('Only accepted manish wake clips may be reviewed');
+ const interval=boundaryInterval(start,end,take.meta.duration,confirmed);
+ const original=await (await readFile(store.dir,take.wav)).arrayBuffer();if(await hash(original)!==take.meta.sha256)throw Error('WAV changed; review not saved');
+ const manifest=await (await readFile(store.dir,'manifest.json')).text();if(manifest!==store.version)throw Error('Manifest changed; reopen folder before saving');
+ const reviewed_at=new Date().toISOString(),review={schema:'kural-paired-boundary-review-v1',designation:'train-paired-v1',speaker:'manish',task_id:take.meta.task_id,recording_id:take.meta.recording_id,audio_sha256:take.meta.sha256,wav_relative_path:take.wav,manifest_sha256:await hash(new TextEncoder().encode(manifest)),human_reviewed:true,reviewed_at,wake_intervals:[interval],test_only:store.manifest.test_only};
+ const name='boundary-reviews/manish/'+reviewed_at.replace(/[:.]/g,'-')+'-'+root.crypto.randomUUID()+'.json';await writeNew(store.dir,name,JSON.stringify(review,null,2)+'\n');return review;
+}
+root.KuralPaired={words,questions,speakers,tasks,designation,wav,properties,hash,validateSidecar,validateManifest,fresh,openSet,outputRoot,saveTake,decide,wallLimit,pcmSink,boundaryInterval,boundaryTakes,boundaryReviews,saveBoundary};
 if(!root.document)return;
-const mode=new URLSearchParams(location.search).get('mode');if(!['paired-v1','devval-v1'].includes(mode))return;
-root.KuralPairedMode=true;const test=new URLSearchParams(location.search).get('test')==='1';
+const mode=new URLSearchParams(location.search).get('mode');if(!['paired-v1','devval-v1','devval-v2'].includes(mode))return;
+root.KuralPairedMode=true;const test=new URLSearchParams(location.search).get('test')==='1',boundaryMode=mode==='paired-v1'&&new URLSearchParams(location.search).get('review')==='boundaries';
 document.getElementById('legacy').hidden=true;const panel=document.getElementById('paired');panel.hidden=false;
 panel.innerHTML=`<h1>${test?'TEST ONLY — ':''}${mode} · local Kural collection</h1><p>Builder: Manish + Nethra. Capture/labelling only; no detector, model, cloud, training or app action. Close other recorders and turn tour Mic off.</p>
 <p>Choose the same local output root on reopening. WAVs, sidecars and the set manifest are written directly to your selected folder, not Downloads or browser-only storage. Never select an existing training/model folder. Keep this page open until Stop has saved.</p>
@@ -96,17 +140,18 @@ panel.innerHTML=`<h1>${test?'TEST ONLY — ':''}${mode} · local Kural collectio
 <label><input type="checkbox" id="pcConsent"> I consent to local recording and labelling; everyone audible consents. No upload. This is an explicitly designated ${designation(mode)} set, not S01/S02/S03 or a live diagnostic import.</label>
 <p id="pcProgress"></p><h2 id="pcPrompt" lang="ta"></h2><p id="pcInfo"></p>
 <button id="pcRecord">Record</button><button id="pcStop" disabled>Stop</button><button id="pcRetake" disabled>Re-take (keep rejected)</button><button id="pcPlay" disabled>Play</button><button id="pcAccept" disabled>Accept & Next</button>
-<p id="pcStatus" role="status"></p><p id="pcTime"></p>
+<p id="pcStatus" role="status"></p><p id="pcTime"></p><p id="pcMinimum" role="status"></p>
 <canvas id="pcWave" style="display:block;width:100%;height:170px;border:1px solid #aaa" aria-label="Waveform: click to seek; timestamp inputs and audio controls support keyboard use"></canvas><audio id="pcAudio" controls></audio>
 <label>Wake start seconds <input id="pcStart" type="number" step="0.001" min="0"></label><button id="pcUseStart">Use current time as start</button>
 <label>Wake end seconds <input id="pcEnd" type="number" step="0.001" min="0"></label><button id="pcUseEnd">Use current time as end</button><button id="pcInterval">Play interval</button>
 <label><input id="pcReviewed" type="checkbox"> I listened: content matches the prompt/label. For nonwake takes I confirm no literal Kural. If unsure or accidental Kural occurred, Re-take; original is retained.</label>
 <p>Green boundaries are manual only. devval wake takes require explicit reviewed boundaries. Paired wake boundaries may be annotated later; Accept approves content, not missing timings. Background/conversation labels are never inferred from energy.</p>`;
-const q=id=>document.getElementById('pc'+id);let store=null,pending=null,buffer=null,cap=null,ctx=null,abort=null,busy=false,alive=true,timer=null,clockTimer=null,url=null,endAt=null,animation=null,unlock=null;
+const q=id=>document.getElementById('pc'+id);let store=null,pending=null,buffer=null,cap=null,ctx=null,abort=null,busy=false,alive=true,timer=null,clockTimer=null,url=null,endAt=null,animation=null,unlock=null,reviewedBoundaries=new Map();
 const speaker=()=>q('Speaker').value;const currentTask=()=>pending?tasks(mode,speaker()).find(t=>t.task_id===pending.meta.task_id):tasks(mode,speaker()).find(t=>!store?.manifest.takes.some(r=>r.meta.task_id===t.task_id&&r.meta.status==='accepted'));
 function status(text){q('Status').textContent=text;}
 function refresh(){const t=currentTask();q('Progress').textContent=speakers.map(s=>s+': '+(store?.manifest.takes.filter(r=>r.meta.speaker===s&&r.meta.status==='accepted').length||0)+'/'+tasks(mode,s).length).join(' · ');
- q('Prompt').textContent=t?.prompt_text||'Speaker complete';q('Info').textContent=t?`${t.task_id} · ${t.member} · ${t.pair_id?'pair '+t.pair_id+', order '+t.order_in_pair:'separate dev-validation'} · ${t.kind==='conversation'?'Speak naturally for at least60 seconds; maximum75.':'One second silence, natural prompt, one second silence; maximum15 seconds.'}`:'';
+ if(boundaryMode){q('Progress').textContent='boundaries: '+reviewedBoundaries.size+'/20';q('Prompt').textContent=pending?pending.meta.task_id+' · '+pending.meta.prompt_text:store?'All20 boundaries reviewed':'Choose output root to review accepted wakes';q('Info').textContent='Manual boundary review only. No microphone, capture, inference or original-file changes.';q('Accept').disabled=busy||!pending;q('Play').disabled=busy||!pending;q('Folder').disabled=busy;return;}
+ q('Prompt').textContent=t?.prompt_text||'Speaker complete';q('Info').textContent=t?`${t.task_id} · ${t.member} · ${t.pair_id?'pair '+t.pair_id+', order '+t.order_in_pair:'separate dev-validation'} · ${t.kind==='conversation'?'Press Stop after 60 s reached; hard cap 75 s of saved audio. Keep this tab active.':'One second silence, natural prompt, one second silence; maximum15 seconds.'}`:'';
  q('Record').disabled=busy||!!cap||!!pending||!store||!q('Consent').checked||!t;q('Stop').disabled=!cap&&!abort;
  for(const id of ['Retake','Play','Accept'])q(id).disabled=busy||!pending||!!cap;
  for(const id of ['Speaker','Condition','Folder'])q(id).disabled=busy||!!cap||!!abort||!!pending;
@@ -126,16 +171,17 @@ function marked(){const s=Number(q('Start').value),e=Number(q('End').value);if(!
 q('Interval').onclick=()=>{try{const w=marked();endAt=null;q('Audio').pause();q('Audio').currentTime=w.start_seconds;endAt=w.end_seconds;void q('Audio').play().catch(e=>status(e.message));}catch(e){status(e.message);}};
 async function guarded(fn){if(busy)return;busy=true;refresh();try{await fn();}catch(e){status(e.message+' No upload occurred. Existing files remain.');}finally{busy=false;refresh();}}
 async function loadPending(){const rows=store.manifest.takes.filter(t=>t.meta.status==='pending');if(rows.length>1)throw Error('Multiple pending takes; resolve manifest manually without discarding files');if(rows[0]){pending=rows[0];q('Speaker').value=pending.meta.speaker;buffer=await (await readFile(store.dir,pending.wav)).arrayBuffer();url=URL.createObjectURL(new Blob([buffer],{type:'audio/wav'}));q('Audio').src=url;status('Resumed pending take: play, review and Accept or Re-take.');}draw();}
-q('Folder').onclick=()=>guarded(async()=>{if(!root.showDirectoryPicker)throw Error('Use desktop Chromium/Edge with directory access support');const handle=await root.showDirectoryPicker({mode:'readwrite'});if(test&&!handle.name.startsWith('kural-collector-test-'))throw Error('TEST mode requires a kural-collector-test-* root');if(!test&&handle.name!=='kural-paired-collections-v1')throw Error('Select the prepared kural-paired-collections-v1 output root, not another dataset');store=await openSet(handle,mode,test);q('Path').textContent=handle.name+'/'+store.name+' (each set has its own manifest)';await loadPending();status(pending?'Pending take resumed.':'Folder validated; first incomplete task selected.');});
+q('Folder').onclick=()=>guarded(async()=>{if(!root.showDirectoryPicker)throw Error('Use desktop Chromium/Edge with directory access support');const selected=await root.showDirectoryPicker({mode:'readwrite'});q('Path').textContent='Picker selected '+JSON.stringify(selected.name);const handle=await outputRoot(selected,test);store=await openSet(handle,mode,test);q('Path').textContent=handle.name+'/'+store.name+' (each set has its own manifest; new folders are created only on first saved take)';await loadPending();status(pending?'Pending take resumed.':'Folder validated; first incomplete task selected. Check consent to enable Record.');});
 q('Consent').onchange=()=>{if(!q('Consent').checked&&(cap||abort))q('Stop').onclick();refresh();};q('Speaker').onchange=()=>{clearPlayback();refresh();};
 async function micLock(){if(!navigator.locks)return ()=>{};return new Promise((resolve,reject)=>{navigator.locks.request('kural-paired-collector-mic',{ifAvailable:true},lock=>{if(!lock){reject(Error('Another collector tab owns the microphone'));return;}return new Promise(done=>resolve(done));}).catch(reject);});}
-async function finish(){if(busy)return;if(!cap){abort?.abort();return;}const recording=cap;cap=null;recording.stop({flushPending:true});clearTimeout(timer);clearInterval(clockTimer);unlock?.();unlock=null;abort=null;await guarded(async()=>{
- buffer=wav(recording.packets);const t=recording.task,meta={...t,recording_id:root.crypto.randomUUID(),condition:recording.condition,sha256:await hash(buffer),duration:properties(buffer).duration,created_at:new Date().toISOString(),designation:designation(mode),test_only:test,consent:{granted:true},content_reviewed:false,boundary_reviewed:false,wake_absence_confirmed:false,wake_intervals:[],status:'pending',audio:{sample_rate:16000,channels:1,encoding:'PCM16',frames:properties(buffer).frames},capture:recording.settings};
+async function finish(reason='user_stop'){if(busy)return;if(!cap){abort?.abort();return;}const recording=cap;cap=null;recording.stop({flushPending:true});clearTimeout(timer);clearInterval(clockTimer);unlock?.();unlock=null;abort=null;await guarded(async()=>{
+ buffer=wav(recording.packets);const t=recording.task,meta={...t,recording_id:root.crypto.randomUUID(),condition:recording.condition,sha256:await hash(buffer),duration:properties(buffer).duration,created_at:new Date().toISOString(),designation:designation(mode),test_only:test,consent:{granted:true},content_reviewed:false,boundary_reviewed:false,wake_absence_confirmed:false,wake_intervals:[],status:'pending',audio:{sample_rate:16000,channels:1,encoding:'PCM16',frames:properties(buffer).frames},capture:{...recording.settings,stop_reason:reason,wall_elapsed_seconds:(performance.now()-recording.started)/1000,saved_audio_seconds:properties(buffer).duration}};
+ q('Minimum').textContent=t.kind==='conversation'?(meta.duration>=60?'60 s reached — saved WAV meets the minimum.':'Saved WAV is below 60 s; keep/reject this take, not acceptable.') : '';
  pending=await saveTake(store,meta,buffer);url=URL.createObjectURL(new Blob([buffer],{type:'audio/wav'}));q('Audio').src=url;q('Reviewed').checked=false;status('Take saved to disk as pending. Play and review before Accept. Re-take archives it under rejected/.');draw();});}
 q('Record').onclick=async()=>{if(busy||cap||pending||!store||!q('Consent').checked)return;if(!q('Condition').value.trim()){status('Enter actual condition');return;}busy=true;abort=new AbortController();refresh();let releaseLock;
- try{ctx=new AudioContext();await ctx.resume();releaseLock=await micLock();if(abort.signal.aborted||!alive)throw Error('Capture cancelled');const packets=[],task=currentTask(),condition=q('Condition').value;const local=await root.KuralLiveCapture.createMicCapture({context:ctx,signal:abort.signal,onFrame:p=>packets.push(p),onError:e=>{status(e.message);void finish();}});
-  if(!alive||abort.signal.aborted){local.stop({flushPending:false});throw Error('Capture cancelled');}unlock=releaseLock;cap={...local,packets,task,condition,settings:{input_rate:local.inputRate,applied:{sampleRate:local.appliedSettings.sampleRate,channelCount:local.appliedSettings.channelCount,echoCancellation:local.appliedSettings.echoCancellation,noiseSuppression:local.appliedSettings.noiseSuppression,autoGainControl:local.appliedSettings.autoGainControl}}};
-  status('Recording actual microphone. Stop to save PCM WAV.');clockTimer=setInterval(()=>{if(cap)q('Time').textContent='Captured '+cap.audioTime().toFixed(3)+' seconds'+(task.kind==='conversation'?' · target at least60 seconds':'');},100);timer=setTimeout(()=>void finish(),task.maximum_seconds*1000);
+ try{ctx=new AudioContext();await ctx.resume();releaseLock=await micLock();if(abort.signal.aborted||!alive)throw Error('Capture cancelled');const task=currentTask(),sink=pcmSink(task),condition=q('Condition').value;let capped=false;const local=await root.KuralLiveCapture.createMicCapture({context:ctx,signal:abort.signal,onFrame:p=>{if(sink.add(p)&&!capped){capped=true;queueMicrotask(()=>void finish('75s_saved_audio_cap'));}},onError:e=>{status(e.message);void finish('capture_error');}});
+  if(!alive||abort.signal.aborted){local.stop({flushPending:false});throw Error('Capture cancelled');}unlock=releaseLock;cap={...local,packets:sink.packets,task,condition,started:performance.now(),settings:{input_rate:local.inputRate,applied:{sampleRate:local.appliedSettings.sampleRate,channelCount:local.appliedSettings.channelCount,echoCancellation:local.appliedSettings.echoCancellation,noiseSuppression:local.appliedSettings.noiseSuppression,autoGainControl:local.appliedSettings.autoGainControl}}};
+  q('Minimum').textContent='';status('Recording actual microphone. Stop to save PCM WAV.');clockTimer=setInterval(()=>{if(cap){const seconds=task.kind==='conversation'?sink.frames/16000:cap.audioTime();q('Time').textContent='Captured '+seconds.toFixed(3)+' s · elapsed '+((performance.now()-cap.started)/1000).toFixed(1)+' s';q('Minimum').textContent=task.kind==='conversation'?(seconds>=60?'60 s reached — press Stop when ready; 75 s audio cap.':'Keep recording until 60 s reached.'):'';}},100);const limit=wallLimit(task);if(limit!==null)timer=setTimeout(()=>void finish('prompt_wall_cap'),limit);
  }catch(e){releaseLock?.();abort?.abort();void ctx?.close().catch(()=>{});abort=null;status(e.message);}finally{busy=false;refresh();}};
 q('Stop').onclick=()=>{if(cap)void finish();else{abort?.abort();status('Pending permission cancelled; late streams will be released.');}};
 q('Retake').onclick=()=>guarded(async()=>{await decide(store,pending,'rejected');clearPlayback();status('Rejected WAV/JSON retained in rejected/; immutable original capture also retained. Record the same prompt again.');});
@@ -143,4 +189,15 @@ q('Play').onclick=()=>{endAt=null;void q('Audio').play().catch(e=>status(e.messa
 q('Accept').onclick=()=>guarded(async()=>{if(!q('Reviewed').checked)throw Error('Listen and explicitly confirm content first');const t=currentTask();let intervals=[];if(t.label==='wake'&&(t.kind==='natural_wake'||q('Start').value!==''||q('End').value!==''))intervals=[marked()];await decide(store,pending,'accepted',{content_reviewed:true,boundary_reviewed:intervals.length>0,wake_absence_confirmed:t.label==='nonwake',wake_intervals:intervals,reviewed_at:new Date().toISOString()});clearPlayback();status('Accepted and saved. Next incomplete prompt ready.');});
 window.addEventListener('pagehide',()=>{alive=false;clearTimeout(timer);clearInterval(clockTimer);abort?.abort();cap?.stop({flushPending:false});unlock?.();void ctx?.close().catch(()=>{});q('Audio').pause();cancelAnimationFrame(animation);resizeObserver.disconnect();if(url)URL.revokeObjectURL(url);});
 status('No microphone starts automatically. Select output folder, speaker and consent.');refresh();
+if(boundaryMode){
+ panel.querySelector('h1').textContent='train-paired-v1 · accepted wake boundary review';
+ const paragraphs=panel.querySelectorAll('p');paragraphs[0].textContent='Listening/annotation only. No microphone, detector, inference or training. Review20 accepted manish wake clips; no nonwake or devval edits.';paragraphs[1].textContent='Choose the same output root. Save & Next writes a new annotation linked to the original WAV hash; originals and manifest history remain unchanged. Reopen to resume pending reviews.';
+ for(const id of ['Record','Stop','Retake']){q(id).hidden=true;q(id).onclick=null;}
+ for(const id of ['Speaker','Condition','Consent'])q(id).closest('label').hidden=true;
+ q('Reviewed').closest('label').lastChild.textContent=' I listened and confirm these complete spoken Kural boundaries (≤2.0 s).';q('Accept').textContent='Save & Next';
+ async function nextBoundary(){clearPlayback();pending=boundaryTakes(store).find(t=>!reviewedBoundaries.has(t.meta.task_id))||null;if(pending){buffer=await (await readFile(store.dir,pending.wav)).arrayBuffer();if(await hash(buffer)!==pending.meta.sha256)throw Error('Original WAV hash mismatch');url=URL.createObjectURL(new Blob([buffer],{type:'audio/wav'}));q('Audio').src=url;}draw();refresh();}
+ q('Folder').onclick=()=>guarded(async()=>{const handle=await outputRoot(await root.showDirectoryPicker({mode:'readwrite'}),test);store=await openSet(handle,'paired-v1',test);if(!store.dir)throw Error('Accepted train set is missing');reviewedBoundaries=await boundaryReviews(store);q('Path').textContent=handle.name+'/train-paired-v1/boundary-reviews/manish/';await nextBoundary();status('Original WAV/sidecar/manifest remain unchanged. Save writes a new hash-linked annotation.');});
+ q('Accept').onclick=()=>guarded(async()=>{const review=await saveBoundary(store,pending,q('Start').value,q('End').value,q('Reviewed').checked);reviewedBoundaries.set(review.task_id,review);await nextBoundary();status('Boundaries saved as a new annotation. Original files unchanged.');});
+ status('Choose output root; only20 accepted manish wake clips will be shown.');refresh();
+}
 })(globalThis);
