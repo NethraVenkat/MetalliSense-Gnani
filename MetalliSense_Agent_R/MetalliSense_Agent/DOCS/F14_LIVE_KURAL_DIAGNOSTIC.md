@@ -272,6 +272,69 @@ Next required manual action: open boundary-review mode above, choose the real pr
 
 ### Pause-v2 predeclaration — fresh devval-v2 only
 
+### Pause-v2 paired-set evaluation — separate predeclaration
+
+### Pause-v3 predeclaration — no keyterm, fresh devval-v2
+
+2026-11-03. Builder: Manish. Written before any v3 call. No pause-v3 provider call or integration is performed in this preparation task.
+
+> Pause-v3 is identical to pause-v2 in onset detection, clip-start silence credit,100ms minimum burst,1.5s tail-padded snippets, first-word normalization/matching, locale and codemix. The ONLY request-field difference is omission of the `keyterms` field entirely; no replacement keyterm, empty keyterm field, prompt or other API parameter is added.
+>
+> Evaluate once on fresh devval-v2 only:10 reviewed wakes, one≥60s reviewed wake-free conversation,10 reviewed confusables. First onset per wake/confusable, all conversation onsets up to first10; report total onsets/minute and sent calls/minute. No-onset wakes are misses; unsent negatives disclosed. Incomplete/error results cannot PASS.
+>
+> PASS requires≥9/10 wakes= wake,0 sent conversation snippets= wake,≤1/10 confusables= wake. Same settings throughout; no rules changed after results.
+>
+> User decision rule: if v3 PASSES→use v3. If v3 FAILS→ship pause-v2 behind an off-by-default flag as experimental, with measured limits disclosed. No pause-v4. This records the user's future decision; implementing/shipping either variant is outside this task and has not happened. A future fallback does not change pause-v2's measured FAIL.
+
+Known limits: one speaker; fresh development evaluation, not general reliability or acoustic-latency evidence. Keyterm-bias causation remains a hypothesis because v3 uses a different fresh set, not a paired no-keyterm replay of the previous recordings. Separate v3 artifacts/journal/reservation; old evidence remains immutable.
+
+2026-11-03. Builder: Manish. User explicitly authorizes preparing a separate, single user-run evaluation on train-paired-v1; the prior fresh-devval-v2 protocol/journal is not replaced. No paired Gnani calls have run at predeclaration time.
+
+> Set: train-paired-v1, manish,40 accepted clips:20 wake,10 confusable-word nonwake and10 no-Kural-question nonwake. Unchanged pause-v2 onset/snippet and first-word transcript rule; unchanged Prisma v3.0 locale/codemix/keyterm fields. Select the first qualifying onset per clip, send one exactly1.5s tail-padded snippet; no onset means no call (wake miss; unsent negatives disclosed).
+>
+> PASS only if ALL:≥18/20 wake clips are wake;0/10 confusable words are wake;0/10 no-Kural questions are wake. Single evaluation. If FAIL: rejected; no rule changes on this set. Incomplete/provider-error results cannot PASS.
+>
+> Known limits: one speaker; no long-conversation test. The7.2 calls/min figure remains the historical pause-v1 conversation figure, not a paired-set measurement. These clips trained CNN v2, which is irrelevant to Gnani fitting but means these are inspected development clips, not an untouched final test. No generalization or activation approval is inferred.
+
+Before any live call, dry-run reports each accepted wake's first energy onset versus its reviewed start and flags offsets outside±.2s without tuning. Separate paired plan/journal/reservation and cumulative45-request ceiling apply. Maximum one request per selected clip,40 total candidates. V1 and devval-v2 artifacts remain unchanged. Agent runs dry-run/mocks only; owner executes live locally.
+
+Paired dry-run completed with **40 snippets /40 planned calls /0 network calls**:20 wake,10 A-word confusables and10 B-question nonwakes. Only the40 accepted manish tasks are selected; rejected files are not opened. Waveform onset detection,1.5s padding, first-word matcher and API fields are unchanged. Reviewed wake overlays are validated/merged in memory; originals are untouched. Every generated snippet is mono PCM16/16kHz,24000 frames. No missing onset or timing failure on these20 wake clips.
+
+| Wake | Human start(s) | Snippet start(s) | Offset(s) |
+|---|---:|---:|---:|
+| A01 | .950 | .940 | −.010 |
+| A02 | .696 | .680 | −.016 |
+| A03 | .741 | .760 | +.019 |
+| A04 | .774 | .780 | +.006 |
+| A05 | .553 | .560 | +.007 |
+| A06 | .482 | .480 | −.002 |
+| A07 | 2.006 | 2.000 | −.006 |
+| A08 | .522 | .520 | −.002 |
+| A09 | .624 | .620 | −.004 |
+| A10 | .526 | .520 | −.006 |
+| B01 | .602 | .580 | −.022 |
+| B02 | .710 | .700 | −.010 |
+| B03 | .463 | .460 | −.003 |
+| B04 | .500 | .500 | .000 |
+| B05 | .375 | .380 | +.005 |
+| B06 | .389 | .400 | +.011 |
+| B07 | .445 | .460 | +.015 |
+| B08 | .736 | .760 | +.024 |
+| B09 | .580 | .600 | +.020 |
+| B10 | .317 | .320 | +.003 |
+
+All offsets satisfy±.2s. This checks input timing, not STT recognition, full-word containment or pronunciation correctness. Paired plan/timing report/snippets: `tools/local_wake_data/kural-prisma-pause-v2-paired/evaluation/da22d4ae5290824799a6/`. New journal will be created there only by owner live execution. The paired single-evaluation reservation is in the separate `kural-prisma-pause-v2-paired/` root; original devval-v2 reservation/artifacts are not reused or modified.
+
+Exact owner command from Agent (not run by the agent):
+
+```powershell
+.\.venv\Scripts\python.exe .\tools\kural_gnani_wake_test.py --live --set train-paired-v1 --max-calls 45
+```
+
+This performs at most40 planned requests, sequentially with at least1.1s spacing, no retries/fallbacks/probe. The45 cap is cumulative, not permission for extra snippets. Only identical successful journal rows resume; failed/uncertain attempts halt. No API key appears in artifacts. Results remain **NOT RUN** until the owner's evaluation; no PASS/FAIL is fabricated from timing or mocks.
+
+Verification:8 mocked harness tests passed in3.25s, including exact40 accepted-only paired selection, rejected-file exclusion, separate journal/reservation root,45 ceiling, paired result grouping/criteria, existing pause/first-word/padding/resume/spacing and zero-network dry-run. All482 pre-existing protocol/dataset artifacts remain unchanged;180 source hashes (including boundary review/history provenance) and40 snippet WAV hashes/properties verify. Original v1/devval-v2 artifacts untouched; no live journal/reservation created. Both diff checks pass. Changed only harness, tests and this documentation; no frontend build needed. No live calls, training, tour/app changes, staging, commit or push.
+
 2026-11-03. Builder: Manish. Written before any pause-v2 call. Pause-v1 is rejected; it is not rerun or reclassified under v2.
 
 > Clip start counts as preceding silence. Keep fixed20ms RMS≥0.01 speech frames and≥0.5s intervening silence. Confirm an onset only after≥100ms contiguous speech; ignore shorter bursts and retain the candidate burst start as onset. Send exactly1.5s from that onset, padding the missing tail with digital silence at EOF. Original recordings are never padded or rewritten.
@@ -365,3 +428,95 @@ S02 ordinary/echo/unmatched-positive events, respectively: v1 `.50=109/52/0`, `.
 **FAIL: no common threshold meets the declared criteria. Wake activation stays off; kural-cnn-v2-paired is a rejected experiment. No second run is authorized or launched.** S03 not available, not evaluated. One speaker only; the excluded spelling was not added. These inspected development/validation results are not generalization evidence or a reliable long-term false-activation rate.
 
 Checks:38 focused preflight/paired/binary/negative-context/pipeline regressions passed in13.33s before launch. Final preservation audit passed all474 protected hashes, including v1 artifacts, S02 annotations,22 approved tour WAVs and every paired/devval WAV/sidecar/review; all226 training+S02 source WAV hashes also match. v1 checkpoint SHA-256 remains `eb18391180ff973721f618e0e03cfb49c11eb6869bf67c9602365958fbdb6315`. All run-artifact hashes verify. Audit: `tools/local_wake_data/kural-cnn-v2-paired/verification-cd9381bf0eeb445e83909d2a9d9ff4e6/verification.json`. Both git diff checks pass. No frontend source changed, so no frontend build. No downloads/installations, Gnani/cloud requests, tour integration/audio change, S03 recording access, staging, commit or push.
+
+
+### User-run Prisma pause test results
+
+Plan `tools/local_wake_data/kural-prisma-pause-v2-paired/evaluation/da22d4ae5290824799a6`; status **FAIL**. Attempts 40.
+
+| Group | Clips | Sent | Completed | Wake | Unsent |
+|---|---:|---:|---:|---:|---:|
+| wake_clips | 20 | 20 | 20 | 20 | 0 |
+| confusables | 10 | 10 | 10 | 6 | 0 |
+| no_kural_questions | 10 | 10 | 10 | 0 | 0 |
+
+No conversation test on this set; historical pause-v1 rate remains7.2 calls/min (not measured here). No activation approval. Failed complete evaluation is a rejected experiment.
+<!-- prisma-result-268425c31798c36b815067d7c758c9e872913b0f2dc71f65c96520ee7a5cf414 -->
+
+
+### Completed pause-v2 paired evaluation — FAIL (journal evidence)
+
+2026-11-03. Builder: Manish. Existing journal only; no new calls.40/40 successful requests. Under the frozen paired rule: **20/20 wake clips;6/10 confusable false wakes;0/10 no-Kural-question false wakes → FAIL**. No long conversation in this evaluation; historical pause-v1 rate remains7.2 calls/min, not a measured paired rate.
+Confusables குடல், குறை, கூரை, coral, cooler and curl returned குரல் (with optional punctuation). Hypothesis: keyterm biasing, **not yet isolated**. A fresh-set no-keyterm test cannot alone establish causality. Original v2 journal/results/snippets remain unchanged.
+
+| Clip | Prompt | Transcript (UTF-8) | Wake |
+|---|---|---|---|
+| manish-A01-wake | குரல் | குரல் | yes |
+| manish-A01-nonwake | குரங்கு | குரங்கு. | no |
+| manish-A02-nonwake | குடல் | குரல் | yes |
+| manish-A02-wake | குரல் | குரல் | yes |
+| manish-A03-wake | குரல் | குரல் | yes |
+| manish-A03-nonwake | குளம் | குளம் | no |
+| manish-A04-nonwake | குறை | குரல் | yes |
+| manish-A04-wake | குரல் | குரல் | yes |
+| manish-A05-wake | குரல் | குரல் | yes |
+| manish-A05-nonwake | கூரை | குரல். | yes |
+| manish-A06-nonwake | coral | குரல். | yes |
+| manish-A06-wake | குரல் | குரல் | yes |
+| manish-A07-wake | குரல் | குரல் | yes |
+| manish-A07-nonwake | cooler | குரல் | yes |
+| manish-A08-nonwake | curl | குரல் | yes |
+| manish-A08-wake | குரல் | குரல் | yes |
+| manish-A09-wake | குரல் | குரல். | yes |
+| manish-A09-nonwake | rural | Rural. | no |
+| manish-A10-nonwake | control | Control. | no |
+| manish-A10-wake | குரல் | குரல் | yes |
+| manish-B01-wake | குரல், H-1053 நிலை என்ன? | குரல் ஹச் one zero. | yes |
+| manish-B01-nonwake | H-1053 நிலை என்ன? | ஹச் one zero five three. | no |
+| manish-B02-nonwake | ஷிஃப்ட் சம்மரி சொல்லு | swift சம்மரி சொல்லு. | no |
+| manish-B02-wake | குரல், ஷிஃப்ட் சம்மரி சொல்லு | குரல் shift summary சொல். | yes |
+| manish-B03-wake | குரல், எத்தனை ஹீட் ஹோல்ட்ல இருக்கு? | குரல் எத்தனை heat? | yes |
+| manish-B03-nonwake | எத்தனை ஹீட் ஹோல்ட்ல இருக்கு? | எத்தனை heat holder? | no |
+| manish-B04-nonwake | கார்பன் எவ்வளவு? | Carbon எவ்வளவு? | no |
+| manish-B04-wake | குரல், கார்பன் எவ்வளவு? | குரல் carbon எவ்வளவு? | yes |
+| manish-B05-wake | குரல், டாஷ்போர்டு ஓப்பன் பண்ணு | குரல் dashboard open பண்ணு. | yes |
+| manish-B05-nonwake | டாஷ்போர்டு ஓப்பன் பண்ணு | dashboard open பண்ணு. | no |
+| manish-B06-nonwake | டூர் ஸ்டார்ட் பண்ணு | டூர் start பண்ணு. | no |
+| manish-B06-wake | குரல், டூர் ஸ்டார்ட் பண்ணு | குரல் tour start பண்ணு. | yes |
+| manish-B07-wake | குரல், spectrometer reading என்ன? | குரல் spectrometer reading என்ன? | yes |
+| manish-B07-nonwake | spectrometer reading என்ன? | spectrometer reading என்ன? | no |
+| manish-B08-nonwake | stock எவ்வளவு இருக்கு? | stock எவ்வளவு இருக்கு? | no |
+| manish-B08-wake | குரல், stock எவ்வளவு இருக்கு? | குரல் stock எவ்வளவு இருக்கு? | yes |
+| manish-B09-wake | குரல், அடுத்த பேஜ் போ | குரல் அடுத்த page இப்போது. | yes |
+| manish-B09-nonwake | அடுத்த பேஜ் போ | அடுத்த பேச்சு போ | no |
+| manish-B10-nonwake | H-1053 क्या स्थिति है? | one zero five three cash. | no |
+| manish-B10-wake | Kural, H-1053 क्या स्थिति है? | குரல் 105. | yes |
+
+Separate preserved analysis: `C:/Users/Manish/Documents/MetalliSense-Gnani/MetalliSense_Agent_R/MetalliSense_Agent/tools/local_wake_data/prisma-v3-preparation-c031256cbcfa4cc58628ad50e8954d55/pause-v2-result.json`. No re-calls, relabelling, rule changes or deployment occurred.
+
+### Pause-v3 preparation status
+
+The owner-only command, after recording/reviewing the complete fresh set:
+
+```powershell
+.\.venv\Scripts\python.exe .\tools\kural_gnani_wake_test.py --live --variant v3 --set devval-v2 --max-calls 30
+```
+Offline command: `.\.venv\Scripts\python.exe .\tools\kural_gnani_wake_test.py --dry-run --variant v3 --set devval-v2`. Actual result: **waiting for devval-v2 recording: manifest absent**. No snippets, journal or reservation were created for v3. No live call was made.
+V3 sender omits keyterms entirely; model/language_code/format remain byte-for-byte field-equivalent to v2. Distinct `kural-prisma-pause-v3/` output root, journal and single-evaluation reservation. V3 is restricted to fresh devval-v2, rejects audio hashes from old devval-v1/paired sets and previously called protocol plans. Existing v2 behavior/reservation remain unchanged. The first-word rule is shared unchanged. The user fallback is documented, not integrated or shipped by this task. No pause-v4 implemented.
+
+Verification:12 mocked harness tests passed in3.92s. Tests inspect the actual mocked sender form to prove v3 has no `keyterms` field, v2 still has the unchanged field, reservations are separate, missing recordings do not construct a sender, and v3 accepts at most1 confusable wake (2 fails). All527 protected old protocol/dataset files remain byte-identical. Dry-run made0 calls and created no v3 plan/journal/reservation because the fresh set is absent. Both diff checks pass. Changed only harness, its tests and documentation; no frontend build, dependency installation, training, tour/app integration, staging, commit or push. Evidence: `tools/local_wake_data/prisma-v3-preparation-c031256cbcfa4cc58628ad50e8954d55/`.
+<!-- pause-v2-final-4c77baa199fa313afb84524a3693b72344e065dc7bd1d8ba9869358331582242 -->
+
+
+### User-run Prisma pause test results
+
+Plan `tools/local_wake_data/kural-prisma-pause-v3/evaluation/2c520de30585837d26bb`; status **PASS**. Attempts 25.
+
+| Group | Clips | Sent | Completed | Wake | Unsent |
+|---|---:|---:|---:|---:|---:|
+| manish-DW | 10 | 10 | 10 | 10 | 0 |
+| manish-DN | 10 | 10 | 10 | 0 | 0 |
+| manish-DC | 1 | 5 | 5 | 0 | 0 |
+
+DC01 onsets/min 4.475653841742745. No activation approval. Failed complete evaluation is a rejected experiment.
+<!-- prisma-result-2279fd21bc7e1e1f54120c0529146ce42d34f12d68e7427ad73fc713edb6d3ce -->
