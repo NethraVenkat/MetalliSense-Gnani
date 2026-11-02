@@ -42,3 +42,5 @@ MetalliSense_Agent_R/MetalliSense_Agent/tools/noise_bench/real_calls/results_cac
 
 # Personal Kural pilot recordings, annotation sidecars and private progress exports.
 **/kural-personal-pilot-v1_*
+
+debug.log
