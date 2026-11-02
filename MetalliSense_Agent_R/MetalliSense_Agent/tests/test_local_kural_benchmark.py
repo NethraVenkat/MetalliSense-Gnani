@@ -46,6 +46,12 @@ class BenchmarkTests(unittest.TestCase):
         for text in ['neural','kurals','குரல்கள்']:self.assertFalse(m.has_kural(text))
         self.assertEqual(len(m.detections('sherpa','log\n{"keyword":"KURAL","timestamps":[1.2]}')),1)
         self.assertEqual(m.detections('sherpa','{"keyword":"OTHER"}'),[])
+    def test_separate_candidate_label_preserves_kural_default(self):
+        result='{"keyword":"HEY_NOVA","timestamps":[0.2,0.4]}'
+        self.assertEqual(m.detections('sherpa',result),[])
+        self.assertEqual(m.detections('sherpa',result,'HEY_NOVA'),[
+            {'keyword':'HEY_NOVA','token_offsets_seconds':[0.2,0.4]}])
+        self.assertEqual(m.detections('sherpa','{"keyword":"KURAL"}')[0]['keyword'],'KURAL')
     def fixture(self,root):
         exe=root/'cli.exe';exe.write_bytes(b'fixture-not-runtime')
         models=root/'models';models.mkdir();(models/m.WHISPER_MODEL).write_bytes(b'fixture-not-model')

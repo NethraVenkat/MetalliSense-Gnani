@@ -1,0 +1,64 @@
+{
+  "experiment": "kural-binary-negative-context-v2",
+  "seed": 1729,
+  "train_session": "S01_TRAIN",
+  "validation_session": "S02_VALID",
+  "classes": [
+    "nonwake",
+    "human_wake"
+  ],
+  "conv_filters": [
+    16,
+    32,
+    32
+  ],
+  "learning_rate": 0.001,
+  "batch_size": 16,
+  "wake_per_batch": 8,
+  "nonwake_per_batch": 8,
+  "positive_records_per_epoch": 40,
+  "ordinary_negative_records_per_epoch": 36,
+  "echo_records_per_epoch": 4,
+  "sampling": "All40 complete-wake S01 records; same cyclic36 ordinary-negative and all4 echo record selection. Seeded shuffle assigns18 ordinary+2 echo to prefix contexts and18+2 to regular contexts. Five batches each8 wakes+4 prefix negatives+4 regular negatives; each recording appears once. Prefix endpoint index(epoch+shuffled prefix position)%4 yields5 contexts per prefix duration. Regular10 use minimum-RMS regular context per selected recording and10 rotate original deduplicated endpoints. No class weights.",
+  "normalization": "UNCHANGED from v1: first REGULAR context of each125 S01 recording; no prefix contexts or S02 statistics; exact mean/std parity assertion",
+  "padding": "Shared past-only two-second context with left-zero padding; endpoints deduplicated within recording",
+  "augmentation": "none",
+  "max_epochs": 50,
+  "early_stopping_patience": 8,
+  "early_stopping_min_delta": 0.0,
+  "stopping_monitor": "S02 balanced recording-weighted cross-entropy: mean window CE within recording; mean recordings within each binary class; average the two class means",
+  "wall_limit_seconds": 3600,
+  "threshold_candidates": [
+    0.5,
+    0.65,
+    0.8,
+    0.9
+  ],
+  "decision_consecutive_frames": 2,
+  "decision_cooldown_seconds": 1.0,
+  "event_match_grace_seconds": 1.0,
+  "qualification": {
+    "minimum_wake_recall": 0.9,
+    "maximum_ordinary_false_events": 0,
+    "maximum_echo_events": 0,
+    "maximum_unmatched_positive_events": 0,
+    "minimum_ordinary_negative_seconds": 275.0,
+    "minimum_echo_seconds": 59.0,
+    "selection": "Only qualifying candidates; minimize misses, then false events, then prefer higher threshold; otherwise null threshold",
+    "scope": "Short SPK01 validation screen only; not a production false-activation guarantee or held-out test"
+  },
+  "echo_semantics": "Reviewed wake-free narration is binary nonwake, with echo flag retained; no claim about playback saying Kural",
+  "negative_prefix_seconds": [
+    0.08,
+    0.16,
+    0.5,
+    1.0
+  ],
+  "prefix_negatives_per_epoch": 20,
+  "regular_negatives_per_epoch": 20,
+  "quiet_regular_per_epoch": 10,
+  "quiet_selection": "9 ordinary+1 echo regular records use their minimum-RMS regular context; labels solely from reviewed whole-record absence. Remaining9 ordinary+1 echo regular records rotate original candidates.",
+  "validation_monitor": "UNCHANGED regular S02 contexts only; no prefix expansion or diagnostic validity mask",
+  "context_validity_gate": "Diagnostic only; never used for fitting or primary all20 S02 evaluation",
+  "silence_controls": "Report mathematical digital silence and S01 reviewed-negative prefixes from best checkpoint; diagnostic only, no synthetic-silence fitting or changed qualification"
+}

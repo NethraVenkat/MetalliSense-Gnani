@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src data:; connect-src 'none'">
+<title>குரல் — retained session human review</title>
+<style>*{box-sizing:border-box}body{max-width:900px;padding:16px;margin:auto;font:16px/1.7 system-ui;color:#17352b}canvas,audio{display:block;width:100%}canvas{height:220px;border:1px solid #a9beb3;cursor:crosshair}button,input{font:inherit;max-width:100%;padding:8px;margin:4px}button:focus-visible,input:focus-visible{outline:3px solid #047857}label{display:block}pre{white-space:pre-wrap;overflow-wrap:anywhere}.time{font-variant-numeric:tabular-nums}</style>
+<h1>குரல் — human listening alignment</h1>
+<p>Listen and mark the complete spoken குரல் yourself. Green shading is your draft interval; orange dashed lines are threshold events, never automatic word boundaries. Nothing is inferred, uploaded or added to training.</p>
+<p id="identity"></p><canvas id="wave" aria-label="Audio waveform; click to seek. Keyboard seeking is available in the audio player and timestamp inputs."></canvas>
+<audio id="audio" controls preload="metadata"></audio><p id="clock" class="time"></p>
+<label>Start seconds <input id="start" type="number" step="0.001" min="0" placeholder="0.000"></label><button id="useStart">Use current time as start</button>
+<label>End seconds <input id="end" type="number" step="0.001" min="0" placeholder="0.000"></label><button id="useEnd">Use current time as end</button>
+<button id="playInterval">Play selected interval</button><button id="add">Add human-marked interval</button><button id="clear">Clear draft intervals</button><pre id="intervals">No intervals marked.</pre>
+<label><input id="confirm" type="checkbox"> I listened and confirm these manually marked spoken Kural intervals.</label>
+<button id="export">Export separate human-review JSON</button><p id="status" role="status"></p>
+<h2>Threshold events — observations only</h2><ul id="events"></ul>
+<script>
+(function(root){
+'use strict';
+function position(time,duration,width){return Math.max(0,Math.min(duration,time))/duration*width;}
+function seek(x,left,width,duration){return Math.max(0,Math.min(1,(x-left)/width))*duration;}
+function interval(start,end,duration){
+ if(start===''||end===''||!Number.isFinite(Number(start))||!Number.isFinite(Number(end))||Number(start)<0||Number(end)<=Number(start)||Number(end)>duration)throw Error('Enter a valid interval: 0 ≤ start < end ≤ audio duration.');
+ return {start_seconds:Number(start),end_seconds:Number(end),source:'human'};
+}
+function exportReview(data,intervals,confirmed){
+ if(!confirmed||!intervals.length)throw Error('Listen, add interval(s), and explicitly confirm before export.');
+ const validated=intervals.map(w=>interval(w.start_seconds,w.end_seconds,data.audio.duration_seconds)).sort((a,b)=>a.start_seconds-b.start_seconds);
+ if(validated.some((w,i)=>i&&w.start_seconds<validated[i-1].end_seconds))throw Error('Intervals must not overlap.');
+ return {schema:'kural-live-human-review-v1',session:data.session,audio:{...data.audio},original_evidence_hashes:{...data.original_hashes},human_reviewed:true,reviewed_at:new Date().toISOString(),wake_intervals:validated,threshold_events:data.events.map(e=>({...e})),threshold_events_are_ground_truth:false,training_imported:false};
+}
+root.KuralSessionReview={position,seek,interval,exportReview};
+if(!root.document)return;
+const DATA=/*SESSION_DATA*/null;
+const q=id=>document.getElementById(id),audio=q('audio'),canvas=q('wave'),duration=DATA.audio.duration_seconds;
+let intervals=[],animation=null,stopAt=null;
+audio.src='data:audio/wav;base64,'+DATA.wav_base64;
+q('identity').textContent='Session '+DATA.session+' · '+duration.toFixed(6)+' seconds · SHA-256 '+DATA.audio.sha256;
+q('identity').style.overflowWrap='anywhere';
+function currentDraft(){try{return interval(q('start').value,q('end').value,duration);}catch{return null;}}
+function draw(){
+ const bounds=canvas.getBoundingClientRect(),ratio=root.devicePixelRatio||1,w=Math.max(1,bounds.width),h=220;
+ if(canvas.width!==Math.round(w*ratio)||canvas.height!==h*ratio){canvas.width=Math.round(w*ratio);canvas.height=h*ratio;}
+ const c=canvas.getContext('2d');c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,w,h);
+ const plot=h-35,mid=plot/2;
+ for(const mark of [...intervals,...(currentDraft()?[currentDraft()]:[])]){let x=position(mark.start_seconds,duration,w),end=position(mark.end_seconds,duration,w);c.fillStyle='#d6ebdd';c.fillRect(x,0,end-x,plot);c.strokeStyle='#176342';c.beginPath();c.moveTo(x,0);c.lineTo(x,plot);c.moveTo(end,0);c.lineTo(end,plot);c.stroke();}
+ c.strokeStyle='#587568';c.beginPath();DATA.peaks.forEach(p=>{let x=(p[2]+p[3])/2*w;c.moveTo(x,mid+p[0]*mid);c.lineTo(x,mid+p[1]*mid)});c.stroke();
+ c.strokeStyle='#a65c00';c.setLineDash([4,4]);for(const e of DATA.events){const x=position(e.audio_time,duration,w);c.beginPath();c.moveTo(x,0);c.lineTo(x,plot);c.stroke();}c.setLineDash([]);
+ c.fillStyle='#17352b';c.font='12px system-ui';const ticks=Math.max(1,Math.floor(w/100));for(let i=0;i<=ticks;i++){const t=i/ticks*duration,x=i/ticks*w;c.textAlign=i===0?'left':i===ticks?'right':'center';c.fillText(t.toFixed(3)+'s',x,h-9);}
+ c.strokeStyle='#b01836';const x=position(audio.currentTime,duration,w);c.beginPath();c.moveTo(x,0);c.lineTo(x,plot);c.stroke();q('clock').textContent=audio.currentTime.toFixed(3)+' / '+duration.toFixed(3)+' seconds';
+}
+function update(){if(stopAt!==null&&audio.currentTime>=stopAt){const end=stopAt;stopAt=null;audio.pause();audio.currentTime=end;}draw();}
+function cancelAnimation(){if(animation!==null)cancelAnimationFrame(animation);animation=null;}
+function animate(){update();if(!audio.paused)animation=requestAnimationFrame(animate);}
+audio.addEventListener('play',()=>{cancelAnimation();animate();});
+for(const event of ['timeupdate','seeked','loadedmetadata'])audio.addEventListener(event,update);
+for(const event of ['pause','ended'])audio.addEventListener(event,()=>{cancelAnimation();update();});
+canvas.onclick=e=>{stopAt=null;const r=canvas.getBoundingClientRect();audio.currentTime=seek(e.clientX,r.left,r.width,duration);update();};
+for(const id of ['start','end']){q(id).max=duration;q(id).oninput=()=>{q('confirm').checked=false;draw();};}
+function use(id){q(id).value=(Math.floor(audio.currentTime*1000)/1000).toFixed(3);q('confirm').checked=false;draw();}
+q('useStart').onclick=()=>use('start');q('useEnd').onclick=()=>use('end');
+function action(fn){try{fn();q('status').textContent='';}catch(e){q('status').textContent=e.message;}}
+q('playInterval').onclick=()=>action(()=>{const w=interval(q('start').value,q('end').value,duration);audio.pause();audio.currentTime=w.start_seconds;stopAt=w.end_seconds;audio.play().catch(e=>{q('status').textContent=e.message;});});
+function list(){q('intervals').textContent=intervals.map(w=>w.start_seconds.toFixed(3)+'–'+w.end_seconds.toFixed(3)+'s · human draft').join('\n')||'No intervals marked.';draw();}
+q('add').onclick=()=>action(()=>{const w=interval(q('start').value,q('end').value,duration);exportReview(DATA,[...intervals,w],true);intervals.push(w);q('start').value='';q('end').value='';q('confirm').checked=false;list();});
+q('clear').onclick=()=>{intervals=[];q('start').value='';q('end').value='';q('confirm').checked=false;list();};
+q('export').onclick=()=>action(()=>{const review=exportReview(DATA,intervals,q('confirm').checked),blob=new Blob([JSON.stringify(review,null,2)+'\n'],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='session-'+DATA.session+'.human-review-'+Date.now()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+for(const e of DATA.events){const li=document.createElement('li'),b=document.createElement('button');b.textContent='Seek event '+e.audio_time.toFixed(3)+'s';b.onclick=()=>{stopAt=null;audio.currentTime=e.audio_time;update();};li.append(b,document.createTextNode(' threshold '+e.threshold+' — not a word boundary'));q('events').append(li);}
+const observer=new ResizeObserver(draw);observer.observe(canvas);
+window.addEventListener('pagehide',()=>{stopAt=null;audio.pause();cancelAnimation();observer.disconnect();});draw();
+})(globalThis);
+</script></html>

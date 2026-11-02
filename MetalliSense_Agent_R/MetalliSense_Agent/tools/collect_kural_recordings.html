@@ -1,17 +1,25 @@
 <!doctype html><html lang="en"><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:; connect-src 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:; connect-src 'none'">
 <title>Local Kural recording collection</title>
 <style>body{font:16px/1.7 system-ui;max-width:760px;margin:2rem auto;padding:1rem}button,select{font:inherit;padding:.5rem;margin:.3rem}button:focus-visible{outline:3px solid #065f46}audio{width:100%}</style>
-<h1>Kural collection — local only</h1>
+<main id="legacy"><h1>Kural collection — local only</h1>
+<p>New sets: <a href="?mode=paired-v1">paired-v1 (80 clips)</a> · <a href="?mode=devval-v1">devval-v1 (separate validation)</a></p>
 <p>Turn the tour Mic off and close other recorders first. No detector or cloud service runs here. Record only consenting speakers. Each take downloads as WebM/MP4 plus local metadata; convert to PCM WAV separately. Listen before assigning ground-truth labels.</p>
+<p><a href="collect_kural_pilot.html">Personal Kural pilot: planned training/validation sessions</a></p>
 <label>Prompt <select id="prompt"></select></label>
 <label>Condition <select id="condition"><option>quiet-headphones</option><option>fan-headphones</option><option>TV-headphones</option><option>quiet-speakers</option><option>fan-speakers</option></select></label>
+<p>For HN01 (Hey Nova, untested): record three natural takes. Stay silent for one second, say "Hey Nova", then stay silent for one second and press Stop. Keep this page open between takes so filenames increment. No detection runs here.</p>
 <p id="words" lang="ta"></p><button id="record">Record one take</button><button id="stop" disabled>Stop</button>
 <p id="status" role="status">Disabled — microphone access requires Record.</p><audio id="playback" controls></audio>
+</main><main id="paired" hidden></main>
+<script src="kural_live_capture.js"></script><script src="kural_paired_collector.js"></script>
 <script>
-const prompts=[['P01','Kural'],['P02','குரல்'],['P03','குரல் … அடுத்து போ'],['P04','Kural aduthu po'],['P05','குரல் நிறுத்து'],['P06','Kural continue'],['N01','குரங்கு'],['N02','குழல்'],['N03','குறள்'],['N04','coral'],['N05','cruel'],['N06','neural'],['N07','அடுத்து போ'],['B01','Ordinary Tamil conversation without the wake word'],['B02','Ordinary English conversation without Kural'],['B03','Silence / fan / TV (annotate any actual Kural occurrences)'],['E01','Play approved narration over speakers; do not say Kural yourself']];
+if (!globalThis.KuralPairedMode) {
+const prompts=[['P01','Kural'],['P02','குரல்'],['P03','குரல் … அடுத்து போ'],['P04','Kural aduthu po'],['P05','குரல் நிறுத்து'],['P06','Kural continue'],['N01','குரங்கு'],['N02','குழல்'],['N03','குறள்'],['N04','coral'],['N05','cruel'],['N06','neural'],['N07','அடுத்து போ'],['B01','Ordinary Tamil conversation without the wake word'],['B02','Ordinary English conversation without Kural'],['B03','Silence / fan / TV (annotate any actual Kural occurrences)'],['E01','Play approved narration over speakers; do not say Kural yourself'],['HN01','Hey Nova']];
 const q=id=>document.getElementById(id),takes=new Map();let stream,rec,timer,url,alive=true;
-for(const [id,text]of prompts){const option=document.createElement('option');option.value=id;option.textContent=id+' — '+text;q('prompt').append(option);}
+// N03 remains in historical metadata definitions but is not offered for collection.
+for(const [id,text]of prompts){if(id==='N03')continue;const option=document.createElement('option');option.value=id;option.textContent=id+' — '+text;if(id==='HN01')option.textContent+=' (untested candidate)';q('prompt').append(option);}
 function label(){q('words').textContent=prompts.find(p=>p[0]===q('prompt').value)[1];}q('prompt').onchange=label;label();
 function download(blob,name){const link=document.createElement('a');const u=URL.createObjectURL(blob);link.href=u;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function release(){clearTimeout(timer);stream?.getTracks().forEach(t=>t.stop());stream=null;}
@@ -37,4 +45,5 @@ q('record').onclick=async()=>{
 };
 q('stop').onclick=()=>{if(rec?.state==='recording')rec.stop();};
 window.addEventListener('pagehide',()=>{alive=false;if(rec?.state==='recording')rec.stop();release();if(url)URL.revokeObjectURL(url);});
+}
 </script></html>

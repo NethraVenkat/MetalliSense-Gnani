@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:; connect-src 'none'">
+<title>Personal Kural pilot — local recording only</title>
+<style>body{font:16px/1.65 system-ui;max-width:800px;margin:1rem auto;padding:1rem;color:#17352b}label{display:block;margin:.6rem 0}button,select,input{font:inherit;padding:.45rem;max-width:100%;box-sizing:border-box}button{margin:.3rem}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #047857}audio{width:100%}fieldset{border:1px solid #ccc;border-radius:8px;margin:1rem 0}#progress{white-space:pre-line}small{display:block}h1{font-size:1.5rem}</style>
+<h1>Personal Kural pilot — recording only</h1>
+<p>No detector is running. No uploads, training or app control. Turn the tour Mic off and close all other recorders. Use only your own/consenting voices. These counts are a pilot, not evidence of reliability.</p>
+<fieldset><legend>Session</legend>
+<p>Speaker: <strong>SPK01</strong> (personal use). Do not use this plan to claim generalization to other speakers.</p>
+<label>Session <select id="session"><option value="S01_TRAIN">S01_TRAIN — training: 40 positive / 60 negative / 5 min background</option><option value="S02_VALID">S02_VALID — separate later session: 20 / 30 / 5 min</option><option value="S03_TEST_RESERVED" disabled>S03_TEST_RESERVED — locked until recipe is frozen</option></select></label>
+<label><input id="consent" type="checkbox"> I consent to local personal-use recording and later local pilot training/evaluation. Others audible in this session also consent. No public redistribution permission is implied.</label>
+<label>Record type <select id="kind"><option value="positives">Positive: Kural</option><option value="negatives">Varied speech negative</option><option value="background_seconds">Background / conversation / narration echo</option></select></label>
+<label>Actual condition <select id="condition"><option>quiet-headphones</option><option>fan-headphones</option><option>quiet-speakers</option><option>fan-speakers</option></select></label>
+<p id="progress" role="status"></p><p id="prompt"></p><small id="instruction"></small>
+<button id="record">Record next take</button><button id="stop" disabled>Stop</button><button id="export">Export session manifest</button>
+</fieldset>
+<p id="status" role="status">Microphone off. Check consent, then Record.</p>
+<audio id="playback" controls></audio>
+<fieldset><legend>Replay the last take, then annotate</legend>
+<p>Boundaries are not measured automatically. Mark the actual audible wake in seconds from the original start. Leave pending if unsure. During narration playback, a literal wake is an echo/self-activation case, not ordinary wake-free noise.</p>
+<label>Wake start (seconds) <input id="wakeStart" type="number" min="0" step="0.01"></label>
+<label>Wake end (seconds) <input id="wakeEnd" type="number" min="0" step="0.01"></label>
+<label><input id="noWake" type="checkbox"> I replayed it and no literal wake is audible.</label>
+<button id="annotate" disabled>Save annotation sidecar</button>
+</fieldset>
+<p>Keep originals and JSON together under ignored <code>tools/local_wake_data/kural-personal-pilot-v1/SPK01/session-id/</code>. Filenames include session, split and a unique recording ID. All crops/augmentations inherit that original's split. Browser progress is local metadata; export it before changing browser/device. Counts mean saved takes, not accepted labels; background time is an estimate until decoded WAV validation.</p>
+<script>
+const PLAN={"schema_version":1,"pilot_id":"kural-personal-pilot-v1","scope":"personal-use; one speaker; exploratory data only","speaker_id":"SPK01","wake_phrase":"\u0b95\u0bc1\u0bb0\u0bb2\u0bcd","consent_required":true,"sessions":[{"id":"S01_TRAIN","split":"train","targets":{"positives":40,"negatives":60,"background_seconds":300},"instructions":"First session; do not reuse earlier exploratory clips."},{"id":"S02_VALID","split":"validation","targets":{"positives":20,"negatives":30,"background_seconds":300},"instructions":"Separate later sitting, preferably another day; never move into training."},{"id":"S03_TEST_RESERVED","split":"test","reserved":true,"targets":null,"instructions":"Do not collect or inspect until training recipe and validation decision rule are frozen."}],"positive_prompts":[{"id":"KP01","text":"\u0b95\u0bc1\u0bb0\u0bb2\u0bcd","instructions":"One second silence, say Kural naturally once, one second silence."},{"id":"KP02","text":"Kural","instructions":"Same chosen wake word, natural Tamil/Tanglish pronunciation. Vary normal pace, not a different phrase."},{"id":"KP03","text":"\u0b95\u0bc1\u0bb0\u0bb2\u0bcd, \u0ba8\u0bbf\u0bb2\u0bc8 \u0b8e\u0ba9\u0bcd\u0ba9?","instructions":"Say the wake naturally before this short question. Annotate only the wake interval."}],"negative_prompts":[{"id":"KN01","text":"\u0b95\u0bc1\u0bb0\u0b99\u0bcd\u0b95\u0bc1"},{"id":"KN02","text":"\u0b95\u0bc1\u0bb4\u0bb2\u0bcd"},{"id":"KN03","text":"\u0b95\u0bc1\u0bb1\u0bb3\u0bcd"},{"id":"KN04","text":"coral"},{"id":"KN05","text":"curl"},{"id":"KN06","text":"cruel"},{"id":"KN07","text":"neural"},{"id":"KN08","text":"good I"},{"id":"KN09","text":"good and"},{"id":"KN10","text":"\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1 \u0baa\u0bcb"},{"id":"KN11","text":"Please show the current page"},{"id":"KN12","text":"\u0b8e\u0ba9\u0bcd\u0ba9 \u0ba8\u0b9f\u0b95\u0bcd\u0b95\u0bc1\u0ba4\u0bc1?"}],"background_blocks":[{"id":"KB01","seconds":30,"condition":"quiet/fan room sound","echo":false},{"id":"KB02","seconds":30,"condition":"quiet/fan room sound","echo":false},{"id":"KB03","seconds":30,"condition":"quiet/fan room sound","echo":false},{"id":"KB04","seconds":30,"condition":"quiet/fan room sound","echo":false},{"id":"KB05","seconds":30,"condition":"ordinary consenting Tamil/English background conversation","echo":false},{"id":"KB06","seconds":30,"condition":"ordinary consenting Tamil/English background conversation","echo":false},{"id":"KB07","seconds":30,"condition":"ordinary consenting Tamil/English background conversation","echo":false},{"id":"KB08","seconds":30,"condition":"ordinary consenting Tamil/English background conversation","echo":false},{"id":"KB09","seconds":30,"condition":"approved narration playback over speakers; do not speak","echo":true},{"id":"KB10","seconds":30,"condition":"approved narration playback over speakers; do not speak","echo":true}],"annotation":{"clock":"seconds relative to original recording","intended_wake_intervals":null,"heard_wake_intervals":null,"status":"pending listening annotation","rule":"Set actual intervals only after replay; if unintended literal wake occurs in negative/background, annotate rather than silently label negative. Playback literal wakes are lexical positives but unwanted self-activations."},"lineage_rule":"original, all crops and augmentations keep speaker_id, session_id, split and original recording_id; no cross-split copies","exclusions":["existing six positives and crops: exploratory only","no cloud upload","recordings and private manifests remain in ignored tools/local_wake_data or Downloads"],"negative_variation":"Across repetitions vary natural sentence context, pace and distance around each negative phrase; do not deliberately say the actual wake. Write what was heard during annotation if uncertain."};
+const q=id=>document.getElementById(id),key=PLAN.pilot_id+':SPK01';
+let records=[],stream=null,rec=null,timer=null,url=null,alive=true,busy=false,last=null,storageFailed=false,invalidJournal=false;
+try{records=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(records))throw Error('Invalid local journal');}catch{invalidJournal=true;}
+function save(){try{localStorage.setItem(key,JSON.stringify(records));}catch{storageFailed=true;}}
+function download(blob,name){const a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function journalDownload(){download(new Blob([JSON.stringify({pilot_id:PLAN.pilot_id,plan:PLAN,records},null,2)],{type:'application/json'}),PLAN.pilot_id+'_SPK01_journal_'+crypto.randomUUID()+'.json');}
+function session(){return PLAN.sessions.find(s=>s.id===q('session').value);}
+function totals(s){const list=records.filter(r=>r.session_id===s.id);return {positives:list.filter(r=>r.kind==='positives').length,negatives:list.filter(r=>r.kind==='negatives').length,background_seconds:list.filter(r=>r.kind==='background_seconds').reduce((n,r)=>n+r.capture_wall_seconds,0)};}
+function task(){const s=session();if(!s||s.reserved)return null;const n=totals(s),kind=q('kind').value;
+ if(kind==='positives')return PLAN.positive_prompts[n.positives%PLAN.positive_prompts.length];
+ if(kind==='negatives')return PLAN.negative_prompts[n.negatives%PLAN.negative_prompts.length];
+ return PLAN.background_blocks[records.filter(r=>r.session_id===s.id&&r.kind===kind).length%PLAN.background_blocks.length];}
+function update(){const s=session();if(!s||s.reserved){q('record').disabled=true;q('prompt').textContent='Test session reserved. No recording.';return;}
+ const n=totals(s),t=task(),kind=q('kind').value;
+ q('progress').textContent=`${s.id} / ${s.split}: saved positives ${n.positives}/${s.targets.positives}; negatives ${n.negatives}/${s.targets.negatives}; background ${n.background_seconds.toFixed(1)}/${s.targets.background_seconds} s (wall-clock estimate).`;
+ q('prompt').textContent=kind==='background_seconds'?t.id+' — '+t.condition:t.id+' — '+t.text;
+ q('instruction').textContent=kind==='background_seconds'?'Record up to 30 seconds. Repeat blocks until at least five minutes total; verify actual decoded duration later. Do not read the instruction aloud.':kind==='positives'?t.instructions:'One second silence, say this phrase naturally once, one second silence. Vary sentence context, pace and distance across repeats. If an actual Kural occurs, annotate it; do not hide it as a negative.';
+ q('record').disabled=busy||!q('consent').checked||invalidJournal||n[kind]>=s.targets[kind];
+}
+function release(){clearTimeout(timer);timer=null;stream?.getTracks().forEach(t=>t.stop());stream=null;}
+function lock(value){for(const id of ['session','kind','condition','consent'])q(id).disabled=value;}
+q('session').onchange=()=>{q('consent').checked=false;update();};q('kind').onchange=update;q('consent').onchange=update;
+q('record').onclick=async()=>{
+ const s=session();if(busy||invalidJournal||!alive||!q('consent').checked||!s||s.reserved)return;
+ const kind=q('kind').value;if(totals(s)[kind]>=s.targets[kind])return;
+ const prompt=task(),condition=q('condition').value,consented_at=new Date().toISOString();busy=true;lock(true);update();q('status').textContent='Requesting microphone…';
+ let localRec,finished=false,started;
+ const finish=()=>{if(finished)return false;finished=true;release();busy=false;lock(false);q('stop').disabled=true;update();return true;};
+ try{
+  const supported=navigator.mediaDevices.getSupportedConstraints(),audio={channelCount:1};for(const k of ['echoCancellation','noiseSuppression','autoGainControl'])if(supported[k])audio[k]=true;
+  stream=await navigator.mediaDevices.getUserMedia({audio,video:false});if(!alive){finish();return;}
+  const actual=stream.getAudioTracks()[0].getSettings(),applied={};for(const k of ['sampleRate','channelCount','echoCancellation','noiseSuppression','autoGainControl'])applied[k]=actual[k]??'not reported';
+  const type=['audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t)),chunks=[];
+  localRec=rec=new MediaRecorder(stream,type?{mimeType:type}:undefined);
+  localRec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  localRec.onstop=()=>{const elapsed=Math.max(0,(performance.now()-started)/1000);if(!finish()||!alive)return;if(!chunks.length){q('status').textContent='No audio; progress unchanged.';return;}
+   const recording_id=crypto.randomUUID(),name=`${PLAN.pilot_id}_SPK01_${s.id}_${s.split}_${prompt.id}_${recording_id}`;
+   const blob=new Blob(chunks,{type:localRec.mimeType});
+   last={pilot_id:PLAN.pilot_id,recording_id,original_recording_id:recording_id,speaker_id:'SPK01',session_id:s.id,split:s.split,kind,prompt_id:prompt.id,prompt:prompt.text||prompt.condition,condition,echo_playback:!!prompt.echo,consent:{granted:true,scope:'local personal-use pilot; no public redistribution',at:consented_at},captured_at:consented_at,capture_wall_seconds:elapsed,duration_validation:'pending decoded WAV validation',supportedConstraints:audio,appliedSettings:applied,expected_human_wakes:kind==='positives'?1:0,intended_wake_intervals:null,heard_wake_intervals:null,annotation_status:'pending listening annotation',filename:name+(blob.type.includes('mp4')?'.mp4':'.webm')};
+   records.push(last);save();if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(blob);q('playback').src=url;
+   download(blob,last.filename);download(new Blob([JSON.stringify(last,null,2)],{type:'application/json'}),name+'.json');
+   q('wakeStart').value='';q('wakeEnd').value='';q('noWake').checked=false;q('annotate').disabled=false;update();q('status').textContent='Saved locally; replay and annotate.'+(storageFailed?' Browser progress could not persist; export journal now.':'');
+  };
+  localRec.onerror=()=>{if(finish()){if(localRec.state==='recording')localRec.stop();q('status').textContent='Recorder failed; progress unchanged.';}};
+  started=performance.now();localRec.start();q('stop').disabled=false;q('status').textContent='Recording only — stop after the phrase and silence; 30-second maximum.';timer=setTimeout(()=>{if(localRec.state==='recording')localRec.stop();},30000);
+ }catch{finish();q('status').textContent='Microphone unavailable/denied. No upload or progress increment.';}
+};
+q('stop').onclick=()=>{if(rec?.state==='recording')rec.stop();};q('export').onclick=journalDownload;
+q('annotate').onclick=()=>{if(!last||busy)return;const none=q('noWake').checked,start=Number(q('wakeStart').value),end=Number(q('wakeEnd').value);
+ if(!none&&(!q('wakeStart').value||!q('wakeEnd').value||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>last.capture_wall_seconds)){q('status').textContent='Enter a valid wake interval or explicitly confirm no audible wake.';return;}
+ last.heard_wake_intervals=none?[]:[{start_seconds:start,end_seconds:end,source:last.echo_playback?'playback':'human'}];last.intended_wake_intervals=last.kind==='positives'?last.heard_wake_intervals:[];last.annotation_status='user replay annotated; decoded bounds still pending';save();
+ download(new Blob([JSON.stringify(last,null,2)],{type:'application/json'}),last.filename.replace(/\.(webm|mp4)$/,'.annotation.json'));q('status').textContent='Annotation saved separately; original metadata preserved.';
+};
+window.addEventListener('pagehide',()=>{alive=false;if(rec?.state==='recording')rec.stop();release();if(url)URL.revokeObjectURL(url);});
+update();if(invalidJournal)q('status').textContent='Local journal unreadable; recording blocked to preserve it. Do not clear it without exporting/recovering.';
+</script></html>

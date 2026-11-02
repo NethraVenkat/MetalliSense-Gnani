@@ -143,3 +143,156 @@ Together with passing official English controls, the hypotheses support a pronun
 ## Local commit verification
 
 Renamed the test-only imported module alias setup_module to setup_tools so pytest does not interpret it as an xUnit hook. No benchmark behavior changed. The selected mocked Agent suite (stream, local setup/benchmark and audition tools) passes: 108 tests, 7 existing warnings, GNANI_MOCK=true. An initial rename guard used an incorrect occurrence count, left the file unchanged and repeated the known eight setup errors; the corrected rename passes. No test was skipped or weakened.
+
+
+## Multilingual Whisper Tiny setup attempt (2026-11-02)
+
+Selected only multilingual ggml-tiny-q5_1.bin and whisper.cpp v1.8.3 Windows x64 CPU runtime. Official sources/checksums rechecked: runtime ZIP SHA-256 d824b1e37599f882b396e73f1ee0bfd5d0529f700314c48311dcbd00b803321d; model published SHA-1 2827a03e495b1ed3048ef28a6a4620537db4ee51. Sources: https://github.com/ggml-org/whisper.cpp/releases/expanded_assets/v1.8.3 and https://huggingface.co/ggerganov/whisper.cpp/raw/main/README.md . Both runtime and model are MIT: retain OpenAI and ggml copyright/permission notices, model card and bundled third-party notices on redistribution. Exact downloaded/extracted sizes and binary dependency checks remain pending: no archive was received.
+
+The single setup invocation stopped at the first runtime URL: URLError / WinError 10013 (socket access forbidden). No retries, model request, completed download, runtime execution, recording upload, cloud STT or synthesis. Failure journal is in ignored tools/local_wake_data/whisper-tiny-q5_1-v1.8.3/. All six inputs validate mono PCM16 at 16000 Hz, complete frames and unchanged hashes: P01 3.00 s; P02 take01 3.06 s; P03 3.00 s; P02 take02 4.68 s; take03 3.48 s; take04 5.16 s. Whisper outcomes are NOT RUN, not recognition misses.
+
+New default-off tools/setup_whisper_kural.py validates artifacts/checksums before extraction/execution, checks archive members before reuse, preserves partials/mismatches and prior manifests, and checks native CLI options. It downloads only the selected model/runtime and license/card text. Complete checksum-verified partials can be reused; incomplete partials remain evidence and a later explicit run starts a separate attempt, not byte-range continuation. No dependency installation. Runtime contents, installed bytes, hashes, help, exact inference arguments, raw stdout/stderr and process timings are recorded on success. Every clip uses -l ta --no-timestamps --no-gpu without translation, prompts or keyword hints. Existing subprocess.run timeout is 60 seconds and kills/waits for the direct child; no microphone or persistent inference session is created.
+
+The adapter already recognized Tamil; it now preserves actual matched Tamil/Latin strings with Unicode letter/mark/number boundaries rejecting attached suffixes. Full hypotheses and failure/timeout streams are saved separately. Engine failures stop the batch instead of counting as recognition misses. Focused mocked setup/benchmark tests: 14 passed, GNANI_MOCK=true. No frontend changes/build. An initial inline input-validation script needed tools on sys.path; this was corrected for that inspection script only, with no inference or network retry.
+
+From the Agent directory, run once in local PowerShell:
+
+```powershell
+& .\.venv\Scripts\python.exe .\tools\setup_whisper_kural.py --download --benchmark
+```
+
+The command validates/reuses complete artifacts and creates new result directories. After six hypotheses are available, decide whether similar-sounding negatives, silence/noise and narration echo warrant testing. These positives cannot measure false activations. Cold transcription time includes loading/offline decoding, not streaming wake latency. No app integration or approved audio changes.
+
+
+## Whisper failure-journal/manual-placement inspection
+
+Both existing failure journals omit the artifact and URL: one records WinError 10013, the other WinError 10054. Neither identifies the failed URL from durable evidence. At inspection there are only the two failure JSONs and input-validation.json: no ZIP/model/license download or partial file is present. Thus no download bytes are currently saved; the old journals did not record transfer-byte counts. The helper's first configured artifact is runtime.zip, but that ordering is not substituted for a recorded failed URL. No requests were made during this inspection.
+
+For manual browser setup, the first required archive is https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.3/whisper-bin-x64.zip . Save/rename it to tools/local_wake_data/whisper-tiny-q5_1-v1.8.3/runtime.zip (not the upstream filename). Required SHA-256: d824b1e37599f882b396e73f1ee0bfd5d0529f700314c48311dcbd00b803321d. The exact multilingual model URL is https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin ; save ggml-tiny-q5_1.bin in the same directory; published SHA-1: 2827a03e495b1ed3048ef28a6a4620537db4ee51. No model or TLS changes.
+
+The helper already accepts these manually placed target files, validates checksums before extraction/execution and does not redownload them. Invalid targets are rejected without overwriting. New mocked tests prove manual reuse and corrupt-file refusal. Future failures now record artifact, public requested_url (not signed redirect URLs), partial_file, partial_exists and saved_bytes. Error URLs are stripped of userinfo/query strings. Existing failure journals and partials remain unchanged. Mocked tests cover both absent files and four-byte interrupted downloads, retaining partial bytes. Focused setup/benchmark suite: 16 passed; staged and unstaged diff checks passed. No inference, network retry, frontend build, staging or commit.
+
+To perform entirely offline setup and inference after manually supplying the two artifacts AND the three license/card files named in FILES, use `.\.venv\Scripts\python.exe .\tools\setup_whisper_kural.py --benchmark`. Omit --download: a missing required file stops without networking. The required notice URLs remain the pinned whisper.cpp LICENSE, OpenAI Whisper LICENSE and converted-model README already listed by the helper; notices have content checks rather than invented published checksums.
+
+
+## Separate Hey Nova preparation (untested candidate)
+
+Created ignored tools/local_wake_data/hey-nova-sherpa-2.0.1-01/ with HEY NOVA @HEY_NOVA raw text, model-generated BPE tokens, tokenizer command/output and candidate manifest. Tokens are U+2581 HE, Y, U+2581 NO, V, A (word-boundary marker attached to HE and NO); all exist in the installed model vocabulary and reconstruct HEY NOVA. Original KURAL file hash remains a852b00075b8179dec74bc911d9c20edc9483d28224548ab38b33be76c8cb305. No downloads, installs, inference, threshold changes, app/tour integration or approved-audio edits.
+
+Collector adds only HN01 - Hey Nova (untested candidate); all prior IDs/texts remain unchanged. Select HN01, keep the page open, and record three natural takes: one second silence, say Hey Nova once, one second silence, Stop. Replay each complete phrase. Expected downloads: HN01_take01 through HN01_take03, each audio (.webm or .mp4 depending browser) plus JSON metadata. Do not rename older Kural recordings or overwrite takes from previous sessions.
+
+From Agent PowerShell:
+
+```powershell
+& .\.venv\Scripts\python.exe -m http.server 8766 --bind 127.0.0.1 --directory .\tools
+```
+
+Open http://127.0.0.1:8766/collect_kural_recordings.html . Turn tour Mic off and close other recorders before granting this page the microphone. The collector has connect-src none, no detector, no cloud API and no automatic recording.
+
+After recordings exist, preserve/hash originals and metadata, convert copies using existing FFmpeg to mono PCM16 at 16000 Hz, validate frames/duration, and test with this candidate's keywords.txt and --keyword-label HEY_NOVA. The benchmark label option changes result filtering only; default remains KURAL and acoustic thresholds stay unchanged. The candidate recordings/samples.csv is a template with pending listening review, not evidence that recordings exist. Detection has NOT run. Positive recognition and false activations remain unmeasured; negative/echo testing is a later gate.
+
+Verification: node tests/recording_collector.test.cjs passed offline DOM/media mocks for preserved prompts, new prompt and three filenames/metadata pairs, explicit mic access, 30-second cap and track cleanup without networking. Mocked benchmark/Whisper setup regressions: 17 passed, GNANI_MOCK=true. No physical microphone/browser listening check or frontend build was performed. No staging or commit.
+
+
+## Personal-use custom Kural pilot collection (no training yet)
+
+The English Sherpa controls passed, but KURAL missed six positives; multilingual Tiny Q5_1 also missed all six and the 1.0-3.0-second P02 take02 crop still missed. The user confirms the complete word is audible in that crop. These files and all their derivatives remain exploratory development evidence, not enough training data and not an untouched test set. No custom CNN has been trained or integrated.
+
+Machine-readable plan: ../tools/kural_pilot_plan.json . Collection page: ../tools/collect_kural_pilot.html . Speaker SPK01, personal use only: S01_TRAIN = 40 natural positives, 60 varied speech negatives and 300 seconds background; S02_VALID = 20 positives, 30 negatives and 300 seconds background in a separate later sitting, preferably another day. S03_TEST_RESERVED is declared before training and locked in this collector. Its counts/protocol must be frozen before future test collection; do not inspect it while choosing weights/thresholds. Same-speaker validation measures personal/session behavior, not unseen-speaker generalization. These counts are an initial experiment, not evidence of reliability.
+
+Positives rotate natural Tamil-script Kural, the same word labelled in Latin script, and Kural before a short read-only question. Vary normal pace and distance; do not substitute a different wake phrase. Negatives rotate similar-sounding Tamil words, coral/curl/cruel/neural/good I/good and, and ordinary Tamil/English speech; vary sentence context across repetitions. Each background cycle has four room/fan blocks, four consenting Tamil/English conversation blocks and two approved-narration speaker-playback blocks, up to 30 seconds each. Repeat as needed to reach at least five minutes. Counts reflect saved unreviewed takes; duration progress is capture wall time, not decoded audio. Validate actual WAV durations before training. Literal wakes in negative/background audio must be annotated rather than silently labelled absent. Narration containing the real wake is a playback/self-activation case and needs separate system-level treatment.
+
+Consent is explicit per session and recorded with timestamp, scope and speaker/session IDs. Audio originals and metadata get unique session/split/prompt/UUID filenames. The collector retains local progress metadata in this browser and exports a private session journal. Replay each take and annotate actual wake start/end in seconds, or explicitly mark no audible wake; uncertain intervals stay null. Annotation downloads are separate sidecars, preserving original capture metadata. Validate interval bounds against decoded audio later. All originals, crops and augmentations must retain original_recording_id, speaker_id, session_id and split. No derivative can move into another split. Existing exploratory audio never becomes held-out test evidence.
+
+First recording step from Agent PowerShell:
+
+```powershell
+& .\.venv\Scripts\python.exe -m http.server 8766 --bind 127.0.0.1 --directory .\tools
+```
+
+Open http://127.0.0.1:8766/collect_kural_pilot.html . Turn tour Mic off and close other recorders. Select S01_TRAIN, Positive, and the real acoustic condition; grant consent. Record one second silence, one natural Kural, one second silence, then Stop. Replay and mark the wake interval if confident; save annotation and export the journal. Begin with that one pilot take before completing the remaining 39 positives. Keep the uniquely named audio/JSON/annotation/journal under ignored tools/local_wake_data/kural-personal-pilot-v1/SPK01/S01_TRAIN/. Do not rename to lose the lineage. Plan the validation sitting separately; its data must never feed training or augmentation. The existing collector links to this page and retains all previous prompt IDs, including HN01.
+
+This is a collection tool, not a substitute for required hands-free activation. The eventual qualification gate remains: loaded real local detector -> local wake event -> one bounded command recording -> Gnani STT for that command only -> cleanup/rearm. Waiting cannot upload ambient audio or open a cloud STT stream. Preserve a single microphone owner across the app/detector/command session, cancellation and read-only safety. Do not display waiting-for-Kural until an actual detector is loaded/running. Noise, narration echo, false activations/hour, missed wakes and streaming wake-end latency remain unmeasured. No tour/controller/audio modification is authorized by collection.
+
+Tests: node tests/recording_collector.test.cjs and node tests/kural_pilot_collector.test.cjs pass with local DOM/media mocks. Coverage includes legacy prompts, embedded/JSON plan parity, consent, counts/session IDs, split/unique filenames, reload progress, separate annotation sidecars, locked test session, duplicate-start guard, background/narration blocks, 30-second cap, denied/error and late-permission/page-exit cleanup, and no network API usage. connect-src none remains enforced. A narrow .gitignore rule excludes generated kural-personal-pilot-v1_* audio/sidecars/private journal filenames even if misplaced. Staged/unstaged diff checks passed. No actual recording or microphone/browser listening test, TensorFlow install, training, inference, synthesis, frontend build, staging, commit or push.
+
+
+## S01_TRAIN import and file validation (no training)
+
+Selected Downloads journal kural-personal-pilot-v1_SPK01_journal_9563595e-87de-4353-81ec-f44bd361e9ab.json (123 records). The other journal, 607e771c-ebd5-44f1-8b9d-636e356e3cab, contains 27 identical common records and is a strict subset, not a competing/conflicting session. Both journals and all 123 WebM/JSON pairs were copied without changing Downloads originals into ignored tools/local_wake_data/kural-personal-pilot-v1/SPK01/S01_TRAIN/originals/. Source/copy SHA-256 values are recorded. No annotation sidecars exist. No expected files are missing and no extra pilot files were found.
+
+New tools/import_kural_pilot.py is explicit/default-off, imports only SPK01/S01_TRAIN/train, preflights conflicting destinations, preserves identical files for validated reuse, rejects missing pairs/duplicate IDs rather than guessing, decodes separate WAV copies with existing hash-verified FFmpeg and no denoising/normalization, and generates a local review page. Results are in S01_TRAIN/validation-be12d89f58704705aa9e5311c70c2599/ (validation.json, WAVs, index.html and manifest-selection-and-source-audit.json). These are file validation results, not validation-split recordings.
+
+Results: all 123 pairs decode to complete mono PCM16, 16000 Hz WAVs. Matched prompted positives 40/40; speech negatives 60/60; 23 background blocks total 297.54 decoded seconds/300 target, a deficit of 2.46 seconds. The collector's wall-clock sum was 301.4139 seconds, demonstrating why capture progress cannot replace decoded-duration validation. Four narration echo blocks total 50.46 seconds and remain marked echo, not ordinary wake-free negatives. Zero missing pairs, duplicate manifest IDs, duplicate decoded-audio hashes, corrupt/empty audio, or metadata inconsistencies were found.
+
+All 123 records declare consent, speaker SPK01, session S01_TRAIN and split train. All 123 still say pending listening annotation with no accepted ground-truth labels; prompt categories do not prove what was spoken. No intervals were invented. No validation/test recordings entered training. Review full positive words, negative speech and accidental literal wakes, and distinguish narration playback before accepting labels. A decoded background top-up of at least 2.46 seconds is also required before the five-minute target is met (record a modest margin, then validate actual duration). Do not silently modify existing session records or counts to hide the deficit.
+
+From Agent PowerShell, open:
+
+```powershell
+Start-Process ".\tools\local_wake_data\kural-personal-pilot-v1\SPK01\S01_TRAIN\validation-be12d89f58704705aa9e5311c70c2599\index.html"
+```
+
+Smallest immediate step: replay the first positive and mark its actual wake interval in a separate annotation; complete listening review before training preparation. The page is a read-only playback index and does not itself save annotations. Existing collection annotation sidecars or separately recorded review files can be imported later. Test-session reservation remains intact.
+
+Verification: six new mocked importer tests passed (source preservation/reuse, missing pairs, duplicate IDs, destination conflicts, validation-session exclusion, invalid PCM/annotation bounds). Both diff checks passed. Generated audio/evidence remain under ignored local_wake_data; original filename ignore rules remain in force. No frontend change/build, installation/download, training, upload, inference, tour/approved-audio edit, staging, commit or push.
+
+
+## Separate S01_TRAIN three-task correction collector
+
+New tools/collect_kural_topup.html is local-only and has exactly TP01 (one natural Kural positive, one second silence before/after), TN01 (the complete speech-negative phrase good and), and TB01 (at least 10 seconds room/fan sound without speaking; aim for 12-15 seconds to allow for decoded-duration differences). All captures remain SPK01 / S01_TRAIN / train, pending listening review, with null wake intervals. No annotations are fabricated.
+
+TP01 metadata replaces_recording_id = aff7301e-74b4-40f4-ab27-fd41140ec8a7; TN01 supplements_recording_id = 5f512dcd-2d0b-4e4e-bc9f-5aded5a1a5be. Each new capture has its own recording_id/original_recording_id and a separate topup_batch_id (S01_TOPUP_UUID). These are proposed replacement/supplement relationships only: neither original is deleted, overwritten or automatically included/excluded by this page/importer. Later reviewed dataset assembly must apply the agreed replacement explicitly.
+
+Progress uses a distinct localStorage namespace ending topup-corrections-v1 and never reads/writes the main collector's progress. Captures download unique audio/JSON pairs and have actual condition, timestamped personal-use consent, browser audio settings and estimated capture duration. Export includes exactly the completed task candidates in records, plus all attempts separately; short background attempts are preserved as local downloads/evidence, excluded from completed records and leave the task pending. Export can be partial and declares complete=false until all three tasks are captured. Audio and metadata remain pending replay review even at 3/3.
+
+Existing importer support is narrowed to collection_type=s01_topup_v1: validate batch/task type, capture requirement and fixed relationship IDs; show batch targets 1 positive / 1 speech negative / 10 seconds rather than pretending it is the full session. Preserve relationship fields and do not merge training datasets automatically. After conversion, a background shorter than 10 actual decoded seconds is flagged even if its capture timer passed. Original imported audio/journals are untouched. Exported records already match the existing capture metadata format. Failed/short attempts are preserved separately and are not accepted training rows.
+
+From Agent PowerShell:
+
+```powershell
+& .\.venv\Scripts\python.exe -m http.server 8766 --bind 127.0.0.1 --directory .\tools
+```
+
+Open http://127.0.0.1:8766/collect_kural_topup.html . Turn tour Mic off and close other recorders. Consent, select task/actual condition, Record, then Stop and replay each take. TP01: one second silence, natural Kural, one second silence. TN01: one second silence, say all of good and, one second silence. TB01: no talking, room/fan sound for 12-15 seconds. Finally export the top-up manifest and retain all files together. Generated filenames match the existing ignored kural-personal-pilot-v1_* rule and should be stored under ignored local_wake_data. Capture time is an estimate until decoded validation.
+
+Tests: new node tests/kural_topup_collector.test.cjs passes all three tasks, unique filenames/batches, separate progress/reload, consent, relationships, actual importer inspection of exported audio/JSON pairs, partial exports and short background preservation, duplicate-start prevention, 30-second cap and Stop/error/page-exit/late-permission track cleanup. Existing pilot and legacy collector checks also pass unchanged. Eight mocked importer tests pass, including top-up relationship checks and decoded background minimum. CSP connect-src none and no network APIs; no actual mic/browser listening verification. Both diff checks pass. No installation/download, recording collection, training, cloud/provider calls, tour/approved-audio changes, staging, commit or push.
+
+
+## S01 top-up import and user content approval overlay
+
+Imported expected batch S01_TOPUP_701733df-155c-48ff-9777-6f58671004b5 from its unique Downloads manifest and three matching audio/JSON pairs. Top-up validation evidence: S01_TRAIN/validation-2df589e716994496b091ecace16f357c/. All three pairs validate mono PCM16 at 16000 Hz with complete frames, no missing/duplicate/corrupt pairs or metadata issues. Actual top-up background is 12.00 seconds. Source/copy hashes remain unchanged and replacement/supplement IDs remain metadata; neither original was deleted or overwritten.
+
+The user's subsequent confirmation approves all three top-up contents. Saved a separate content-only overlay and updated playback index at S01_TRAIN/review-overlay-49e087ab681b48ae820b096ad84baa88/. Original reports, metadata, audio and earlier evidence remain immutable. New tools/review_kural_s01.py is explicit/default-off and rejects missing/ambiguous correction IDs, invalid files, wrong batches, relationships or cross-session records. It does not infer transcripts for uncorrected records or generate wake intervals.
+
+User-reported corrections: 5342717e-cd43-41e9-8eb8-e0064515073d, 59c039aa-9b7f-465d-860f-a56961fead4a, 054ac5a1-c301-4125-af6b-81af1646d30f and d0edc637-4831-4ef9-b10b-9b5e3ec2f1f6 contain only Kural: retain wake-positive, classify wake_only rather than wake-plus-command. aff7301e-74b4-40f4-ab27-fd41140ec8a7 is excluded from training because the user reports no audible audio; file validity did not prove audible content. 5f512dcd-2d0b-4e4e-bc9f-5aded5a1a5be is retained as a speech-negative with user-reported content and, not verified good and coverage for that recording. All other original contents are user-approved. Four narration echo flags remain unchanged.
+
+Final content-approved S01 inventory: 40 positives, 61 speech negatives, 24 background blocks totalling 309.54 actual seconds. This is 122 usable originals plus three approved top-ups; one original remains excluded/preserved. Of total background, four echo blocks are 50.46 seconds; they are not ordinary wake-free negatives. All wake intervals remain null/not supplied. Approval is the user's content review, not independent agent listening, fine-grained alignment or readiness to train. S02_VALID in a separate sitting remains a prerequisite for evaluated training; S03_TEST_RESERVED stays untouched.
+
+Open review from Agent PowerShell:
+
+```powershell
+Start-Process ".\tools\local_wake_data\kural-personal-pilot-v1\SPK01\S01_TRAIN\review-overlay-49e087ab681b48ae820b096ad84baa88\index.html"
+```
+
+For S02_VALID: in a separate later sitting (preferably another day), use the existing local collector URL http://127.0.0.1:8766/collect_kural_pilot.html . If needed serve it with `.\.venv\Scripts\python.exe -m http.server 8766 --bind 127.0.0.1 --directory .\tools`. Select S02_VALID, re-confirm personal consent and actual condition. Record 20 natural Kural positives with surrounding silence, 30 varied speech negatives including similar-sounding Tamil/English words and complete phrases, plus five minutes of room/fan, consenting speech and narration-playback blocks. Keep the same speaker SPK01, use the separate session progress, replay/annotate honestly and export its journal. Do not copy S01 originals/crops into validation, reset S01 progress, or use the S01 top-up page for validation. The five-minute display is capture-time only: validate decoded duration and address any deficit later. No test collection until recipe/decision rules are frozen.
+
+Checks: importer and review-overlay suite 12 passed, GNANI_MOCK=true. Tests cover explicit top-up approval without inferred intervals, original preservation, exclusions, echo flags, per-session scope, rejected IDs/batches/relationships and default pending approvals. Rechecked all 254 original/top-up source/copy hash records; all match. Both diff checks pass; audio/evidence remain Git-ignored. No frontend build, downloads, training, inference, upload, tour/approved-audio edits, staging, commit or push. Existing uncommitted work preserved.
+
+
+## Isolated custom CNN pipeline (2026-11-02)
+
+Prepared a default-off scratch TensorFlow/Keras baseline, human waveform/playback annotation page and saved-prediction evaluation. See [setup, gates and exact commands](F14_CUSTOM_KURAL_PIPELINE.md). Current S01 hashes/consent/effective overlay validate: 40 positives, 61 speech negatives, 309.54 seconds background including four separately flagged echo blocks; excluded original preserved. No wake intervals were inferred. S02_VALID remains missing, and reviewed wake boundaries/absence labels are required before training. S03 stays untouched.
+
+One isolated dependency setup attempt failed with No matching distribution found for tensorflow==2.20.0; no training dependencies were installed and no training ran. The compatible official Windows wheel exists; the captured error does not prove the underlying network cause. No retry was made. Partial isolated environment and failure log are preserved. Agent dependencies and production controls/audio remain unchanged.
+
+Verification: focused Python suite 50 passed in 8.63 seconds; annotation and all three existing collector Node checks passed; Python compilation passed; 22/22 approved production WAV hashes match. No frontend build required because no frontend code changed. Generated evidence/environments/models remain ignored. Both staged and unstaged diff checks passed. No cloud/provider calls, training, staging, commit or push.
+
+
+## Context-validity policy and negative-support audit
+
+Implemented and tested a default-off two-second real-history policy for local checkpoint replay. Raw scores preserved; ineligible frames cannot prime event streak/cooldown. All20 S02 wakes remain reported, including14 short clips and one expired matching opportunity. No threshold qualifies. See [policy results and documented S01 repair proposal](F14_KURAL_CONTEXT_VALIDITY.md). Independent audit supports adding reviewed-negative S01 causal prefixes to future sampling; no training was run, no labels changed, and S03 remains untouched.
+
+## Isolated real-time microphone diagnostic
+
+2026-11-02. Added an explicit Start/Stop localhost diagnostic using the unchanged negative-context v2 checkpoint, frozen shared features and ungated event logic. It shows live scores and timestamped events at the four existing thresholds, and records manual expected wakes separately. It has no tour/app actions, cloud calls, automatic training import or threshold tuning. See [launch command, guided exercises and actual verification](F14_LIVE_KURAL_DIAGNOSTIC.md). Chromium checks used mocked capture/scores; actual microphone recognition and echo remain unverified. Prior data, annotations and runs are preserved; S03 remains untouched.

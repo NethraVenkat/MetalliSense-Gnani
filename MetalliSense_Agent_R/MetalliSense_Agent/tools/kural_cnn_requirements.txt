@@ -1,0 +1,4 @@
+# CPU-only isolated pilot. No pretrained weights or public datasets.
+tensorflow==2.20.0
+keras==3.11.3
+numpy==2.2.6

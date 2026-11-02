@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "pilot_id": "kural-personal-pilot-v1",
+  "scope": "personal-use; one speaker; exploratory data only",
+  "speaker_id": "SPK01",
+  "wake_phrase": "குரல்",
+  "consent_required": true,
+  "sessions": [
+    {
+      "id": "S01_TRAIN",
+      "split": "train",
+      "targets": {
+        "positives": 40,
+        "negatives": 60,
+        "background_seconds": 300
+      },
+      "instructions": "First session; do not reuse earlier exploratory clips."
+    },
+    {
+      "id": "S02_VALID",
+      "split": "validation",
+      "targets": {
+        "positives": 20,
+        "negatives": 30,
+        "background_seconds": 300
+      },
+      "instructions": "Separate later sitting, preferably another day; never move into training."
+    },
+    {
+      "id": "S03_TEST_RESERVED",
+      "split": "test",
+      "reserved": true,
+      "targets": null,
+      "instructions": "Do not collect or inspect until training recipe and validation decision rule are frozen."
+    }
+  ],
+  "positive_prompts": [
+    {
+      "id": "KP01",
+      "text": "குரல்",
+      "instructions": "One second silence, say Kural naturally once, one second silence."
+    },
+    {
+      "id": "KP02",
+      "text": "Kural",
+      "instructions": "Same chosen wake word, natural Tamil/Tanglish pronunciation. Vary normal pace, not a different phrase."
+    },
+    {
+      "id": "KP03",
+      "text": "குரல், நிலை என்ன?",
+      "instructions": "Say the wake naturally before this short question. Annotate only the wake interval."
+    }
+  ],
+  "negative_prompts": [
+    {
+      "id": "KN01",
+      "text": "குரங்கு"
+    },
+    {
+      "id": "KN02",
+      "text": "குழல்"
+    },
+    {
+      "id": "KN03",
+      "text": "குறள்"
+    },
+    {
+      "id": "KN04",
+      "text": "coral"
+    },
+    {
+      "id": "KN05",
+      "text": "curl"
+    },
+    {
+      "id": "KN06",
+      "text": "cruel"
+    },
+    {
+      "id": "KN07",
+      "text": "neural"
+    },
+    {
+      "id": "KN08",
+      "text": "good I"
+    },
+    {
+      "id": "KN09",
+      "text": "good and"
+    },
+    {
+      "id": "KN10",
+      "text": "அடுத்து போ"
+    },
+    {
+      "id": "KN11",
+      "text": "Please show the current page"
+    },
+    {
+      "id": "KN12",
+      "text": "என்ன நடக்குது?"
+    }
+  ],
+  "background_blocks": [
+    {
+      "id": "KB01",
+      "seconds": 30,
+      "condition": "quiet/fan room sound",
+      "echo": false
+    },
+    {
+      "id": "KB02",
+      "seconds": 30,
+      "condition": "quiet/fan room sound",
+      "echo": false
+    },
+    {
+      "id": "KB03",
+      "seconds": 30,
+      "condition": "quiet/fan room sound",
+      "echo": false
+    },
+    {
+      "id": "KB04",
+      "seconds": 30,
+      "condition": "quiet/fan room sound",
+      "echo": false
+    },
+    {
+      "id": "KB05",
+      "seconds": 30,
+      "condition": "ordinary consenting Tamil/English background conversation",
+      "echo": false
+    },
+    {
+      "id": "KB06",
+      "seconds": 30,
+      "condition": "ordinary consenting Tamil/English background conversation",
+      "echo": false
+    },
+    {
+      "id": "KB07",
+      "seconds": 30,
+      "condition": "ordinary consenting Tamil/English background conversation",
+      "echo": false
+    },
+    {
+      "id": "KB08",
+      "seconds": 30,
+      "condition": "ordinary consenting Tamil/English background conversation",
+      "echo": false
+    },
+    {
+      "id": "KB09",
+      "seconds": 30,
+      "condition": "approved narration playback over speakers; do not speak",
+      "echo": true
+    },
+    {
+      "id": "KB10",
+      "seconds": 30,
+      "condition": "approved narration playback over speakers; do not speak",
+      "echo": true
+    }
+  ],
+  "annotation": {
+    "clock": "seconds relative to original recording",
+    "intended_wake_intervals": null,
+    "heard_wake_intervals": null,
+    "status": "pending listening annotation",
+    "rule": "Set actual intervals only after replay; if unintended literal wake occurs in negative/background, annotate rather than silently label negative. Playback literal wakes are lexical positives but unwanted self-activations."
+  },
+  "lineage_rule": "original, all crops and augmentations keep speaker_id, session_id, split and original recording_id; no cross-split copies",
+  "exclusions": [
+    "existing six positives and crops: exploratory only",
+    "no cloud upload",
+    "recordings and private manifests remain in ignored tools/local_wake_data or Downloads"
+  ],
+  "negative_variation": "Across repetitions vary natural sentence context, pace and distance around each negative phrase; do not deliberately say the actual wake. Write what was heard during annotation if uncertain."
+}

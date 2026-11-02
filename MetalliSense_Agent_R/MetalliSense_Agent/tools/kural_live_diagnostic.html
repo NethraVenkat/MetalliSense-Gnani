@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; media-src 'self' blob:">
+<title>Local Kural real-time score diagnostic</title>
+<style>body{font:16px/1.6 system-ui;color:#17352b;max-width:950px;margin:20px auto;padding:16px}fieldset{border:1px solid #becdc5;border-radius:8px;margin:18px 0;padding:14px}label{display:block;margin:8px 0}button,input,select{font:inherit;max-width:100%;padding:8px}button{margin:4px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #047857}button:disabled{opacity:.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;background:#f2f6f3;padding:12px}canvas{width:100%;height:auto;border:1px solid #d1ddd5}strong{font-weight:650}.numbers{font-variant-numeric:tabular-nums}</style>
+<h1>Local Kural real-time diagnostic</h1>
+<p><strong>Unqualified checkpoint. Exploratory evidence only.</strong> No tour/app action, cloud STT/TTS, training or automatic data import. This page uses one microphone owner and sends audio only to this loopback server. Close other recorders and turn the app’s Mic off first.</p>
+<details><summary>Checkpoint and fixed event settings</summary><pre id="modelInfo">Loading local model status…</pre></details>
+<fieldset><legend>Explicit microphone controls</legend>
+<label><input type="checkbox" id="consent"> I consent to local exploratory capture/logging. Everyone audible also consents. Audio and manual notes stay on this computer and are not approved training data.</label>
+<label>Actual condition <select id="condition"><option>quiet-headphones</option><option>fan-headphones</option><option>quiet-speakers</option><option>fan-speakers</option></select></label>
+<button id="startMic" disabled>Start microphone</button><button id="stopMic" disabled>Stop microphone</button>
+<p id="status" role="status">Microphone off. No listening starts automatically.</p><p id="captureInfo"></p>
+<p class="numbers">Captured: <span id="captureTime">0.000</span>s · Scored endpoint: <span id="scoredTime">0.000</span>s · Wake score: <strong id="score">—</strong></p>
+<p id="history">Audio timeline is sample-count based; processing time and delivery lag are separate. Five-minute session maximum.</p>
+<canvas id="chart" width="900" height="240" aria-label="Last ten audio seconds of raw wake scores; exact values also shown above"></canvas>
+</fieldset>
+<fieldset><legend>Guided exercises — advance manually</legend>
+<label>Exercise <select id="exercise"></select></label><p id="instruction"></p>
+<p>Try a few natural examples, then silence and conversation. Use the same fixed thresholds throughout. A sound is never sent as a command.</p>
+</fieldset>
+<fieldset><legend>Manual expected-wake log</legend>
+<p>Mark around the word you intend to say, or enter times after speaking. Button timing is approximate human expectation, not verified word alignment. Mark Kural only when it is actually spoken; negatives and silence are not expected wakes.</p>
+<button id="markStart">Mark expected wake start now</button><button id="markEnd">Mark expected wake end now</button>
+<label>Start audio seconds <input id="expectedStart" type="number" step="0.001" min="0"></label>
+<label>End audio seconds <input id="expectedEnd" type="number" step="0.001" min="0"></label>
+<label>Label <input id="label" maxlength="120"></label><label>Notes <input id="notes" maxlength="1000" placeholder="What you said, distance, accidental wake, or uncertainty"></label>
+<button id="saveExpected">Save manual expected wake</button><pre id="manual">No manual expected-wake markers yet.</pre>
+</fieldset>
+<h2>Timestamped detections at fixed thresholds</h2><p>Thresholds 0.50 / 0.65 / 0.80 / 0.90, two consecutive frames and one-second cooldown. All scores remain visible, including startup. The two-second gate is not applied here.</p><pre id="events">No events received.</pre>
+<button id="download">Download session notes</button><p>Server evidence directory: <span id="saved">Shown by the local server/session log.</span></p>
+<script src="/kural_live_capture.js"></script><script src="/kural_live_diagnostic.js"></script></html>

@@ -1,0 +1,62 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:; connect-src 'none'">
+<title>S01_TRAIN — three local corrections</title>
+<style>body{font:16px/1.7 system-ui;max-width:760px;margin:1rem auto;padding:1rem;color:#16372c}label{display:block;margin:.7rem 0}select,button{font:inherit;padding:.5rem;max-width:100%}button{margin:.3rem}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #047857}audio{width:100%}#prompt{font-size:1.3rem}small{display:block}</style>
+<h1>S01_TRAIN — three corrections, local only</h1>
+<p>SPK01 / S01_TRAIN / train. This page has separate top-up progress. It does not change original records, journals or the main collector. No detector, training, upload or tour command runs here. Turn tour Mic off and close other recorders.</p>
+<label><input type="checkbox" id="consent"> I consent to local personal-use recording and pilot training/evaluation. No public redistribution permission is implied.</label>
+<label>Task <select id="task"><option value="TP01">1 — positive: குரல்</option><option value="TN01">2 — speech negative: good and</option><option value="TB01">3 — background: room/fan, at least 10 seconds</option></select></label>
+<label>Actual condition <select id="condition"><option>quiet-headphones</option><option>fan-headphones</option><option>quiet-speakers</option><option>fan-speakers</option></select></label>
+<p id="progress" role="status"></p><p id="prompt"></p><p id="instructions"></p>
+<button id="record">Record this task</button><button id="stop" disabled>Stop</button><button id="export">Export top-up manifest</button>
+<p id="status" role="status">Microphone off. Consent and Record required.</p>
+<audio id="playback" controls></audio>
+<small>Replay each take. Wake intervals remain unknown until listening annotation. Background wall-clock time is only an estimate; decoded audio must later be at least 10 seconds. Aim for 12–15 seconds. Downloads use unique IDs; keep audio and JSON together under ignored tools/local_wake_data/kural-personal-pilot-v1/SPK01/S01_TRAIN/. No originals are deleted or automatically excluded by this page.</small>
+<script>
+const TASKS=[
+ {id:'TP01',kind:'positives',text:'\u0b95\u0bc1\u0bb0\u0bb2\u0bcd',instructions:'One second silence, say Kural naturally once, one second silence, then Stop.',replaces_recording_id:'aff7301e-74b4-40f4-ab27-fd41140ec8a7'},
+ {id:'TN01',kind:'negatives',text:'good and',instructions:'One second silence, say the COMPLETE phrase "good and" naturally, one second silence, then Stop.',supplements_recording_id:'5f512dcd-2d0b-4e4e-bc9f-5aded5a1a5be'},
+ {id:'TB01',kind:'background_seconds',text:'Room / fan sound — no speaking',instructions:'Record at least 10 seconds without speaking. Aim for 12–15 seconds, then Stop. Maximum 30 seconds.',minimum_capture_seconds:10}
+];
+const q=id=>document.getElementById(id),key='kural-personal-pilot-v1:SPK01:S01_TRAIN:topup-corrections-v1';
+let batch,invalid=false,storageFailed=false,stream=null,rec=null,timer=null,url=null,alive=true,busy=false;
+try{const saved=localStorage.getItem(key);batch=saved?JSON.parse(saved):{batch_id:'S01_TOPUP_'+crypto.randomUUID(),attempts:[]};if(!batch.batch_id||!Array.isArray(batch.attempts))throw Error('Invalid progress');}catch{invalid=true;batch={batch_id:null,attempts:[]};}
+function save(){try{localStorage.setItem(key,JSON.stringify(batch));}catch{storageFailed=true;}}
+function completed(task){return batch.attempts.some(r=>r.prompt_id===task.id&&r.capture_requirement_met);}
+function update(){const task=TASKS.find(t=>t.id===q('task').value);q('prompt').textContent=task.text;q('instructions').textContent=task.instructions;
+ q('progress').textContent=`Top-up batch ${batch.batch_id||'unreadable'}: ${TASKS.filter(completed).length}/3 tasks captured, all pending listening review. ${TASKS.map(t=>t.id+': '+(completed(t)?'captured':'pending')).join(' / ')}`;
+ q('record').disabled=busy||invalid||!alive||!q('consent').checked||completed(task);}
+function download(blob,name){const link=document.createElement('a'),u=URL.createObjectURL(blob);link.href=u;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function release(){clearTimeout(timer);timer=null;stream?.getTracks().forEach(t=>t.stop());stream=null;}
+function lock(value){for(const id of ['task','condition','consent'])q(id).disabled=value;}
+q('task').onchange=update;q('consent').onchange=update;
+q('record').onclick=async()=>{
+ const task=TASKS.find(t=>t.id===q('task').value);if(busy||invalid||!alive||!q('consent').checked||completed(task))return;
+ const condition=q('condition').value,at=new Date().toISOString();busy=true;lock(true);update();q('status').textContent='Requesting microphone…';let localRec,started,finished=false;
+ const finish=()=>{if(finished)return false;finished=true;release();busy=false;lock(false);q('stop').disabled=true;update();return true;};
+ try{
+  const supported=navigator.mediaDevices.getSupportedConstraints(),audio={channelCount:1};for(const k of ['echoCancellation','noiseSuppression','autoGainControl'])if(supported[k])audio[k]=true;
+  stream=await navigator.mediaDevices.getUserMedia({audio,video:false});if(!alive){finish();return;}
+  const actual=stream.getAudioTracks()[0].getSettings(),applied={};for(const k of ['sampleRate','channelCount','echoCancellation','noiseSuppression','autoGainControl'])applied[k]=actual[k]??'not reported';
+  const type=['audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t)),chunks=[];localRec=rec=new MediaRecorder(stream,type?{mimeType:type}:undefined);
+  localRec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  localRec.onstop=()=>{const elapsed=Math.max(0,(performance.now()-started)/1000);if(!finish()||!alive)return;if(!chunks.length){q('status').textContent='No audio saved; task remains pending.';return;}
+   const id=crypto.randomUUID(),name=`kural-personal-pilot-v1_SPK01_S01_TRAIN_train_${task.id}_${id}`,blob=new Blob(chunks,{type:localRec.mimeType});
+   const row={pilot_id:'kural-personal-pilot-v1',collection_type:'s01_topup_v1',topup_batch_id:batch.batch_id,recording_id:id,original_recording_id:id,speaker_id:'SPK01',session_id:'S01_TRAIN',split:'train',kind:task.kind,prompt_id:task.id,prompt:task.text,condition,echo_playback:false,consent:{granted:true,scope:'local personal-use pilot; no public redistribution',at},captured_at:at,capture_wall_seconds:elapsed,capture_requirement_met:elapsed>=(task.minimum_capture_seconds||0),duration_validation:'pending decoded WAV validation',intended_wake_intervals:null,heard_wake_intervals:null,annotation_status:'pending listening annotation',supportedConstraints:audio,appliedSettings:applied,filename:name+(blob.type.includes('mp4')?'.mp4':'.webm')};
+   if(task.replaces_recording_id)row.replaces_recording_id=task.replaces_recording_id;if(task.supplements_recording_id)row.supplements_recording_id=task.supplements_recording_id;
+   batch.attempts.push(row);save();if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(blob);q('playback').src=url;
+   download(blob,row.filename);download(new Blob([JSON.stringify(row,null,2)],{type:'application/json'}),name+'.json');update();
+   q('status').textContent=(row.capture_requirement_met?'Saved locally. Replay; label remains pending.':'Short background saved as evidence, task still pending. Record a fresh 12–15-second take.')+(storageFailed?' Progress could not persist; export now.':'');
+  };
+  localRec.onerror=()=>{if(finish()){if(localRec.state==='recording')localRec.stop();q('status').textContent='Recording failed; task remains pending.';}};
+  started=performance.now();localRec.start();q('stop').disabled=false;q('status').textContent='Recording only. Stop after the instruction; maximum 30 seconds.';timer=setTimeout(()=>{if(localRec.state==='recording')localRec.stop();},30000);
+ }catch{finish();q('status').textContent='Microphone unavailable/denied. No upload or progress change.';}
+};
+q('stop').onclick=()=>{if(rec?.state==='recording')rec.stop();};
+q('export').onclick=()=>{if(invalid)return;save();const records=TASKS.flatMap(t=>{const row=batch.attempts.find(r=>r.prompt_id===t.id&&r.capture_requirement_met);return row?[row]:[];});
+ const manifest={pilot_id:'kural-personal-pilot-v1',collection_type:'s01_topup_v1',topup_batch_id:batch.batch_id,speaker_id:'SPK01',session_id:'S01_TRAIN',split:'train',tasks:TASKS,records,attempts:batch.attempts,complete:records.length===3,annotation_status:'pending listening annotation',relationship_policy:'Replacement/supplement candidates only. Keep both originals; do not automatically accept, exclude, relabel or merge training sets.'};
+ download(new Blob([JSON.stringify(manifest,null,2)],{type:'application/json'}),`kural-personal-pilot-v1_SPK01_topup_${batch.batch_id}_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}.json`);};
+window.addEventListener('pagehide',()=>{alive=false;if(rec?.state==='recording')rec.stop();release();if(url)URL.revokeObjectURL(url);});
+update();if(invalid)q('status').textContent='Top-up progress unreadable; recording blocked to preserve evidence. Original collector progress is untouched.';
+</script></html>

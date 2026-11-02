@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src data: blob:; connect-src 'none'">
+<title>Offline Kural boundaries — human annotation required</title>
+<style>body{font:16px/1.7 system-ui;max-width:900px;padding:16px;margin:auto}*{box-sizing:border-box}canvas{display:block;width:100%;height:210px;outline:1px solid #aaa;cursor:crosshair}audio{display:block}#clock{font-variant-numeric:tabular-nums}button,input,select{font:inherit;padding:.4rem;margin:.3rem;max-width:100%}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid green}audio{width:100%}label{display:block}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<h1>Local waveform and listening annotation</h1>
+<p>No training, detector, microphone or network. RMS activity suggestions are unreviewed, not word recognition. Noise or other speech may be suggested. Listen and set the complete wake start/end yourself. Do not trim the initial/final consonants. Content approval supplies no timings.</p>
+<label><input id="showCompleted" type="checkbox"> Show completed</label><p id="progress" role="status"></p><p id="resumeNote"></p><label>Recording <select id="record"></select></label><p id="identity"></p><canvas id="wave" width="900" height="180" aria-label="Waveform; use audio controls and timestamp inputs for keyboard operation"></canvas>
+<audio id="audio" controls preload="none"></audio><p id="clock" role="status"></p>
+<p id="suggestionStatus" role="status"></p><label id="suggestionLabel">Unreviewed suggestion <select id="suggestion"></select></label>
+<label>Wake start seconds <input id="start" type="number" min="0" step="0.001"></label><button id="setStart">Use current playback time as start</button>
+<label>Wake end seconds <input id="end" type="number" min="0" step="0.001"></label><button id="setEnd">Use current playback time as end</button>
+<button id="playSelected">Play selected interval</button><button id="add">Add human-marked wake interval</button><button id="clear">Clear this recording's draft intervals</button><pre id="intervals"></pre>
+<label><input id="absent" type="checkbox"> I listened to the entire recording and there is no literal wake.</label>
+<label><input id="approve" type="checkbox"> I listened and confirm the boundaries/absence and approve the content class/source. If wrong or uncertain, leave unreviewed and request correction.</label>
+<button id="save">Save this recording's human review</button><button id="saveNext">Save &amp; Next Pending</button><button id="export">Export annotations JSON</button><p id="status" role="status"></p>
+<p>Echo recordings remain echo: mark literal wakes as playback, not human activation. Save/download under local_wake_data/kural-cnn-v1/annotations/ with the session filename. Export preserves original WAVs and dataset metadata. Never annotate S03 while developing this model.</p>
+<script>
+const DATA=/*ANNOTATION_DATA*/null;
+const q=id=>document.getElementById(id),key='kural-cnn-boundaries-v1:'+DATA.dataset_fingerprint;
+let records={},draft=[],broken=false;let activeId=null,manualDirty=false,suggestionActive=false;const manualDrafts=new Map();
+try{records=JSON.parse(localStorage.getItem(key)||'{}');if(!records||Array.isArray(records)||typeof records!=='object'){records={};broken=true;}}catch{broken=true;}
+const selected=()=>DATA.entries.find(e=>e.recording_id===q('record').value);
+const checkpoint=DATA.navigation_resume||{};
+const checkpointIndex=DATA.entries.findIndex(e=>e.recording_id===checkpoint.after_recording_id);
+function completed(e,r=records[e.recording_id]){if(!r||r.human_reviewed!==true||r.content_approved!==true||!Array.isArray(r.wake_intervals))return false;
+ const intervals=r.wake_intervals;if(!intervals.length)return e.kind!=='positives'&&r.wake_absence_confirmed===true;
+ return !r.wake_absence_confirmed&&(e.kind==='positives'||e.echo_case)&&intervals.every((w,i)=>Number.isFinite(w.start_seconds)&&Number.isFinite(w.end_seconds)&&w.start_seconds>=0&&w.end_seconds>w.start_seconds&&w.end_seconds<=e.duration_seconds&&w.source===(e.echo_case?'playback':'human')&&(!i||w.start_seconds>=intervals[i-1].end_seconds));}
+function skipped(e){return checkpointIndex>=0&&DATA.entries.indexOf(e)<=checkpointIndex&&!completed(e);}
+function pending(e){return !completed(e)&&!skipped(e);}
+function label(e){return completed(e)?'Completed - saved review':skipped(e)?'Previously completed - timings unavailable':'Pending';}
+function refreshOptions(preferred){const menu=q('record');menu.textContent='';const entries=DATA.entries.filter(e=>q('showCompleted').checked||pending(e));
+ for(const e of entries){const o=document.createElement('option');o.value=e.recording_id;o.textContent=label(e)+' / '+e.recording_id+' / '+e.kind+(e.echo_case?' / ECHO':'');menu.append(o);}
+ const chosen=entries.find(e=>e.recording_id===preferred)||entries.find(pending)||entries[0];menu.value=chosen?.recording_id||'';menu.disabled=!chosen;
+ if(!chosen){const o=document.createElement('option');o.value='';o.textContent='No pending recordings - use Show completed to inspect earlier entries';menu.append(o);}}
+function progress(){const done=DATA.entries.filter(e=>completed(e)).length,unavailable=DATA.entries.filter(skipped).length,remaining=DATA.entries.filter(pending).length;
+ q('progress').textContent=done+' saved reviews / '+DATA.entries.length+' total | '+remaining+' pending | '+unavailable+' previously completed - timings unavailable';
+ q('resumeNote').textContent=checkpointIndex<0?'':('Resume checkpoint: '+checkpoint.after_recording_id+'. Navigation-only skips do not create annotations or timings and are not training-ready.');}
+let frame=null,playUntil=null,generation=0;
+const audio=q('audio'),canvas=q('wave');
+function duration(){return Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:(selected()?.duration_seconds||0);}
+function clamp(time){return Math.max(0,Math.min(duration(),time));}
+function position(time,width){return clamp(time)/duration()*width;}
+function interval(){const start=Number(q('start').value),end=Number(q('end').value);return q('start').value!==''&&q('end').value!==''&&Number.isFinite(start)&&Number.isFinite(end)&&start>=0&&end>start&&end<=duration()?{start,end}:null;}
+function cancelAnimation(){if(frame!==null)cancelAnimationFrame(frame);frame=null;}
+function paint(){if(!selected())return;const rect=canvas.getBoundingClientRect(),width=Math.max(1,rect.width),height=210,dpr=window.devicePixelRatio||1;
+ canvas.width=Math.round(width*dpr);canvas.height=height*dpr;const c=canvas.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,width,height);
+ const mark=(start,end,color)=>{c.fillStyle=color;c.fillRect(position(start,width),0,position(end,width)-position(start,width),180);};
+ draft.forEach(w=>mark(w.start_seconds,w.end_seconds,'#e2eee8'));const active=interval();if(active)mark(active.start,active.end,suggestionActive?'#fde6ac':'#b9ddcd');
+ c.strokeStyle='#065f46';c.beginPath();selected().waveform.forEach((p,i)=>{const x=selected().waveform_step_seconds?position(i*selected().waveform_step_seconds,width):i/selected().waveform.length*width;c.moveTo(x,90-p[0]*80);c.lineTo(x,90-p[1]*80);});c.stroke();
+ function line(time,color,label){const x=position(time,width);c.strokeStyle=color;c.beginPath();c.moveTo(x,0);c.lineTo(x,180);c.stroke();if(label){c.fillStyle=color;c.fillText(label,Math.min(Math.max(2,x+3),Math.max(2,width-36)),14);}}
+ draft.forEach(w=>{line(w.start_seconds,'#527568','Start');line(w.end_seconds,'#527568','End');});
+ if(active){line(active.start,'#064e3b','Start');line(active.end,'#064e3b','End');}
+ line(audio.currentTime||0,'#b45309');c.font='12px system-ui';c.fillStyle='#374151';const steps=Math.max(1,Math.floor(width/85));
+ for(let i=0;i<=steps;i++){const time=duration()*i/steps,x=position(time,width);c.textAlign=i===0?'left':i===steps?'right':'center';c.fillText(time.toFixed(i===steps?3:2)+'s',x,201);}c.textAlign='left';
+ q('clock').textContent=(audio.currentTime||0).toFixed(3)+' / '+duration().toFixed(3)+' seconds';}
+function update(){if(playUntil!==null&&audio.currentTime>=playUntil){const end=playUntil;playUntil=null;audio.pause();audio.currentTime=end;}paint();}
+function animate(token){frame=null;if(token!==generation)return;update();if(!audio.paused&&!audio.ended)frame=requestAnimationFrame(()=>animate(token));}
+function display(){if(activeId)manualDrafts.set(activeId,{draft:JSON.parse(JSON.stringify(draft)),start:q('start').value,end:q('end').value,manualDirty,suggestionActive});generation++;cancelAnimation();playUntil=null;audio.pause();if(!selected()){audio.src='';draft=[];q('identity').textContent='No pending recordings. Saved reviews are preserved.';q('intervals').textContent='';q('clock').textContent='';canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);progress();return;}audio.src=selected().audio;audio.currentTime=0;const e=selected();q('identity').textContent=e.session_id+' / '+e.split+' / '+e.kind+' / '+e.duration_seconds.toFixed(3)+' seconds'+(e.echo_case?' / ECHO PLAYBACK':'');
+ const prior=records[e.recording_id];draft=Array.isArray(prior?.wake_intervals)?JSON.parse(JSON.stringify(prior.wake_intervals)):[];q('absent').checked=prior?.wake_absence_confirmed||false;q('approve').checked=false;q('start').value='';q('end').value='';manualDirty=false;suggestionActive=false;activeId=e.recording_id;const cached=manualDrafts.get(activeId);if(cached){draft=JSON.parse(JSON.stringify(cached.draft));q('start').value=cached.start;q('end').value=cached.end;manualDirty=cached.manualDirty;suggestionActive=cached.suggestionActive;}setupSuggestions();render();}
+function setupSuggestions(){const e=selected(),menu=q('suggestion');menu.textContent='';const eligible=e&&pending(e)&&e.kind==='positives'&&!e.echo_case&&!records[e.recording_id]&&!draft.length&&!manualDirty;
+ const regions=eligible?(e.speech_suggestions||[]):[];q('suggestionLabel').hidden=!regions.length;
+ const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose an unreviewed suggestion';menu.append(placeholder);menu.value='';
+ regions.forEach((r,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent='Unreviewed suggestion '+(i+1)+': '+r.start_seconds.toFixed(3)+' - '+r.end_seconds.toFixed(3)+' s';menu.append(o);});
+ q('suggestionStatus').textContent=regions.length>1?'Multiple plausible speech regions. Choose, play and adjust; none is confirmed.':regions.length?'Unreviewed suggestion - play, adjust and explicitly confirm before saving.':eligible?'No clear speech region; listen and mark boundaries manually.':'Saved review or manual draft retained; no automatic replacement.';
+ if(regions.length===1&&!q('start').value&&!q('end').value){menu.value='0';applySuggestion();}}
+function applySuggestion(){const e=selected();if(!e||manualDirty||draft.length||records[e.recording_id]||q('suggestion').value==='')return;
+ const r=(e.speech_suggestions||[])[Number(q('suggestion').value)];if(!r)return;q('start').value=r.start_seconds.toFixed(3);q('end').value=r.end_seconds.toFixed(3);suggestionActive=true;q('approve').checked=false;playUntil=null;paint();}
+q('suggestion').onchange=applySuggestion;
+function manualEdit(){manualDirty=true;suggestionActive=false;q('approve').checked=false;playUntil=null;q('suggestionStatus').textContent='Manual boundary draft - listen and confirm before saving.';paint();}
+function render(){q('intervals').textContent=JSON.stringify(draft,null,2);q('status').textContent=(selected()?label(selected())+'. ':'')+'Boundaries are human labels, not verified by a model.';progress();paint();}
+q('record').onchange=display;q('showCompleted').onchange=()=>{refreshOptions(q('record').value);display();};
+canvas.onclick=event=>{if(!selected())return;const rect=canvas.getBoundingClientRect();playUntil=null;audio.currentTime=clamp((event.clientX-rect.left)/rect.width*duration());update();};
+audio.ontimeupdate=update;audio.onseeked=update;audio.onseeking=update;audio.onloadedmetadata=update;
+audio.onplay=()=>{cancelAnimation();const token=generation;frame=requestAnimationFrame(()=>animate(token));};
+audio.onpause=()=>{cancelAnimation();update();};audio.onended=()=>{playUntil=null;cancelAnimation();paint();};
+q('start').oninput=q('end').oninput=manualEdit;
+q('setStart').onclick=()=>{q('start').value=clamp(audio.currentTime).toFixed(3);manualEdit();};q('setEnd').onclick=()=>{q('end').value=clamp(audio.currentTime).toFixed(3);manualEdit();};
+q('playSelected').onclick=()=>{if(!selected())return;const range=interval();if(!range){q('status').textContent='Enter a valid start/end interval first.';return;}playUntil=range.end;audio.currentTime=range.start;const token=generation;const result=audio.play();if(result?.catch)result.catch(()=>{if(token===generation){playUntil=null;cancelAnimation();q('status').textContent='Playback unavailable; use the audio player to retry.';}});update();};
+if(typeof ResizeObserver!=='undefined'){const observer=new ResizeObserver(paint);observer.observe(canvas);window.addEventListener('pagehide',()=>observer.disconnect());}else window.addEventListener('resize',paint);
+q('add').onclick=()=>{if(!selected())return;const start=Number(q('start').value),end=Number(q('end').value);if(!q('start').value||!q('end').value||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>selected().duration_seconds){q('status').textContent='Invalid interval. Listen and enter actual boundaries.';return;}
+ manualDirty=true;suggestionActive=false;draft.push({start_seconds:start,end_seconds:end,source:selected().echo_case?'playback':'human'});draft.sort((a,b)=>a.start_seconds-b.start_seconds);q('absent').checked=false;render();};
+q('clear').onclick=()=>{if(broken||!selected())return;draft=[];q('approve').checked=false;q('absent').checked=false;delete records[selected().recording_id];try{localStorage.setItem(key,JSON.stringify(records));}catch{q('status').textContent='Draft cleared only in memory; export to preserve this change.';return;}render();};
+function saveReview(){if(!selected())return false;if(broken){q('status').textContent='Stored journal unreadable; not overwritten.';return;}
+ const e=selected();const proposed=(!draft.length&&(suggestionActive||manualDirty)&&q('approve').checked)?interval():null;const savingDraft=proposed?[{start_seconds:proposed.start,end_seconds:proposed.end,source:'human'}]:draft;if(!q('approve').checked||(!savingDraft.length&&!q('absent').checked)||(savingDraft.length&&q('absent').checked)||(e.kind==='positives'&&!savingDraft.length)||(!e.echo_case&&e.kind!=='positives'&&savingDraft.length)){q('status').textContent='Missing/contradictory review. Do not guess labels; request a content correction if needed.';return;}
+ const review={human_reviewed:true,content_approved:true,wake_intervals:JSON.parse(JSON.stringify(savingDraft)),wake_absence_confirmed:!savingDraft.length,human_source:'user full playback/waveform annotation'};
+ if(!completed(e,review)){q('status').textContent='Invalid or overlapping intervals; review not saved. Listen and correct boundaries.';return false;}
+ const updated={...records,[e.recording_id]:review};try{localStorage.setItem(key,JSON.stringify(updated));}catch{q('status').textContent='Local save unavailable; review not saved and recording not advanced. Keep this page open and retry.';return false;}records=updated;draft=JSON.parse(JSON.stringify(savingDraft));suggestionActive=false;manualDrafts.delete(e.recording_id);render();return true;}
+q('save').onclick=()=>{if(saveReview()){refreshOptions();display();}};
+q('saveNext').onclick=()=>{if(saveReview()){refreshOptions();display();}};
+q('export').onclick=()=>{if(broken)return;const data={schema_version:1,dataset_fingerprint:DATA.dataset_fingerprint,session_id:DATA.session_id,records};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=DATA.session_id+'.annotations.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);};
+refreshOptions(DATA.entries.find(pending)?.recording_id);display();window.addEventListener('pagehide',()=>{generation++;playUntil=null;cancelAnimation();audio.pause();});
+</script></html>

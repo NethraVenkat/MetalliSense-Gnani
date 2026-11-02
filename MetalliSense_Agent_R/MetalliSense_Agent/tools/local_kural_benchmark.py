@@ -18,9 +18,15 @@ SHERPA_MODEL='sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01'
 SHERPA_FILES={part:f'{part}-epoch-12-avg-2-chunk-16-left-64.int8.onnx' for part in ['encoder','decoder','joiner']}
 WHISPER_MODEL='ggml-tiny-q5_1.bin'
 
+def kural_matches(text):
+    text=unicodedata.normalize('NFKC',text)
+    def word(char):return char=='_' or unicodedata.category(char)[0] in 'LMN'
+    return [match.group() for match in re.finditer('kural|\u0b95\u0bc1\u0bb0\u0bb2\u0bcd',text,re.I)
+            if (match.start()==0 or not word(text[match.start()-1]))
+            and (match.end()==len(text) or not word(text[match.end()]))]
+
 def has_kural(text):
-    text=unicodedata.normalize('NFKC',text).lower()
-    return bool(re.search(r'(?<!\w)(?:kural|குரல்)(?!\w)',text))
+    return bool(kural_matches(text))
 
 class WakeBoundary:
     """Mockable one-utterance activation boundary, not an acoustic detector."""
@@ -64,18 +70,18 @@ def command(engine,executable,models,wav,keywords=None):
         args=[str(executable),'-m',str(files[0]),'-f',str(wav),'-l','ta','--no-timestamps','--no-gpu']
     return args,files
 
-def detections(engine,stdout):
+def detections(engine,stdout,keyword_label='KURAL'):
     if engine=='whisper':
-        return [{'keyword':'Kural','token_offsets_seconds':None}] if has_kural(stdout) else []
+        return [dict(keyword='Kural',matched_text=text,token_offsets_seconds=None) for text in kural_matches(stdout)]
     found=[]
     for line in stdout.splitlines():
         try: result=json.loads(line.strip())
         except ValueError:continue
-        if isinstance(result,dict) and str(result.get('keyword','')).strip().upper()=='KURAL':
-            found.append({'keyword':'KURAL','token_offsets_seconds':result.get('timestamps')})
+        if isinstance(result,dict) and str(result.get('keyword','')).strip().upper()==keyword_label.upper():
+            found.append({'keyword':keyword_label,'token_offsets_seconds':result.get('timestamps')})
     return found
 
-def benchmark(engine,executable,models,dataset,output,keywords=None,runner=subprocess.run):
+def benchmark(engine,executable,models,dataset,output,keywords=None,runner=subprocess.run,keyword_label='KURAL'):
     dataset=Path(dataset).resolve();output=Path(output)
     with dataset.open(encoding='utf-8-sig',newline='') as file: rows=list(csv.DictReader(file))
     if not rows:raise ValueError('Empty dataset')
@@ -93,7 +99,7 @@ def benchmark(engine,executable,models,dataset,output,keywords=None,runner=subpr
         prepared.append((row,wav,expected,duration,args,artifacts))
     # Never overwrite evidence, and validate all paths before spawning a process.
     output.mkdir(parents=True,exist_ok=False)
-    report=dict(engine=engine,provider_requests=0,live_microphone=False,
+    report=dict(engine=engine,keyword_label=keyword_label,provider_requests=0,live_microphone=False,
         runtime_sha256=digest(executable),artifacts=[dict(file=str(p),bytes=p.stat().st_size,sha256=digest(p)) for p in prepared[0][-1]],
         timing_note='cold process wall time includes model loading; NOT streaming detection latency',results=[])
     try:
@@ -101,12 +107,19 @@ def benchmark(engine,executable,models,dataset,output,keywords=None,runner=subpr
             start=time.perf_counter()
             try:
                 result=runner(args,capture_output=True,text=True,encoding='utf-8',errors='replace',check=True,timeout=60)
-                found=detections(engine,result.stdout)
+                (output/(row['id']+'-raw.json')).write_text(json.dumps(dict(command=args,returncode=result.returncode,stdout=result.stdout,stderr=result.stderr),ensure_ascii=False,indent=2),encoding='utf-8')
+                found=detections(engine,result.stdout,keyword_label)
                 report['results'].append(dict(id=row['id'],condition=row.get('condition',''),wav=str(wav),audio_sha256=digest(wav),duration_seconds=duration,
                     expected_wakes=expected,detected_wakes=len(found),detections=found,cold_process_ms=(time.perf_counter()-start)*1000,
                     detection_latency_ms=None,status='measured offline',local_transcript=result.stdout[:4096] if engine=='whisper' else None))
             except (subprocess.SubprocessError,OSError) as error:
-                report['results'].append(dict(id=row['id'],status='engine_failed',error_type=type(error).__name__))
+                def error_text(value):
+                    return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value or ''
+                (output/(row['id']+'-raw.json')).write_text(json.dumps(dict(command=args,
+                    returncode=getattr(error,'returncode',None),error_type=type(error).__name__,
+                    stdout=error_text(getattr(error,'stdout',None)),
+                    stderr=error_text(getattr(error,'stderr',None))),ensure_ascii=False,indent=2),encoding='utf-8')
+                report['results'].append(dict(id=row['id'],status='engine_failed',error_type=type(error).__name__,error=str(error)))
                 break
     finally:
         valid=[r for r in report['results'] if r['status']=='measured offline']
@@ -121,11 +134,12 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--enable-local-wake-bench',action='store_true')
     parser.add_argument('--engine',choices=['sherpa','whisper'],default='sherpa')
+    parser.add_argument('--keyword-label',default='KURAL',help='Explicit Sherpa result label; does not change acoustic thresholds')
     for name in ['executable','models','dataset','output','keywords']:parser.add_argument('--'+name)
     args=parser.parse_args()
     if not args.enable_local_wake_bench:
         print('Disabled. Zero capture, model inference, network or provider requests.')
     else:
         if any(not getattr(args,k) for k in ['executable','models','dataset','output']):parser.error('Explicit local artifact/dataset/output paths required')
-        report=benchmark(args.engine,args.executable,args.models,args.dataset,args.output,args.keywords)
+        report=benchmark(args.engine,args.executable,args.models,args.dataset,args.output,args.keywords,keyword_label=args.keyword_label)
         print(json.dumps(report['summary'],indent=2))
