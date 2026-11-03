@@ -27,7 +27,7 @@ export function hindiGateAnswer(heat) {
       else lines.push(`${lead}।`);
     } else lines.push('जाँच का विवरण स्क्रीन पर देखें।');
   }
-  if (facts.remaining_reasons) lines.push(`${facts.remaining_reasons} और बातें स्क्रीन पर।`);
+  if (facts.remaining_reasons) lines.push('बाकी जानकारी स्क्रीन पर देखें।');
   return lines.join(' ');
 }
 

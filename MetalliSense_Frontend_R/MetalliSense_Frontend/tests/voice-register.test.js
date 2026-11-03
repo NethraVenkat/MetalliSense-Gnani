@@ -62,7 +62,7 @@ it.each(['ta','hi','en'])('all builders short, repeat-safe, max two reasons and 
  const texts=[clarityGateSpeech(extra,lang,'reasons','colloquial'),clarityGateSpeech(heat,lang,'status','colloquial'),clarityGateSpeech(heat,lang,'alert','colloquial'),
  clarityGateSpeech({...heat,gateResult:{decision:'GO',checks:[]}},lang,'reasons','colloquial'),clarityHandoverSummary([{heatId:'H-1053',decision:'HOLD',severity:'red'}],lang,'colloquial')];
  for(const text of texts){for(const sentence of text.split(/[.।]/).filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);expect(clarityText(text,lang,'colloquial')).toBe(text);expect(text).toContain('one zero five three');}
- expect(texts[0]).toContain(lang==='ta'?'மீதி ஸ்கிரீன்ல பாருங்க':lang==='hi'?'बाकी स्क्रीन पर':'More details on screen');
+ expect(texts[0]).toContain(lang==='ta'?'மீதி ஸ்கிரீன்ல பாருங்க':lang==='hi'?'बाकी जानकारी स्क्रीन पर देखें':'See the rest on screen.');
  expect(JSON.stringify(heat)).toBe(before);
 });
 it.each(['ta','hi'])('WARN risk is never promoted to an exceedance %s',lang=>{

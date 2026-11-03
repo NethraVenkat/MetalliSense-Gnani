@@ -18,11 +18,11 @@ import { formatDate, formatPercentage } from "../utils/formatters";
 import { Trash2 } from "lucide-react";
 
 const Spectrometer = () => {
-  useRegisterVoicePage({}, 'Spectrometer');
   const { opcStatus } = useContext(OPCContext);
   const [readings, setReadings] = useState([]);
   const [latestReading, setLatestReading] = useState(null);
   const [loading, setLoading] = useState(false);
+  useRegisterVoicePage({}, 'Spectrometer',{latestReading,loading});
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
@@ -38,9 +38,7 @@ const Spectrometer = () => {
       const data = Array.isArray(response.data.data) ? response.data.data : [];
       console.log("Extracted readings:", data);
       setReadings(data);
-      if (data.length > 0) {
-        setLatestReading(data[0]);
-      }
+      setLatestReading(data[0] || null);
     } catch (error) {
       console.error("Failed to fetch readings:", error);
       toast.error("Failed to load readings");
