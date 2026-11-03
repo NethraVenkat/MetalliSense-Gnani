@@ -2,7 +2,7 @@
 .kural-floating{--rest-size:80px;--card-width:min(280px,calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right)));--card-height:236px;position:fixed;z-index:10004;right:max(24px,env(safe-area-inset-right));bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--kural-lift,0px));width:var(--rest-size);height:var(--rest-size);color:#173e2b;font-family:inherit;box-sizing:border-box;transition:width 400ms cubic-bezier(.2,.75,.2,1),height 400ms cubic-bezier(.2,.75,.2,1)}
 .kural-floating.is-expanded{width:var(--card-width);height:var(--card-height)}.kural-interaction-card{position:relative;width:100%;height:100%;box-sizing:border-box;border:1px solid transparent;border-radius:50%;background:transparent;transition:background 400ms ease,border-color 400ms ease,border-radius 400ms ease,box-shadow 400ms ease;isolation:isolate}
 .is-expanded .kural-interaction-card{border-color:#c4dfcfb3;border-radius:20px;background:rgba(247,255,250,.87);backdrop-filter:blur(18px) saturate(1.15);box-shadow:0 8px 30px #17492c1c}
-.kural-orb-stage{position:absolute;right:-1px;bottom:-1px;width:var(--rest-size);height:var(--rest-size);transition:width 400ms ease,height 400ms ease,right 400ms ease,bottom 400ms ease;transform-origin:center}
+.kural-orb-stage{position:absolute;right:0;bottom:0;width:var(--rest-size);height:var(--rest-size);transition:width 400ms ease,height 400ms ease,right 400ms ease,bottom 400ms ease;transform-origin:center}
 .is-expanded .kural-orb-stage{width:104px;height:104px;right:calc(50% - 52px);bottom:calc(100% - 148px)}
 .kural-floating-orb{position:relative;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:100%;height:100%;border:0;border-radius:50%;padding:0;background:transparent;cursor:pointer;touch-action:manipulation}.kural-orb-canvas{position:relative;display:block;width:100%;height:100%;pointer-events:none;opacity:1;transition:opacity 350ms ease;aspect-ratio:1}
 .kural-card-header{position:absolute;top:8px;left:12px;right:8px;height:30px;display:flex;align-items:center;gap:2px;font-size:13px}.kural-card-header strong{margin-right:auto}.kural-card-header button,.kural-popup-heading button{display:grid;place-items:center;min-width:32px;min-height:32px;border:0;background:transparent;color:inherit;padding:6px;cursor:pointer}
@@ -55,7 +55,7 @@
 .kural-answer.is-full .kural-answer-viewport{max-height:none;overflow-y:auto;overscroll-behavior:contain}
 .kural-show-more{flex:none;align-self:center;min-height:32px;padding:5px 12px;border:0;background:transparent;color:#0e8a55;font-size:12px;cursor:pointer}
 .kural-card-body .kural-words{position:static;max-height:none;display:block;overflow:visible;white-space:pre-wrap;-webkit-line-clamp:unset;font-size:17px;margin:0}
-.is-expanded .kural-orb-stage{right:-1px;bottom:-1px;width:var(--rest-size);height:var(--rest-size)}
+.is-expanded .kural-orb-stage{right:0;bottom:0;width:var(--rest-size);height:var(--rest-size)}
 .is-expanded .kural-orb-canvas{width:100%;height:100%}
 .kural-live-wave{width:100%;height:28px;fill:#0e8a55}.kural-route-debug{font-size:10px;color:#5b7e6a;overflow-wrap:anywhere}
 .dark .kural-interaction-card.kural-card-body,[data-theme=dark] .kural-interaction-card.kural-card-body{background:rgba(17,39,28,.96);border-color:#547c6399}

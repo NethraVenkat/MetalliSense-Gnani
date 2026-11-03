@@ -26,6 +26,16 @@ def wav():
     with wave.open(out,'wb') as w:w.setparams((1,2,16000,0,'NONE',''));w.writeframes(bytes(3200))
     return out.getvalue()
 
+def test_confirmation_timeout_is_an_auditable_nonexecution():
+    app=FastAPI();app.include_router(router)
+    with TestClient(app) as client:
+        sid=client.post('/copilot/voice/session',json={}).json()['session_id']
+        response=client.post('/copilot/voice/audit',headers={'X-Voice-Session':sid},json={'intent':'test-action','level':'RUN','decision':'timeout','error':'confirmation_timeout','summary':'No reply — action not done.'})
+        assert response.status_code==200
+        assert response.json()['event']['decision']=='timeout'
+        assert response.json()['event']['backend_result'] is None
+        assert AUDIT.verify(today())['ok']
+
 def test_hash_roundtrip_digits_and_roles(monkeypatch):
     code,u=fixture_user(monkeypatch);assert code not in json.dumps(u);assert len(u['salt'])==32;assert u['iterations']>=200000
     for group in DIGIT_GROUPS:

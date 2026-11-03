@@ -68,7 +68,7 @@ def append(body:dict=Body(...),x_voice_session:str=Header('')):
     enabled('VOICE_AUDIT_ENABLED');sid=session(x_voice_session)
     # During an approval challenge, a malicious/mistaken client cannot persist secret text.
     if AUTH.sensitive(sid):body={**body,'transcript':'','confirmation':'passcode'}
-    if body.get('decision') not in ['executed','refused','cancelled','failed','locked']:raise HTTPException(422,'Invalid decision')
+    if body.get('decision') not in ['executed','refused','cancelled','timeout','failed','locked']:raise HTTPException(422,'Invalid decision')
     body={**body,'user':AUTH.identities.get(sid)}
     try:return {'event':AUDIT.append(body,sid),'source':'client-reported; not independent backend verification'}
     except ValueError:raise HTTPException(409,'Audit integrity check failed') from None
