@@ -65,7 +65,7 @@ export default function CostAnalysis() {
     }
   };
 
-  useRegisterVoicePage({}, 'CostAnalysis',{elementPrices,baseMetalPrices,history,loading});
+  useRegisterVoicePage({}, 'CostAnalysis',{elementPrices,baseMetalPrices,history,loading},()=>loadAll());
 
   if (loading) {
     return (

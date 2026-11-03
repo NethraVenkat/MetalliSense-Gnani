@@ -55,24 +55,7 @@ export async function dispatch(method,url,body){
  if(path==='/__mock/optimize'){
   try { const {solveCharge}=await import('./handlers/optimizer.js');const st=requirePort('premeltGate/store'),plan=st.heats.list().find(h=>h.grade===body.grade&&h.status==='PLANNED'),baseline=plan?plan.charge.reduce((s,l)=>s+l.kg*(st.getLot(l.lotId)?.costPerKg||0),0)*Number(body.targetKg)/plan.targetKg:0;st.log('CHARGE_RECOMMENDATION',body.grade,'demo planner','Optimized '+body.targetKg+' kg charge');const response={status:200,data:{status:'success',data:solveCharge({...body,currentPlanCost:body.currentPlanCost??baseline},st.listLots().map(l=>({...l,availableKg:st.availableKg(l.lotId)})),requirePort('premeltGate/config'),requirePort('premeltGate/chemistry'))}};await persist();return response; } catch(e) {return {status:422,data:{message:e.message}};}
  }
- if(path==='/__mock/accept-strategy'){
-  const st=requirePort('premeltGate/store'),h=st.heats.get(body.heatId),b=body;
-  if(!h||h.status!=='MELTING')return {status:409,data:{message:'A melting heat is required'}};
-  if(h.acceptedStrategy){if(h.acceptedStrategy.strategy!==b.candidate.strategy)return {status:409,data:{message:'A strategy was already applied to this heat'}};return {status:200,data:{status:'success',data:h.acceptedStrategy}};}
-  const additions=b.candidate.recommended_additions||{},mass=h.gate.prediction.metalKg;
-  if(Object.entries(additions).some(([e,v])=>!['Fe','C','Si','Mn','P','S'].includes(e)||!Number.isFinite(v)||v<0))return {status:422,data:{message:'Strategy additions must be finite nonnegative element percentages'}};
-  if(Object.entries(additions).some(([e,v])=>['P','S'].includes(e)&&v>0))return {status:409,data:{message:'No approved inventory source for adding phosphorus or sulfur'}};
-  const lines=requirePort('premeltGate/additives').suggest(additions,mass);
-  if(additions.Fe>0){const lot=st.listLots().find(l=>l.materialType==='PIG_IRON'&&l.status==='RELEASED'&&st.availableKg(l.lotId)>0);if(!lot)return {status:409,data:{message:'No released pig iron available for the accepted Fe addition'}};const kg=mass*additions.Fe/100/((requirePort('premeltGate/chemistry').lotChemistry(lot).composition.Fe||94)/100);lines.push({lotId:lot?.lotId,kg,inStock:!!lot&&kg<=st.availableKg(lot.lotId),element:'Fe'});}
-  if(lines.some(l=>!l.lotId||!l.inStock||!Number.isFinite(l.kg)||l.kg<=0||l.kg>st.availableKg(l.lotId)))return {status:409,data:{message:'Accepted strategy cannot be applied: insufficient released additive stock'}};
-  const before=structuredClone(st.snapshot()),oldExtra=structuredClone(extra);
-  try {
-   for(const l of lines)st.addMovement({lotId:l.lotId,kg:-l.kg,type:'ADDITION',heatId:h.heatId,by:'operator',note:'Accepted '+b.candidate.strategy});
-   h.acceptedStrategy={...b.candidate,deductedLines:lines};h.correctionReading=b.composition;h.currentComposition={...b.composition};h.postCorrectionTicks=0;
-   ai.feedback({grade:h.grade,composition:b.composition,additions,aggressiveness:b.candidate.aggressiveness,outcome:'accepted',heatId:h.heatId});
-   st.log('STRATEGY_ACCEPTED',h.heatId,'operator',b.candidate.strategy+'; accepted candidate quantities deducted');await persist();return {status:200,data:{status:'success',data:h.acceptedStrategy}};
-  } catch(e){st.restore(before);extra=oldExtra;return {status:409,data:{message:e.message}};}
- }
+ if(path==='/__mock/accept-strategy'){try{const data=requirePort('premeltGate/strategyAcceptance').accept(body.heatId,{...body,by:body.by||'operator'});await persist();return {status:200,data:{status:'success',data}};}catch(e){return {status:e.status||500,data:{message:e.message}};}}
  if(path==='/api/v2/sales/orders')return {status:200,data:{status:'success',data:extra.orders}};
  if(path==='/api/v2/alerts/send-email'){const message=outbox('Deviation '+body.severity,body.batchId||body.grade,JSON.stringify(body));await persist();return {status:200,data:{status:'success',data:{sent:false,queued:true,message}}};}
  if(path==='/__mock/state')return {status:200,data:{store:requirePort('premeltGate/store').snapshot(),extra}};

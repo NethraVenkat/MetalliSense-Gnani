@@ -411,7 +411,7 @@ export default function PreMeltGate() {
   const residualDetail = gate?.checks.find((c) => c.id === "residuals")?.details || [];
   const statusOf = (list, el) => list.find((d) => d.element === el)?.status;
 
-  useRegisterVoicePage({heatId,grade:heat?.heatId===heatId?heat.grade:undefined}, 'PreMeltGate',{heats,heat,lots,charge,dirty,loading:booting,busy:checking},()=>{loadHeat(heatId);loadHeats(heatId);loadAudit();});
+  useRegisterVoicePage({heatId,grade:heat?.heatId===heatId?heat.grade:undefined}, 'PreMeltGate',{heats,heat,lots,charge,dirty,loading:booting,busy:checking,voiceForms:{plan_heat:newHeat,edit_charge:{heatId,charge}}},({id,data})=>{if(['start_melting','override_start'].includes(id)&&heat?.gateResult&&data?.heatId===heat.heatId)gatePassed(data,heat.gateResult);if(id==='reset_demo'){holdAnnouncer.reset();setHeatId('');}loadHeat(heatId);loadHeats(heatId);loadAudit();});
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

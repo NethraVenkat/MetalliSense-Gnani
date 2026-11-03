@@ -360,7 +360,7 @@ export default function SalesInvoices() {
     };
   }, [heats, invoices]);
 
-  useRegisterVoicePage({heatId:view?.heatId,invoiceId:view?.invoice?.invoiceId}, 'SalesInvoices',{heats,invoices,loading});
+  useRegisterVoicePage({heatId:view?.heatId,invoiceId:view?.invoice?.invoiceId}, 'SalesInvoices',{heats,invoices,customers,loading},()=>load());
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

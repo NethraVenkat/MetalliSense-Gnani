@@ -42,8 +42,7 @@ export const sendChatMessage = (message, includeContext = true) =>
  * Clear conversation history
  * @returns {Promise} Success response
  */
-export const clearChatHistory = () =>
-  copilotApi.delete("/copilot/chat/history");
+export const clearChatHistory = async () => {const response=await copilotApi.delete("/copilot/chat/history");globalThis.window?.dispatchEvent?.(new Event("kural-chat-cleared"));return response;};
 
 /**
  * Transcribe audio to text (Speech-to-Text)

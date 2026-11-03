@@ -240,3 +240,6 @@ module.exports = {
   },
   audit: () => audit,
 };
+
+module.exports.snapshot=()=>({lots:[...lots],movements,qaResults:[...qaResults],gunSessions:[...gunSessions],heats:[...heats],audit,counters});
+module.exports.restore=s=>{lots=new Map(s.lots);movements=s.movements;qaResults=new Map(s.qaResults);gunSessions=new Map(s.gunSessions);heats=new Map(s.heats);audit=s.audit;counters=s.counters;};

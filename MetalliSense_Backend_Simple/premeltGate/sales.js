@@ -117,18 +117,6 @@ function completeHeat(heatId, body = {}) {
   if (!heat) throw err(404, `Heat ${heatId} not found`);
   if (heat.status === 'COMPLETED' && heat.tap) return heatView(heat);
   if (!body.approvedBy || !String(body.approvedBy).trim()) throw err(400, "The engineer's name is required to approve the tap");
-  if (heat.status === 'PLANNED' && body.resume) {
-    // The browser still has this heat's melt flow, but the server was restarted
-    // (demo data reset) so the heat is back to PLANNED. Close it from the saved flow.
-    heat.charge.forEach((l) => {
-      const kg = Math.min(Number(l.kg), store.availableKg(l.lotId));
-      if (kg > 0) store.addMovement({ lotId: l.lotId, type: 'CHARGE', kg: -kg, heatId, by: String(body.approvedBy).trim(), note: `Charged to ${heatId}` });
-    });
-    heat.status = 'MELTING';
-    heat.start = { at: new Date(), by: String(body.approvedBy).trim(), mode: 'RESUMED', gateId: heat.gate?.gateId || null, gateDecision: body.gateDecision || heat.gate?.decision || null, note: 'Melted before a server restart; closed from the saved melt flow' };
-    try { heat.energyAtStart = energy.gateSnapshot(heat, heat.start.gateDecision); } catch { /* optional */ }
-    store.log('HEAT_RESUMED', heatId, heat.start.by, 'Server restarted during the melt — heat closed from the saved melt flow');
-  }
   if (heat.status !== 'MELTING') throw err(409, `Heat ${heatId} is ${String(heat.status).toLowerCase()} — start melting it on the Pre-Melt Gate first`);
 
   const composition = body.composition || heat.gate?.prediction?.composition || {};

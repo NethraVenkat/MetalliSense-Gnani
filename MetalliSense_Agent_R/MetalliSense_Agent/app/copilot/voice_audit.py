@@ -57,7 +57,7 @@ class Audit:
         date=today()
         with LOCK:
             if not self.verify(date)['ok']:raise ValueError('Audit chain damaged; append refused')
-            rows=self.rows(date);row={k:safe(event.get(k)) for k in ['page','user','level','intent','summary','confirmation','decision','backend_result','error','event_id']}
+            rows=self.rows(date);row={k:safe(event.get(k)) for k in ['page','user','level','intent','summary','confirmation','decision','backend_result','error','event_id','confirmation_word','confirmation_word_verified']}
             row.update(ts=dt.datetime.now(dt.timezone.utc).isoformat(),seq=len(rows)+1,session_id=session,transcript=MASK if event.get('confirmation')=='passcode' else mask(event.get('transcript')),prev_hash=rows[-1]['hash'] if rows else '0'*64)
             row['hash']=hashlib.sha256(canonical(row)).hexdigest();p=self.path(date);p.parent.mkdir(parents=True,exist_ok=True)
             with p.open('a',encoding='utf-8',newline='\n') as stream:stream.write(json.dumps(row,ensure_ascii=False)+'\n');stream.flush();os.fsync(stream.fileno())

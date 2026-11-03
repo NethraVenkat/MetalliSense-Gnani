@@ -51,7 +51,7 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
       return;
     }
     if(voiceActionsEnabled()&&!tourActive()){
-      if(neverByVoice(text)){const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);await actionControl?.(text,pageContext,{refused:true});return output(screenOnly[replyLang],screenOnly[replyLang],replyLang);}
+      if(neverByVoice(text,pageContext?.route)){const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);await actionControl?.(text,pageContext,{refused:true});return output(screenOnly[replyLang],screenOnly[replyLang],replyLang);}
       if(actionControl&&await actionControl(text,pageContext))return;
     }
     const historicalRead=loadedPageAnswersEnabled()&&!tourActive()&&isHistoricalVoiceAsk(text);

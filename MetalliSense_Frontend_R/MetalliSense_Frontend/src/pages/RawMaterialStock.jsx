@@ -52,6 +52,7 @@ function ReceiveModal({ open, onClose, onDone, scenarios, pr }) {
     }
   };
 
+  useRegisterVoicePage({}, 'ReceiveLotForm',{voiceForms:{receive_lot:f}},()=>{onDone();onClose();},open);
   return (
     <Modal isOpen={open} onClose={onClose} title="Receive truck (GRN)" size="lg">
       <div className="grid sm:grid-cols-3 gap-3">
@@ -276,6 +277,7 @@ function FerroalloyReceiveModal({ open, onClose, onDone, pr }) {
       onDone(); onClose();
     } catch(e){ toast.error(errMsg(e)); } finally { setSaving(false); }
   };
+  useRegisterVoicePage({}, 'ReceiveAlloyForm',{voiceForms:{receive_alloy:f}},()=>{onDone();onClose();},open);
   return (
     <Modal isOpen={open} onClose={onClose} title="Receive ferroalloy / additive batch" size="lg">
       <p className="text-sm text-metal-600 mb-4">Certificate chemistry from the supplier. Released immediately on receipt.</p>

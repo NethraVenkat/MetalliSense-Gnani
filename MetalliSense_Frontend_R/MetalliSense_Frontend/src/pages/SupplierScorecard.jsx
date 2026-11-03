@@ -1,3 +1,4 @@
+import {ahpLocal} from '../services/supplierWeights';
 import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -142,23 +143,6 @@ function Section({ n, title, children, hint }) {
 
 // ─────────────────────────────────────────────── AHP
 // Client-side AHP so the consistency ratio updates while the sliders move.
-function ahpLocal(j) {
-  const A = PILLAR_KEYS.map(() => PILLAR_KEYS.map(() => 1));
-  PILLAR_KEYS.forEach((a, i) => PILLAR_KEYS.forEach((b, k) => {
-    if (i >= k) return;
-    const v = Number(j[`${a}:${b}`]) || 1;
-    A[i][k] = v;
-    A[k][i] = 1 / v;
-  }));
-  const n = PILLAR_KEYS.length;
-  const gm = A.map((row) => row.reduce((p, x) => p * x, 1) ** (1 / n));
-  const sum = gm.reduce((a, b) => a + b, 0);
-  const w = gm.map((g) => g / sum);
-  const Aw = A.map((row) => row.reduce((s, x, k) => s + x * w[k], 0));
-  const lambda = Aw.reduce((s, v, i) => s + v / w[i], 0) / n;
-  const CR = (lambda - n) / (n - 1) / RI[n];
-  return { w, CR, lambda };
-}
 // Slider position −8…+8  ↔  Saaty value 1/9…9
 const toSlider = (v) => (v >= 1 ? Math.round(v - 1) : -Math.round(1 / v - 1));
 const fromSlider = (x) => (x >= 0 ? x + 1 : 1 / (1 - x));
@@ -734,7 +718,7 @@ export default function SupplierScorecard() {
 
   const pillarLine = data?.pillars?.map((p) => `${p.label} ${Math.round(p.weight)}%`).join(" · ");
 
-  useRegisterVoicePage({}, 'SupplierScorecard',{data,loading,materialTypes:[...new Set((data?.suppliers||[]).map(s=>s.materialType))]});
+  useRegisterVoicePage({}, 'SupplierScorecard',{data,loading,materialTypes:[...new Set((data?.suppliers||[]).map(s=>s.materialType))]},()=>load());
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

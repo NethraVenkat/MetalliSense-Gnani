@@ -57,6 +57,10 @@ def authorize(body:dict=Body(...),x_voice_session:str=Header('')):
     enabled('VOICE_ACTIONS_ENABLED');sid=session(x_voice_session);payload(body,{'action_id','required_roles','spoken_code_text'})
     try:return AUTH.authorize(sid,str(body.get('action_id','')),body.get('required_roles',[]),str(body.get('spoken_code_text',''))[:250])
     except (ValueError,TypeError):raise HTTPException(503,'Voice approval configuration unavailable') from None
+@router.post('/token/confirm')
+def confirm_word(body:dict=Body(...),x_voice_session:str=Header('')):
+    enabled('VOICE_ACTIONS_ENABLED');sid=session(x_voice_session);payload(body,{'token','action_id','spoken_word'})
+    return AUTH.confirm_word(sid,body.get('token'),body.get('action_id'),str(body.get('spoken_word',''))[:50])
 @router.post('/token/consume')
 def consume(body:dict=Body(...),x_voice_session:str=Header('')):
     enabled('VOICE_ACTIONS_ENABLED');return AUTH.consume(session(x_voice_session),body.get('token',''),body.get('action_id',''))

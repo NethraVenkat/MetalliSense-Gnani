@@ -1,0 +1,24 @@
+{
+  "mocked": true,
+  "providerCalls": 0,
+  "physicalMicrophone": false,
+  "states": [
+    "form-conversation",
+    "override-readback",
+    "override-word",
+    "override-countdown",
+    "delete-word",
+    "delete-countdown",
+    "run-readback",
+    "run-listening",
+    "run-completed",
+    "approve-readback",
+    "approve-passcode",
+    "approve-countdown",
+    "approve-result",
+    "hold-refusal",
+    "never-list-refusal"
+  ],
+  "width": 1280,
+  "theme": "light"
+}

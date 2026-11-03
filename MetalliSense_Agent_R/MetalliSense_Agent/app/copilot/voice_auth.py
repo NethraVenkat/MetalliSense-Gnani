@@ -2,7 +2,7 @@
 import hashlib,json,os,re,secrets,threading,time,unicodedata
 from collections import deque
 from .voice_audit import DIGITS,AUDIT,MASK,data_root,canonical
-from .voice_policy import ROLES,ACTIONS,forbidden
+from .voice_policy import ROLES,ACTIONS,forbidden,SCOPE_ACTIONS
 from .voice_numbers import NUMBERS
 ITERATIONS=300_000
 
@@ -65,7 +65,7 @@ class VoiceAuth:
     def readback(self,session,action,summary,page):
         with self.lock:
             policy=ACTIONS.get(action)
-            if not self.valid_session(session) or not policy or forbidden(action,summary) or policy['level']=='APPROVE' and re.search(r'\bHOLD\b',str(summary),re.I):return False
+            if not self.valid_session(session) or not policy or (forbidden(action,summary) and action not in SCOPE_ACTIONS) or policy['level']=='APPROVE' and action!='override_start' and re.search(r'\bHOLD\b',str(summary),re.I):return False
             if policy['level']=='APPROVE':self.private_until[session]=self.clock()+75
             self.readbacks[session]={'action':action,'ts':self.clock(),'summary':str(summary)[:500],'page':str(page)[:200],'level':policy['level']};return True
     def sensitive(self,session):return self.clock()<self.private_until.get(session,0)
@@ -73,7 +73,7 @@ class VoiceAuth:
         with self.lock:
             self.load_lock();now=self.clock();rb=self.readbacks.get(session);policy=ACTIONS.get(action)
             if now<self.locked_until:return {'ok':False,'locked':True,'retry_after':int(self.locked_until-now)+1}
-            if not self.valid_session(session) or not rb or rb['action']!=action or now-rb['ts']>15 or not policy or policy['level']!='APPROVE' or forbidden(action,rb['summary']):return {'ok':False}
+            if not self.valid_session(session) or not rb or rb['action']!=action or now-rb['ts']>15 or not policy or policy['level']!='APPROVE' or (forbidden(action,rb['summary']) and action not in SCOPE_ACTIONS):return {'ok':False}
             # The caller cannot lower the registered server-side role requirement.
             required=set(policy['roles'])
             if not required or set(roles)!=required:return {'ok':False}
@@ -92,10 +92,19 @@ class VoiceAuth:
             del self.readbacks[session];self.failures.clear();self.save_lock();token=secrets.token_urlsafe(32);self.tokens[hashlib.sha256(token.encode()).hexdigest()]={'session':session,'action':action,'expires':now+60,'user':match}
             AUDIT.append(dict(level='APPROVE',intent=action,user=match,confirmation='passcode',decision='executed',summary='Approval credential verified; no plant execution'),session)
             return {'ok':True,'user':match,'token':token}
+    def confirm_word(self,session,token,action,text):
+        with self.lock:
+            key=hashlib.sha256(str(token).encode()).hexdigest();value=self.tokens.get(key);expected=ACTIONS.get(action,{}).get('confirm_word')
+            if not value or not expected or value['session']!=session or value['action']!=action or self.clock()>=value['expires'] or value.get('word_verified'):return {'ok':False}
+            word=''.join(c for c in unicodedata.normalize('NFKC',str(text)) if not unicodedata.category(c).startswith('P')).strip().upper()
+            if word!=expected:
+                del self.tokens[key];return {'ok':False}
+            value['word_verified']=True;return {'ok':True}
     def consume(self,session,token,action):
         with self.lock:
             key=hashlib.sha256(str(token).encode()).hexdigest();value=self.tokens.get(key)
             if not value or value['session']!=session or value['action']!=action or self.clock()>=value['expires']:return {'ok':False}
+            if ACTIONS.get(action,{}).get('confirm_word') and not value.get('word_verified'):return {'ok':False}
             del self.tokens[key];self.identities[session]=value['user'];return {'ok':True,'user':value['user']}
     def cancel(self,session):
         with self.lock:

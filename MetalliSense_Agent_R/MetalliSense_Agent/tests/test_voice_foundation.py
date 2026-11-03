@@ -169,3 +169,35 @@ def test_f17_frontend_and_server_action_policy_parity():
     assert len(entries)==21
     for action,level,roles in entries:
         assert ACTIONS[action]=={'level':level,'roles':ast.literal_eval(roles)}
+
+@pytest.mark.parametrize('action',list(__import__('copilot.voice_policy',fromlist=['SCOPE_ROLES']).SCOPE_ROLES))
+def test_f17b_scope_roles_cannot_be_lowered(action):
+    from copilot.voice_policy import SCOPE_ROLES
+    assert ACTIONS[action]['roles']==SCOPE_ROLES[action]
+    s=auth.VoiceAuth();sid=s.session();summary='This overrides a HOLD gate; H-1053; reason reviewed' if action=='override_start' else action.replace('_',' ')+' target fixture'
+    assert s.readback(sid,action,summary,'/fixture')
+    assert not s.authorize(sid,action,[], 'not a credential')['ok']
+
+@pytest.mark.parametrize('action,word',[('delete_reading','DELETE'),('delete_grade','DELETE'),('delete_training','DELETE'),('reset_demo','RESET'),('clear_chat','CLEAR'),('override_start','OVERRIDE')])
+def test_f17b_server_requires_word_before_token_consumption(action,word,monkeypatch):
+    from copilot.voice_policy import ACTIONS
+    role=ACTIONS[action]['roles'][0];code=''.join(str(secrets.randbelow(10)) for _ in range(6));monkeypatch.setenv('VOICE_USERS',json.dumps([auth.entry('fixture','Synthetic Actor',role,code)]))
+    s=auth.VoiceAuth();sid=s.session();assert s.readback(sid,action,'Reviewed target and all fields','/fixture')
+    approval=s.authorize(sid,action,ACTIONS[action]['roles'],code);assert approval['ok'];token=approval['token']
+    assert not s.consume(sid,token,action)['ok']
+    assert not s.confirm_word(s.session(),token,action,word)['ok']
+    assert s.confirm_word(sid,token,action,word)['ok']
+    assert not s.confirm_word(sid,token,action,word)['ok']
+    assert s.consume(sid,token,action)['ok']
+    assert not s.consume(sid,token,action)['ok']
+    assert s.readback(sid,action,'Reviewed target','/fixture');approval=s.authorize(sid,action,ACTIONS[action]['roles'],code);assert approval['ok']
+    assert not s.confirm_word(sid,approval['token'],action,'NO')['ok']
+    assert not s.consume(sid,approval['token'],action)['ok']
+
+def test_f17b_hold_override_identity_is_unit_controller_only(monkeypatch):
+    first=''.join(str(secrets.randbelow(10)) for _ in range(6));second=str((int(first)+1)%1000000).zfill(6)
+    monkeypatch.setenv('VOICE_USERS',json.dumps([auth.entry('manager','Synthetic Manager','Manager',first),auth.entry('controller','Synthetic Controller','Unit Controller',second)]))
+    s=auth.VoiceAuth();sid=s.session();assert not s.readback(sid,'approve_tap','H-1053 HOLD','/fixture')
+    assert s.readback(sid,'override_start','This overrides a HOLD gate H-1053; reviewed reason','/fixture')
+    assert not s.authorize(sid,'override_start',['Unit Controller'],first)['ok']
+    approval=s.authorize(sid,'override_start',['Unit Controller'],second);assert approval['ok'];assert approval['user']['role']=='Unit Controller'

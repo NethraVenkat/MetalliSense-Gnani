@@ -245,7 +245,7 @@ const TrainingData = () => {
     );
   };
 
-  useRegisterVoicePage({grade:selectedSample?.grade||gradeFilter,sampleId:selectedSample?._id}, 'TrainingData',{trainingData,pagination,selectedSample,loading});
+  useRegisterVoicePage({grade:selectedSample?.grade||gradeFilter,sampleId:selectedSample?._id}, 'TrainingData',{trainingData,pagination,selectedSample,loading},()=>fetchTrainingData());
 
   return (
     <div className="space-y-6">

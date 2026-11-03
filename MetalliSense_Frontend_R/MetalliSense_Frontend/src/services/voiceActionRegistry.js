@@ -1,3 +1,10 @@
+import {prepareFormAction} from './voiceFormActions';
+import * as grades from './gradeSpecService';
+import * as training from './trainingDataService';
+import * as cost from './costService';
+import {prepareDecisionAction} from './voiceDecisionActions';
+import * as sales from './salesService';
+import {nativeActionText,nativeReadback} from './voiceActionLanguages';
 // F17 · Builder: Manish. Same page services, no alternate plant endpoints.
 import * as plant from './premeltService';
 import * as inventory from './inventoryService';
@@ -32,7 +39,7 @@ export const actionDefinitions=[
  ['reject_dri_qa','/raw-material-stock','APPROVE',['Supervisor','Manager'],'reject dri qa','rejectDriQa'],
  ['inspect_lot','/yard-inspection','APPROVE',['Supervisor'],'inspect lot','startInspection'],
 ].map(([id,page,level,requiredRoles,phrase,service])=>({id,page,level,requiredRoles,phrase,service}));
-const defaults={...plant,...inventory,...insights,...ai,...spectrometer,...copilot,runFullAnalysis,semanticSearch,predictMechanical};
+const defaults={...grades,...training,...cost,...sales,...plant,...inventory,...insights,...ai,...spectrometer,...copilot,runFullAnalysis,semanticSearch,predictMechanical};
 export const unwrapAction=r=>r?.data?.data??r?.data;
 const canonical=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[\s_-]+/g,'');
 function requireValue(ok,message){if(!ok){const error=Error(message);error.refused=true;throw error;}}
@@ -47,10 +54,13 @@ export function resolveVoiceTarget(text,rows,key,selected,label){
  const selectedRows=rows.filter(r=>selected&&canonical(r[key])===canonical(selected));requireValue(selectedRows.length===1,`Which ${label}? Select one on this page or say its ID.`);return selectedRows[0];
 }
 export function prepareVoiceAction(text,pageContext,services=defaults){
- const normalized=normalizeSpokenNumbers(text).normalize('NFKC').toLowerCase().replace(/[.!?]/g,'').trim();
+ const form=prepareFormAction(text,pageContext,services);if(form)return form;
+ const decision=prepareDecisionAction(text,pageContext,services);if(decision)return decision;
+ const canonicalText=nativeActionText(text,actionDefinitions.filter(d=>d.page===pageContext?.route));
+ const normalized=normalizeSpokenNumbers(canonicalText).normalize('NFKC').toLowerCase().replace(/[.!?]/g,'').trim();
  const definition=actionDefinitions.find(d=>d.page===pageContext?.route&&(normalized===d.phrase||normalized.startsWith(d.phrase+' ')));
  if(!definition)return null;
- const loaded=pageContext.loaded||{},selected=pageContext.selected||{};let target,payload,summary,prepared=false;
+ text=canonicalText;const loaded=pageContext.loaded||{},selected=pageContext.selected||{};let target,payload,summary,prepared=false;
  const fail=message=>requireValue(false,message);
  const prepare=async()=>{
   requireValue(!loaded.loading&&!loaded.busy,'Wait for this page to finish loading.');
@@ -94,7 +104,7 @@ export function prepareVoiceAction(text,pageContext,services=defaults){
   }
   prepared=true;return {ok:true};
  };
- return {...definition,needsReason:definition.id.startsWith('reject_'),precheck:prepare,buildSummary:()=>({displayText:summary,spokenText:summary}),async execute(ctx){
+ return {...definition,needsReason:definition.id.startsWith('reject_'),precheck:prepare,buildSummary:(ctx={})=>({displayText:summary,spokenText:nativeReadback(definition.id,summary,ctx.lang)}),async execute(ctx){
   requireValue(prepared,'Read-back was not prepared.');requireValue(pageContext.isCurrent?.(pageContext.scope)!==false,'Page changed; action cancelled.');let response;const id=definition.id;
   if(id==='start_melting'){
    const fresh=unwrapAction(await services.getHeat(target.heatId));requireValue(fresh?.gateResult?.decision!=='HOLD',`${target.heatId} is on HOLD — only an engineer can override, on screen.`);requireValue(fresh?.gateResult?.gateId===target.gateResult?.gateId&&fresh.status==='PLANNED'&&Date.parse(fresh.gateResult.validUntil)>Date.now()&&!fresh.gate?.stale,'Gate changed or expired; run the check again.');

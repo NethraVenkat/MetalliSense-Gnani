@@ -251,7 +251,6 @@ export default function MechanicalProperties() {
         standard: std,
         acceptedStrategy: flow.acceptedStrategy,
         gateDecision: flow.gateDecision,
-        resume: true, // if the server was restarted during the melt, close the heat from this saved flow
       });
       setFinished(res.data.data);
       setServerMissing(false);
@@ -269,7 +268,7 @@ export default function MechanicalProperties() {
   const isCastIron = grade?.includes("IRON");
   const comp = reading?.composition || flow.predictedComposition;
 
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'MechanicalProperties',{reading,result,finished,busy:loading},({data})=>{setResult(data);if(isUnlocked)mechDone(data);});
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'MechanicalProperties',{reading,result,finished,busy:loading,flow,comp,standard:std},({id,data})=>{if(id==='approve_tap'){setFinished(data);setServerMissing(false);approveTap();}else{setResult(data);if(isUnlocked)mechDone(data);}});
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
