@@ -23,16 +23,16 @@ export async function* readAudioEvents(response) {
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 
-export async function playSpeechStream(text, lang, style, { signal, onAudioStart = () => {}, isCurrent = () => true } = {}) {
+export async function playSpeechStream(text, lang, style, { signal, onAudioStart = () => {}, onPresentationSource=()=>{}, isCurrent = () => true } = {}) {
   const started = performance.now();
   const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AudioContext) throw new Error('web_audio_unavailable');
   const context = new AudioContext();
   let next = 0, first = null, audioMs = 0, path = 'stream', ended = false;
-  const nodes = new Set(), finishes = [];
+  const nodes = new Set(), finishes = [];let presentationStart=null;
   const stop = () => {
     for (const item of nodes) { try { item.node.stop(); } catch {} item.finish(); }
-    nodes.clear(); next = context.currentTime + .02;
+    nodes.clear(); next = context.currentTime + .02;presentationStart=null;
   };
   signal?.addEventListener('abort', stop);
   async function enqueue(data, encoding, rate) {
@@ -52,6 +52,7 @@ export async function playSpeechStream(text, lang, style, { signal, onAudioStart
     }));
     nodes.add(item);
     next = Math.max(next,context.currentTime + .02);
+    if(presentationStart===null){presentationStart=next;onPresentationSource(()=>({progress:ended&&audioMs>0&&presentationStart!==null?(context.currentTime-presentationStart)/(audioMs/1000):null}));}
     if (first == null) { first = performance.now()-started + (next-context.currentTime)*1000; onAudioStart(); }
     node.start(next); next += buffer.duration; audioMs += buffer.duration*1000;
   }
@@ -74,7 +75,7 @@ export async function playSpeechStream(text, lang, style, { signal, onAudioStart
       const result = await synthesizeSpeechWithMeta(text,lang,style);
       if (signal?.aborted) throw new DOMException('Aborted','AbortError');
       path = result.source === 'cache' ? 'cache' : result.provider?.includes('timbre-v2.5') || result.provider === 'gtts' ? 'fallback' : 'rest';
-      await enqueue(new Uint8Array(await result.blob.arrayBuffer()),'file');
+      await enqueue(new Uint8Array(await result.blob.arrayBuffer()),'file');ended=true;
     }
     await Promise.all(finishes);
     return { time_to_first_audio_ms:first, total_audio_ms:audioMs, total_ms:performance.now()-started, path };

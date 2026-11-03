@@ -24,7 +24,6 @@ const GradeSpecs = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingGrade, setEditingGrade] = useState(null);
   const [selectedGrade, setSelectedGrade] = useState(null);
-  useRegisterVoicePage({grade:selectedGrade?.grade}, 'GradeSpecs');
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -70,6 +69,8 @@ const GradeSpecs = () => {
       grade.standard?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       grade.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  useRegisterVoicePage({grade:selectedGrade?.grade}, 'GradeSpecs',{grades:filteredGrades,loading});
 
   const handleOpenModal = (grade = null) => {
     if (grade) {

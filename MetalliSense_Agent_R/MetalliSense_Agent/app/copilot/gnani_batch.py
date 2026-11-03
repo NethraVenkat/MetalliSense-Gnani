@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
+from .provider_calls import provider_slot
 from .gnani_client import DEFAULT_BASE_URL, get_stt_config, _env_bool
 
 MAX_BYTES = 10_000_000
@@ -120,7 +121,7 @@ class GnaniBatchClient:
         headers = {'X-API-Key-ID': self.key}
         try:
             async with asyncio.timeout(TOTAL_TIMEOUT):
-                async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
+                async with provider_slot(), httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
                     async def request(method, path, **kwargs):
                         for attempt in range(3):
                             response = await client.request(method, self.base + path, headers=headers, **kwargs)

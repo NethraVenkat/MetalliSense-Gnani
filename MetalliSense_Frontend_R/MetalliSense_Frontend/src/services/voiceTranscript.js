@@ -1,3 +1,4 @@
+import {morningBriefingEnabled,isMorningBriefing,morningBriefing,morningUnavailable,fetchMorningRows} from './morningBriefing';
 import { getAdditives, getHeats, getHeat, getShiftSummaryHeats } from './premeltService';
 import { sendChatMessage, phraseGateFacts } from './copilotService';
 import { gatePhraseFacts } from './gatePhraseFacts';
@@ -16,6 +17,7 @@ import * as stockServices from './premeltService';
 import * as spectrometerServices from './spectrometerService';
 import * as gradeServices from './gradeSpecService';
 import * as opcServices from './opcService';
+import {loadedPageAnswersEnabled,isLoadedPageQuestion,loadedPageAnswer} from './loadedVoiceAnswers';
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
@@ -47,10 +49,24 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
       const refusal=blockedVoiceReplies[replyLang];
       return output(refusal,refusal,replyLang,...(metadata.voiceTiming?[{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}]:[]));
     }
+    if(loadedPageAnswersEnabled()&&!tourActive()&&isLoadedPageQuestion(text,pageContext?.route)){
+      const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      if(mapIntent(text,{langBridge:true}).intent==='blocked')return output(blockedVoiceReplies[replyLang],blockedVoiceReplies[replyLang],replyLang);
+      const answer=loadedPageAnswer(text,pageContext,replyLang);
+      return output(answer,answer,replyLang,{pronunciationOnly:true});
+    }
     if(intent==='tour_control')return tourControl(params.action,params.action==='start'?questionReplyLanguage(text,metadata.detected_language_code,currentLang):undefined);
     if(tourActive()){
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang),message=tourRunningReply[replyLang];
       return output(message,message,replyLang);
+    }
+    if(morningBriefingEnabled()&&pageContext?.route==='/dashboard'&&isMorningBriefing(text)) {
+      const answerLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      if(mapIntent(text,{langBridge:true}).intent==='blocked')return output(blockedVoiceReplies[answerLang],blockedVoiceReplies[answerLang],answerLang);
+      let answer=morningUnavailable[answerLang];
+      try {const rows=await fetchMorningRows(dashboardBriefingServices?.getShiftSummaryHeats||getShiftSummaryHeats,dashboardBriefingServices?dashboardBriefingServices.getHeat:getHeat);answer=morningBriefing(rows,answerLang);}catch {/* honest unavailable */}
+      if(!dashboardBriefingLifecycle.isCurrent(dashboardRequestId,answerLang,pageContext?.scope,currentLang))return;
+      return output(answer,answer,answerLang,{pronunciationOnly:true});
     }
     if(intent==='dashboard_briefing') {
       const answerLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);

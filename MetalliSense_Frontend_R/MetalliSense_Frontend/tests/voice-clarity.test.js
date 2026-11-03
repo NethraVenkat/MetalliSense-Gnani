@@ -32,7 +32,7 @@ it('word boundaries and IDs survive native replacement',()=>{
 });
 it.each(['ta','hi','en'])('caps two reasons with screen remainder %s',lang=>{
  const extra=structuredClone(heat);extra.gateResult.checks.push({id:'stock',status:'FAIL',details:[{status:'FAIL',text:'extra reason'}]});
- const spoken=clarityGateSpeech(extra,lang);expect(spoken).toContain(lang==='ta'?'மேலும் விவரம் திரையில்':lang==='hi'?'बाकी स्क्रीन पर':'More details on screen');
+ const spoken=clarityGateSpeech(extra,lang);expect(spoken).toContain(lang==='ta'?'மீதி ஸ்கிரீன்ல பாருங்க':lang==='hi'?'बाकी जानकारी स्क्रीन पर देखें':'See the rest on screen.');
  expect(spoken).not.toContain('extra reason');
 });
 it.each(['ta','hi','en'])('status warn go blocked retry and handover are short %s',lang=>{

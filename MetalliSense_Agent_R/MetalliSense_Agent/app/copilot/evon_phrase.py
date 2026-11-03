@@ -7,6 +7,7 @@ The browser owns the factory snapshot; validation checks its schema and output
 grounding, not the authenticity of the underlying factory measurements.
 """
 import asyncio
+from .provider_calls import provider_slot
 from collections import Counter
 from decimal import Decimal
 import json
@@ -388,7 +389,7 @@ async def phrase(facts: dict, kind: str, lang: str, english_source=None, mode=No
             payload.update(messages=[{'role': 'user', 'content': TRANSLATE_PROMPT + english_source}],
                            temperature=0.2, top_p=0.9, max_tokens=120)
         async with asyncio.timeout(TIMEOUT_SECONDS):
-            async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS, follow_redirects=False) as client:
+            async with provider_slot(), httpx.AsyncClient(timeout=TIMEOUT_SECONDS, follow_redirects=False) as client:
                 response = await client.post(base + '/chat/completions', headers=headers, json=payload)
                 if response.status_code != 200:
                     return finish(fallback, 'template', f'http_{response.status_code}', 'offline')

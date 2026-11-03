@@ -1,3 +1,4 @@
+import {observeSpeechPresentation,readElementProgress} from '../services/speechPresentation';
 ﻿import { useCallback, useSyncExternalStore } from 'react';
 import { synthesizeSpeechWithMeta } from '../services/copilotService';
 import { toSpokenText } from '../services/spokenText';
@@ -12,8 +13,10 @@ let queue = Promise.resolve();
 let cancelPlayback;
 let generation = 0;
 let speaking = false;
+let playing = false;
 let echoGuardUntil = 0;
 // Synchronous check in the capture callback, including queued HOLD announcements.
+export const isSpeechPlaying=()=>playing;
 export const isSpeechEchoGuarded = (now = Date.now()) => speaking || now < echoGuardUntil;
 function persist(key, value) { try { localStorage.setItem(key, value); } catch { /* optional storage */ } listeners.forEach(fn => fn()); }
 const subscribe = fn => { listeners.add(fn); return () => listeners.delete(fn); };
@@ -46,8 +49,8 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
       const controller=new AbortController();
       cancelPlayback=()=>controller.abort();
       const abort=()=>controller.abort();timing.signal?.addEventListener('abort',abort,{once:true});
-      try{await playApprovedTourAsset(timing.approvedAsset,{...timing,signal:controller.signal,onAudioPause:()=>{speaking=false;echoGuardUntil=Date.now()+400;timing.onAudioPause?.();},onAudioStart:()=>{speaking=true;timing.onAudioStart?.();}});}
-      finally{timing.signal?.removeEventListener('abort',abort);cancelPlayback=undefined;speaking=false;echoGuardUntil=Date.now()+400;}
+      try{await playApprovedTourAsset(timing.approvedAsset,{...timing,signal:controller.signal,onAudioPause:()=>{speaking=false;playing=false;echoGuardUntil=Date.now()+400;timing.onAudioPause?.();},onAudioStart:()=>{speaking=true;playing=true;timing.onAudioStart?.();}});}
+      finally{timing.signal?.removeEventListener('abort',abort);cancelPlayback=undefined;speaking=false;playing=false;echoGuardUntil=Date.now()+400;}
     }).catch(()=>{});
     return queue;
   }
@@ -56,9 +59,9 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
       if (muted || ticket !== generation || timing?.signal?.aborted || timing?.isCurrent?.()===false) return;
       const controller = new AbortController(); cancelPlayback = () => controller.abort();
       const abort=()=>controller.abort();timing?.signal?.addEventListener('abort',abort,{once:true});
-      const queue_ms = performance.now()-queuedAt;
+      const queue_ms = performance.now()-queuedAt;let releasePresentation;
       try {
-        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,isCurrent:timing?.isCurrent,onAudioStart:() => { speaking = true;timing?.onAudioStart?.(); }});
+        const metrics = await playSpeechStream(text,lang,style,{signal:controller.signal,isCurrent:timing?.isCurrent,onPresentationSource:read=>{releasePresentation?.();releasePresentation=observeSpeechPresentation(read);},onAudioStart:() => { speaking = true;playing=true;timing?.onAudioStart?.(); }});
         console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,
           ...metrics,time_to_first_audio_ms:metrics.time_to_first_audio_ms+queue_ms,total_ms:metrics.total_ms+queue_ms,queue_ms,language:lang});
       } catch {
@@ -66,7 +69,7 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,
           time_to_first_audio_ms:null,total_audio_ms:0,total_ms:performance.now()-queuedAt,queue_ms,
           path:controller.signal.aborted?'cancelled':'error',language:lang});
-      } finally { timing?.signal?.removeEventListener('abort',abort);cancelPlayback = undefined; speaking = false; echoGuardUntil = Date.now()+400; }
+      } finally { releasePresentation?.();timing?.signal?.removeEventListener('abort',abort);cancelPlayback = undefined; speaking = false;playing=false; echoGuardUntil = Date.now()+400; }
     }).catch(() => {});
     return queue;
   }
@@ -94,12 +97,11 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
       await new Promise(resolve => {
         const audio = new Audio(url);
         let timer;
-        let first = null, finished = false;
+        let first = null, finished = false, releasePresentation;
         const finish = () => {
           if (finished) return; finished = true;
-          clearTimeout(timer);timing?.signal?.removeEventListener('abort',finish); audio.pause(); audio.onended = null; audio.onerror = null; cancelPlayback = undefined;
+          clearTimeout(timer);releasePresentation?.();timing?.signal?.removeEventListener('abort',finish); audio.pause(); audio.onended = null; audio.onerror = null; audio.onplaying = null; cancelPlayback = undefined;
           if (instrument) {
-            audio.onplaying = null;
             console.info('voice_turn_timing',{stt_ms:timing?.stt_ms ?? null,answer_ms:timing?.answer_ms ?? null,tts_ms,queue_ms,
               time_to_first_audio_ms:first,total_audio_ms:Number.isFinite(audio.duration)?audio.duration*1000:null,total_ms:performance.now()-queuedAt,
               path:source==='cache'?'cache':provider?.includes('timbre-v2.5')||provider==='gtts'?'fallback':'rest',language:lang});
@@ -109,12 +111,12 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
         cancelPlayback = finish;
         audio.onended = finish;
         audio.onerror = finish;
-        audio.onplaying = () => { timing?.onAudioStart?.();if(instrument)first ??= performance.now()-queuedAt; };
+        audio.onplaying = () => { releasePresentation?.();releasePresentation=observeSpeechPresentation(()=>readElementProgress(audio));playing=true; timing?.onAudioStart?.();if(instrument)first ??= performance.now()-queuedAt; };
         timer = setTimeout(finish, 120000);
         timing?.signal?.addEventListener('abort',finish,{once:true});
         if(timing?.signal?.aborted)finish();else Promise.resolve(audio.play()).catch(finish);
       });
-    } finally { speaking = false; echoGuardUntil = Date.now() + 400; URL.revokeObjectURL(url); }
+    } finally { speaking = false;playing=false; echoGuardUntil = Date.now() + 400; URL.revokeObjectURL(url); }
   }).catch(() => {});
   return queue;
 }

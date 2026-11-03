@@ -8,6 +8,7 @@ import tempfile
 import wave
 
 import httpx
+from .provider_calls import provider_slot
 from .gnani_client import to_gnani_language, tts_text, valid_tts_pair
 
 FIRST_AUDIO_TIMEOUT = 8
@@ -84,7 +85,7 @@ async def speak_events(service, text, lang, style='normal'):
         if client.tts_speed is not None: payload['speed'] = client.tts_speed
         parts, size, carry = [], 0, b''
         async with asyncio.timeout(120):
-            async with httpx.AsyncClient(timeout=8,follow_redirects=False) as http:
+            async with provider_slot(), httpx.AsyncClient(timeout=8,follow_redirects=False) as http:
                 try:
                     async with asyncio.timeout(FIRST_AUDIO_TIMEOUT):
                         request = http.build_request('POST',client.base_url+'/api/v1/tts/sse',headers=client._headers(json_body=True),json=payload)

@@ -66,7 +66,7 @@ export function clarityGateSpeech(heat, lang='ta', kind='reasons',register=spoke
       if(Number.isFinite(limit)) lines.push(`${choose(lang,low?'குறைந்தபட்சம்':'வரம்பு',low?'न्यूनतम':'सीमा',low?'Minimum':'Limit')}, ${formatGateLimit(limit,low)}`);
     } else lines.push(choose(lang,'சோதனை விவரம் திரையில்','जाँच का विवरण स्क्रीन पर','Check details on screen'));
   }
-  if(facts.remaining_reasons) lines.push(choose(lang,'மேலும் விவரம் திரையில்','बाकी स्क्रीन पर','More details on screen'));
+  if(facts.remaining_reasons) lines.push(choose(lang,'மீதி ஸ்கிரீன்ல பாருங்க','बाकी जानकारी स्क्रीन पर देखें','See the rest on screen.'));
   return sentences(lines,lang,register);
 }
 export function clarityReply(intent,heat,params,lang,fallback) {

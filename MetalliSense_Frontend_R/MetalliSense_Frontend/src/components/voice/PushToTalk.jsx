@@ -1,3 +1,5 @@
+import {attachMicLevel} from '../../services/micLevel';
+import KuralWakePanel from './KuralWakePanel';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Volume2, VolumeX } from 'lucide-react';
@@ -13,6 +15,8 @@ import { langBridgeEnabled } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
 import {transliterateEnabled,readTransliteratePreference,saveTransliteratePreference,createLatinDisplay} from '../../services/transcriptDisplay';
 import {createPttRecordingLifecycle} from '../../services/pttRecording';
+import useWakeWord from '../../hooks/useWakeWord';
+import {wakeWordEnabled} from '../../services/wakeWord';
 const unwrap = response => response.data?.data ?? response.data;
 // Only the focused/most recently used voice panel owns the global Space shortcut.
 let owner = null;
@@ -27,17 +31,19 @@ export function TransliterationLine({text,show}){
   return transliterateEnabled()&&show&&text?<p className="text-xs text-slate-500">Heard (English letters): {text}</p>:null;
 }
 export default function PushToTalk(props) {
-  if(voiceEverywhereEnabled()&&!props.shared)return null;
+  if((voiceEverywhereEnabled()||wakeWordEnabled())&&!props.shared)return null;
   // Keep the inner panel unmounted when hidden: no capture, socket or shortcut.
   return import.meta.env.VITE_SHOW_VOICE_PANEL !== 'false' ? <VoicePanel {...props} /> : null;
 }
 function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const pageContext=useVoicePage();
-  if(voiceEverywhereEnabled())heatId=pageContext?.selected?.heatId || heatId;
-  const scope=voiceEverywhereEnabled()?pageContext?.scope:null;
+  const sharedContext=voiceEverywhereEnabled()||wakeWordEnabled();
+  if(sharedContext)heatId=pageContext?.selected?.heatId || heatId;
+  const scope=sharedContext?pageContext?.scope:null;
   const currentScope=useRef(scope);currentScope.current=scope;
   const currentRoute=useRef(pageContext?.route);currentRoute.current=pageContext?.route;
-  const isCurrent=()=>alive.current&&(!voiceEverywhereEnabled()||scope===currentScope.current);
+  const interactionEpoch=useRef(0);const epoch=interactionEpoch.current;
+  const isCurrent=()=>alive.current&&epoch===interactionEpoch.current&&(!sharedContext||scope===currentScope.current);
   const navigate = useNavigate();
   const { flow } = useMeltFlow();
   const { speak, muted, toggleMute } = useSpeak();
@@ -47,10 +53,14 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const dashboardRequest=useRef(0);
   const tour=suppliedTour||{visible:false,state:{active:false},isActive:()=>false,control:()=>false};
   const [state, setState] = useState('idle');
+  const [micLevel,setMicLevel]=useState(0);const stopMeter=useRef(()=>{});
+  const speechAbort=useRef(new AbortController());const speechTicket=useRef(0);
+  const floating=wakeWordEnabled();
   const [heard, setHeard] = useState('');
   const [showLatin,setShowLatin]=useState(readTransliteratePreference);
   const [heardLatin,setHeardLatin]=useState('');
   const [answer, setAnswer] = useState('');
+  const [playingAnswer,setPlayingAnswer]=useState('');
   const [phraseSource, setPhraseSource] = useState(null);
   const panel = useRef(null);
   const recorder = useRef(null);
@@ -60,16 +70,20 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const busy = useRef(false);
   const alive = useRef(true);
   const answerSpeech=useRef(Promise.resolve());
+  const wakeTurn=useRef(null);
   const latinDisplay=useRef(null);
   if(!latinDisplay.current)latinDisplay.current=createLatinDisplay({request:transliterateAudio,afterSpeech:()=>answerSpeech.current,onText:text=>{if(alive.current)setHeardLatin(text);}});
   const choose = (ta, en) => lang === 'ta' ? ta : en;
   const say = (text, spokenText = text, replyLang = lang, timing) => {
     if (!isCurrent()) return;
     setAnswer(text);
+    const ticket=++speechTicket.current;
+    const turn=wakeTurn.current;turn?.mark('answer_received');
+    const audioStart=timing?.onAudioStart;timing={...timing,signal:timing?.signal||(floating?speechAbort.current.signal:undefined),onAudioStart:()=>{if(!isCurrent()||speechTicket.current!==ticket)return;setPlayingAnswer(spokenText);audioStart?.();turn?.mark('first_audio_played');}};
     // A navigation confirmation may play on its destination, but not after a
     // subsequent navigation elsewhere. Other replies belong to their scope.
     const speechCurrent=timing?.navigation?()=>alive.current&&(isCurrent()||currentRoute.current===timing.navigation):isCurrent;
-    answerSpeech.current=Promise.resolve(speak(spokenText, replyLang, 'normal', voiceEverywhereEnabled()?{...timing,isCurrent:speechCurrent}:timing));
+    answerSpeech.current=Promise.resolve(speak(spokenText, replyLang, 'normal', sharedContext?{...timing,isCurrent:speechCurrent}:timing)).finally(()=>{if(alive.current&&speechTicket.current===ticket)setPlayingAnswer('');});
   };
   async function resolveHeat(params) {
     if (params.heatNumber == null && (heatId || flow.heatId)) return unwrap(await getHeat(heatId || flow.heatId));
@@ -80,8 +94,8 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     if (!selected) return null;
     return unwrap(await getHeat(selected.heatId));
   }
-  const recordHeard=text=>{if(isCurrent()){setHeard(text);setHeardLatin('');}};
-  const callbacks=voiceEverywhereEnabled()?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
+  const recordHeard=text=>{if(isCurrent()){setHeard(wakeTurn.current?.heard||text);setHeardLatin('');}};
+  const callbacks=sharedContext?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
   const dashboardBriefingLifecycle={
     begin:()=>++dashboardRequest.current,
     isCurrent:(token,replyLang,requestScope,panelLang)=>token===dashboardRequest.current&&isCurrent()&&languageRef.current===panelLang&&(requestScope??null)===(scope??null)&&pageContext?.isCurrent?.(requestScope)!==false,
@@ -89,29 +103,34 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, ...callbacks, resolveHeat, pageContext, dashboardBriefingLifecycle });
   // REST bridge only: hands-free retains the current single-locale Tamil path.
   const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, langBridge: langBridgeEnabled(), dashboardBriefingLifecycle });
-  const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current, suspended:hidden });
-  async function run(text) {
+  const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current, suspended:hidden||floating });
+  const wake=useWakeWord({onQuery:(text,turn)=>run(text,turn),muted,paused:()=>busy.current||held.current||hiddenRef.current||tour.isActive()||handsFree.enabled});
+  async function run(text,turn=null) {
     if (busy.current) return;
-    busy.current = true; setState('processing');
+    wakeTurn.current=turn;busy.current = true; setState('processing');
     latinDisplay.current.invalidate();
     try { await handlePushToTalk(text, { voiceTiming: true }); if (isCurrent()) setState('idle'); }
     catch { if (isCurrent()) { setState('error'); say(choose('தகவல் கிடைக்கவில்லை. கீழே உள்ள பொத்தானைத் தொடவும்.', 'Unable to get information. Tap a suggestion below.')); } }
-    finally { if(isCurrent())busy.current = false; }
+    finally { if(wakeTurn.current===turn)wakeTurn.current=null;if(isCurrent())busy.current = false; }
   }
   function stop() {
+    stopMeter.current();
     held.current = false;
     if (recording.current) recording.current.stop();
     else stream.current?.getTracks().forEach(track => track.stop());
+    stream.current=null;
   }
   function cancelRecording() {
+    stopMeter.current();
     held.current = false;
-    recording.current?.cancel();
+    if(recording.current)recording.current.cancel();
+    else stream.current?.getTracks().forEach(track => track.stop());
     recording.current = null;
     recorder.current = null;
-    stream.current?.getTracks().forEach(track => track.stop());
+    stream.current=null;
   }
   useEffect(()=>{
-    if(!voiceEverywhereEnabled())return;
+    if(!sharedContext)return;
     setHeard('');setHeardLatin('');setAnswer('');setPhraseSource(null);setState('idle');busy.current=false;
     latinDisplay.current.invalidate();
     return ()=>{dashboardRequest.current++;latinDisplay.current.invalidate();actions.current.cancelRecording();};
@@ -119,13 +138,15 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   useEffect(()=>{if(hidden)cancelRecording();},[hidden]);
   async function start() {
     if (hiddenRef.current || busy.current || held.current) return;
-    owner = panel.current; held.current = true; busy.current = true;
+    wake.suspend();if(floating){setHeard('');setHeardLatin('');setPlayingAnswer('');}owner = panel.current; held.current = true; busy.current = true;
     const latinTicket=latinDisplay.current.invalidate();
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Microphone unavailable');
+      if(floating)setState('permission');
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (hiddenRef.current || !held.current || !isCurrent()) { media.getTracks().forEach(t => t.stop()); if(isCurrent())busy.current = false; return; }
       stream.current = media;
+      if(floating)stopMeter.current=attachMicLevel(media,value=>{if(alive.current)setMicLevel(value);});
       const type = ['audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
       const rec = new MediaRecorder(media, type ? { mimeType: type } : undefined);
       recorder.current = rec;
@@ -133,15 +154,16 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
       rec.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
       const lifecycle=createPttRecordingLifecycle({recorder:rec,stream:media,onLimit:()=>{held.current=false;},onStop:async()=>{
         if(recording.current===lifecycle)recording.current=null;
+        if(stream.current===media)stream.current=null;
         if (!isCurrent()) return;
-        setState('processing');
+        stopMeter.current();setState('processing');
         try {
           const blob = new Blob(chunks, { type: rec.mimeType });
           const file=new File([blob],rec.mimeType.includes('mp4')?'voice.mp4':'voice.webm',{type:blob.type});
           if(transliterateEnabled())await latinDisplay.current.beforeMain();
           if(!isCurrent())return;
           const sttStarted = performance.now();
-          const response = await transcribeAudio(file, null);
+          const response = await (floating?transcribeAudio(file,null,{signal:speechAbort.current.signal}):transcribeAudio(file,null));
           if(!isCurrent())return;
           const stt_ms = performance.now() - sttStarted;
           if (response.data.success === false) throw new Error('STT failed');
@@ -153,9 +175,9 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
         finally { if(isCurrent())busy.current = false; }
       }});
       recording.current=lifecycle;
-      rec.onerror = () => { lifecycle.cancel(); if(recording.current===lifecycle)recording.current=null; if(!isCurrent())return; setState('error'); busy.current = false; };
+      rec.onerror = () => { stopMeter.current();lifecycle.cancel(); if(recording.current===lifecycle)recording.current=null; if(!isCurrent())return; setState('error'); busy.current = false; };
       lifecycle.start(); setState('listening');
-    } catch { recording.current?.cancel();recording.current=null;recorder.current=null;if(!isCurrent())return;stream.current?.getTracks().forEach(track => track.stop()); held.current = false; busy.current = false; setState('error'); setAnswer(choose('மைக்ரோஃபோன் கிடைக்கவில்லை. கீழே தொடவும்.', 'Microphone unavailable. Tap a suggestion below.')); }
+    } catch { stopMeter.current();recording.current?.cancel();recording.current=null;recorder.current=null;if(!isCurrent())return;stream.current?.getTracks().forEach(track => track.stop()); held.current = false; busy.current = false; setState('error'); setAnswer(choose('மைக்ரோஃபோன் கிடைக்கவில்லை. கீழே தொடவும்.', 'Microphone unavailable. Tap a suggestion below.')); }
   }
   const actions = useRef({ start, stop, cancelRecording });
   actions.current = { start, stop, cancelRecording };
@@ -173,13 +195,22 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     const blur = () => actions.current.stop();
     window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur);
     return () => {
+      speechAbort.current.abort();
       alive.current = false; dashboardRequest.current++; latinDisplay.current.invalidate();actions.current.cancelRecording();
       panels.delete(currentPanel);
       if (owner === currentPanel) owner = panels.values().next().value || null;
       window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur);
     };
   }, []);
-  return <section ref={panel} hidden={hidden} aria-hidden={hidden||undefined} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" className={`${tour.visible?'relative ':''}rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2`}>
+  function resetInteraction(){
+    interactionEpoch.current++;wakeTurn.current=null;dashboardRequest.current++;latinDisplay.current.invalidate();
+    cancelRecording();held.current=false;busy.current=false;speechTicket.current++;speechAbort.current.abort();speechAbort.current=new AbortController();setState('idle');setPlayingAnswer('');
+  }
+  function closeAssistant(){wake.suspend();handsFree.stop();resetInteraction();setHeard('');setHeardLatin('');setAnswer('');}
+  function changeLanguage(value){if(floating){wake.suspend();handsFree.stop();resetInteraction();}dashboardRequest.current++;setLang(value);if(tour.isActive())tour.control('language',value);}
+  const changeLatin=value=>{setShowLatin(value);saveTransliteratePreference(value);if(!value)latinDisplay.current.invalidate();};
+  const menuControls={lang,onLanguageChange:changeLanguage,languageOptions:tour.visible?['ta','hi','en']:['ta','en'],muted,onToggleMute:toggleMute,showLatin,onLatinChange:changeLatin,latinAvailable:transliterateEnabled(),latinDisabled:state==='listening'||state==='processing'};
+  const controls=<>
     {voiceEverywhereEnabled()&&<p className="text-xs text-slate-500">Kural · {pageContext?.pageName?.[lang] || pageContext?.pageName?.en}</p>}
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" aria-label={choose('பேச அழுத்திப் பிடிக்கவும்', 'Hold to talk')} aria-pressed={state === 'listening'} disabled={state === 'processing'}
@@ -187,26 +218,27 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
         onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}
         onKeyDown={event => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); if (!event.repeat) start(); } }}
         onKeyUp={event => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); stop(); } }}
-        className={`min-h-16 min-w-16 touch-none select-none rounded-xl px-4 font-semibold text-white ${state === 'listening' ? 'bg-red-600' : 'bg-emerald-700'} disabled:opacity-50`}>
+        className={`${floating?'min-h-10 min-w-10':'min-h-16 min-w-16'} touch-none select-none rounded-xl px-4 font-semibold text-white ${state === 'listening' ? 'bg-red-600' : 'bg-emerald-700'} disabled:opacity-50`}>
         <Mic className="inline mr-2" size={22} />{choose('பேச பிடிக்கவும்', 'Hold to talk')}
       </button>
-      <select aria-label="Voice language" value={lang} disabled={state === 'listening' || state === 'processing'} onChange={e => {dashboardRequest.current++;setLang(e.target.value);if(tour.isActive())tour.control('language',e.target.value);}} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option>{tour.visible&&<option value="hi">हिन्दी</option>}</select>
-      <button type="button" onClick={toggleMute} aria-label={muted ? 'Unmute voice' : 'Mute voice'} aria-pressed={muted} className="rounded border p-3">{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
-      <button type="button" aria-pressed={handsFree.enabled} onClick={handsFree.enabled ? handsFree.stop : handsFree.start}
+      <select aria-label="Voice language" value={lang} disabled={!floating&&(state === 'listening' || state === 'processing')} onChange={e=>changeLanguage(e.target.value)} className="rounded border p-2"><option value="ta">தமிழ்</option><option value="en">English</option>{tour.visible&&<option value="hi">हिन्दी</option>}</select>
+      <button type="button" onClick={toggleMute} title={muted?'Unmute spoken replies':'Mute spoken replies'} aria-label={muted ? 'Unmute voice' : 'Mute voice'} aria-pressed={muted} className="rounded border p-3">{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
+      {!floating&&<button type="button" aria-pressed={handsFree.enabled} onClick={handsFree.enabled ? handsFree.stop : ()=>{wake.stop();handsFree.start();}}
         className={`rounded border px-3 py-2 text-sm ${handsFree.enabled ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : ''}`}>
         கைகள் இல்லாமல் / Hands-free
-      </button>
-      {handsFree.enabled && <span role="status" className="inline-flex items-center gap-1 text-xs text-emerald-800">
+      </button>}
+
+      {!floating&&handsFree.enabled && <span role="status" className="inline-flex items-center gap-1 text-xs text-emerald-800">
         <span aria-hidden="true" className={`h-2 w-2 rounded-full bg-emerald-600 ${handsFree.state === 'listening' ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
         {handsFree.state}
       </span>}
-      <span role="status" className="text-xs">{state}</span>
-      <TransliterationToggle enabled={showLatin} disabled={state==='listening'||state==='processing'} onChange={value=>{setShowLatin(value);saveTransliteratePreference(value);if(!value)latinDisplay.current.invalidate();}} />
+      {!floating&&<span role="status" className="text-xs">{state}</span>}
+      <TransliterationToggle enabled={showLatin} disabled={state==='listening'||state==='processing'} onChange={changeLatin} />
     </div>
-    <div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}<TransliterationLine text={heardLatin} show={showLatin} />{answer && <p>{answer}</p>}</div>
+    {!wakeWordEnabled()&&<div aria-live="polite" className="text-sm break-words">{heard && <p>Heard: {heard}</p>}<TransliterationLine text={heardLatin} show={showLatin} />{answer && <p>{answer}</p>}</div>}
     <VoicePhraseBadge source={phraseSource} />
     {handsFree.note && <p role="status" className="text-sm text-amber-800">{handsFree.note}</p>}
-    {import.meta.env.VITE_MOCK_MODE === 'true' && <details className="text-sm">
+    {(floating?import.meta.env.DEV:import.meta.env.VITE_MOCK_MODE === 'true') && <details className="text-sm">
       <summary className="cursor-pointer">Demo transcripts</summary>
       <p className="my-2 text-xs text-slate-600">Try the voice flow without recording audio. Replies use the selected voice language.</p>
       <div className="flex flex-wrap gap-2">{[`Heat ${String(heatId || flow.heatId || 'H-1053').replace(/^H-/, '')} status என்ன`, 'ஏன் HOLD', 'why hold heat 1053', 'approve', 'start melting', ...(shiftSummaryEnabled()?['Shift summary']:[])].map(text =>
@@ -214,5 +246,8 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
       )}</div>
     </details>}
     {state === 'error' && <div className="flex flex-wrap gap-2">{['Heat status', 'carbon evvalavu', 'why hold', 'stock evvalavu', 'spectrometer kaattu'].map(text => <button type="button" key={text} onClick={() => run(text)} className="rounded-full bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{text}</button>)}</div>}
+  </>;
+  return <section ref={panel} hidden={hidden} aria-hidden={hidden||undefined} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" style={hidden?{display:'none'}:floating?{display:'contents'}:undefined} className={`${tour.visible?'relative ':''}rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2`}>
+    {floating?<KuralWakePanel menuControls={menuControls} hidden={hidden} wake={wake} lang={lang} muted={muted} panelState={handsFree.enabled&&state==='idle'?(handsFree.state==='listening'?'listening':handsFree.state==='processing'?'processing':'connecting'):state} statusNote={state==='error'?answer:wake.note} requestPending={state==='processing'} level={state==='listening'?micLevel:wake.level} heard={showLatin&&heardLatin?heardLatin:heard} answer={answer} playingAnswer={playingAnswer} onToggle={()=>{if(wake.enabled)wake.disable();else{handsFree.stop();wake.start();}}} onRetry={()=>{handsFree.stop();wake.stop();wake.start();}} onPopupDismiss={()=>{if(held.current)stop();}} onClose={closeAssistant} onStopCapture={()=>{wake.stop();handsFree.stop();resetInteraction();}}>{controls}</KuralWakePanel>:controls}
   </section>;
 }

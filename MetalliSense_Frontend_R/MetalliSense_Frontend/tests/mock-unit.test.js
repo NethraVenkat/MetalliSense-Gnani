@@ -204,7 +204,7 @@ describe('short gate-reason speech with complete screen text', () => {
  };
  it('caps individual element reasons at two, rounds to two decimals and excludes AI from speech/counts', () => {
   const original = structuredClone(warning);
-  expect(spokenGateReasonAnswer(warning, 'ta')).toBe('கார்பன் 2.57 சதவீதம், குறைவு. சிலிக்கான் 1.23 சதவீதம், குறைவு. மேலும் 1 விவரங்கள் திரையில்');
+  expect(spokenGateReasonAnswer(warning, 'ta')).toBe('கார்பன் 2.57 சதவீதம், குறைவு. சிலிக்கான் 1.23 சதவீதம், குறைவு. மீதி ஸ்கிரீன்ல பாருங்க');
   const screen = heatVoiceAnswer('gate_reason', { gateResult: warning }, {}, 'ta');
   expect(screen).toBe(gateReasonAnswer(warning, 'ta'));
   expect(screen).toContain('மாங்கனீசு (Mn)');
@@ -217,7 +217,7 @@ describe('short gate-reason speech with complete screen text', () => {
    { id: 'residuals', status: 'FAIL', details: [{ element: 'Cu', value: .678, max: .3, status: 'FAIL' }] },
    { id: 'spec_prediction', status: 'FAIL', details: [{ element: 'P', value: .1234, max: .08, status: 'FAIL' }] },
   ] };
-  expect(spokenGateReasonAnswer(gate, 'ta')).toBe('பாஸ்பரஸ் 0.12 சதவீதம், அதிகம். செம்பு 0.68 சதவீதம், அதிகம். மேலும் 3 விவரங்கள் திரையில்');
+  expect(spokenGateReasonAnswer(gate, 'ta')).toBe('பாஸ்பரஸ் 0.12 சதவீதம், அதிகம். செம்பு 0.68 சதவீதம், அதிகம். மீதி ஸ்கிரீன்ல பாருங்க');
  });
  it('keeps non-element reasons brief and does not add a remainder for exactly two reasons', () => {
   const gate = { decision: 'HOLD', checks: [
@@ -227,7 +227,7 @@ describe('short gate-reason speech with complete screen text', () => {
   expect(spokenGateReasonAnswer(gate, 'ta')).toBe('PIG-1053: தனிமைப்படுத்தப்பட்டுள்ளது. செம்பு 0.50 சதவீதம், அதிகம்');
  });
  it('uses the same cap and rounding in English while retaining all screen warnings', () => {
-  expect(spokenGateReasonAnswer(warning, 'en')).toBe('C 2.57 percent, low. Si 1.23 percent, low. 1 more on screen');
+  expect(spokenGateReasonAnswer(warning, 'en')).toBe('C 2.57 percent, low. Si 1.23 percent, low. See the rest on screen.');
   expect(gateReasonAnswer(warning, 'en')).toBe(warning.warnings.join('. '));
  });
  it('omits AI-only speech and handles unchecked/GO gates', () => {
@@ -237,7 +237,7 @@ describe('short gate-reason speech with complete screen text', () => {
  });
  it('caps legacy saved reasons and removes their AI-risk sentence', () => {
   expect(spokenGateReasonAnswer({ decision: 'WARN', warnings: ['Stock low', 'AI off-spec risk high', 'Lab approval needed', 'Inspect scrap'] }, 'en'))
-   .toBe('Stock low. Lab approval needed. 1 more on screen');
+   .toBe('Stock low. Lab approval needed. See the rest on screen.');
  });
 });
 

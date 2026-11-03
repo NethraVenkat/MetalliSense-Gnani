@@ -80,7 +80,7 @@ export function spokenGateReasonAnswer(gate, lang = 'ta') {
   }
   const more = reasons.length - 2;
   const summary = reasons.slice(0, 2);
-  if (more > 0) summary.push(lang === 'ta' ? `மேலும் ${more} விவரங்கள் திரையில்` : `${more} more on screen`);
+  if (more > 0) summary.push(lang === 'ta' ? 'மீதி ஸ்கிரீன்ல பாருங்க' : 'See the rest on screen.');
   return summary.join('. ') || (lang === 'ta' ? 'மேலும் விவரங்கள் திரையில்' : 'See details on screen');
 }
 

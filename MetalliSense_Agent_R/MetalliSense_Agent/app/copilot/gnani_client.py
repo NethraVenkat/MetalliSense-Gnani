@@ -24,6 +24,7 @@ import wave
 from pathlib import Path
 from typing import Dict, Optional
 
+from .provider_calls import post as provider_post, provider_slot
 import requests
 
 DEFAULT_BASE_URL = "https://api.vachana.ai"
@@ -249,7 +250,7 @@ class GnaniClient:
                 data["keyterms"] = self.stt_keyterms
             for attempt in range(max_attempts):
                 self.stats["stt_calls"] += 1
-                response = requests.post(
+                response = provider_post(
                     f"{self.base_url}/stt/v3",
                     headers=self._headers(),
                     files={"audio_file": ("audio.wav", wav, "audio/wav")},
@@ -286,7 +287,7 @@ class GnaniClient:
                 # Context for romanised output should itself be in Latin letters.
                 terms=[term.strip() for term in self.stt_keyterms.split(',') if term.strip().isascii()]
                 if terms:data['keyterms']=','.join(terms)
-                async with httpx.AsyncClient(timeout=6,follow_redirects=False) as http:
+                async with provider_slot(), httpx.AsyncClient(timeout=6,follow_redirects=False) as http:
                     self.stats['stt_calls']+=1
                     response=await http.post(self.base_url+'/stt/v3',headers=self._headers(),
                         files={'audio_file':('audio.wav',wav,'audio/wav')},data=data)
@@ -381,7 +382,7 @@ class GnaniClient:
         if self.tts_speed is not None: payload['speed'] = self.tts_speed
         try:
             self.stats["tts_calls"] += 1
-            response = requests.post(
+            response = provider_post(
                 f"{self.base_url}/api/v1/tts/inference",
                 headers=self._headers(json_body=True),
                 json=payload,

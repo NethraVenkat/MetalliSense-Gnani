@@ -229,7 +229,7 @@ def test_general_evon_folds_system_rules_into_first_user_without_mutating_histor
     original = [{'role': 'system', 'content': 'Rules'}, {'role': 'user', 'content': 'Question'}, {'role': 'assistant', 'content': 'History'}]
     before = copy.deepcopy(original)
     post = Mock(return_value=Mock(status_code=200, json=lambda: {'choices': [{'message': {'content': 'Answer'}}]}))
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     result = _EvonCompletions('https://example.test/v1', KEY, False).create('evon', original)
     assert result.choices[0].message.content == 'Answer'
     assert post.call_args.kwargs['json']['messages'] == fold_instructions(original)

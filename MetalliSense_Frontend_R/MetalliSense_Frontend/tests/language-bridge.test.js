@@ -47,7 +47,7 @@ it.each(['approve karo', 'aprove karo', 'melting shuru karo', 'start karo', 'ove
 it('Hindi HOLD facts preserve formatted value and cap reasons', () => {
   const extra = structuredClone(heat);
   extra.gateResult.checks.push({ id: 'spec_prediction', status: 'WARN', details: [{ element: 'C', value: 2.57, min: 3, max: 4, status: 'WARN' }] });
-  expect(hindiGateAnswer(extra)).toBe('हीट H-1053 होल्ड पर है। लॉट PIG-1053 क्वारंटीन में है। कॉपर 0.50 प्रतिशत है, सीमा 0.30 से ज़्यादा। 1 और बातें स्क्रीन पर।');
+  expect(hindiGateAnswer(extra)).toBe('हीट H-1053 होल्ड पर है। लॉट PIG-1053 क्वारंटीन में है। कॉपर 0.50 प्रतिशत है, सीमा 0.30 से ज़्यादा। बाकी जानकारी स्क्रीन पर देखें।');
 });
 it('Hindi WARN low and GO templates', () => {
   const warn = { heatId: 'H-1052', gateResult: { decision: 'WARN', checks: [{ id: 'spec_prediction', status: 'WARN', details: [{ element: 'C', value: 2.57, min: 3, max: 4, status: 'WARN' }] }] } };

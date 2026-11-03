@@ -228,7 +228,9 @@ const Sidebar = ({ setRunTour, onStartTour }) => {
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-50 p-2 sm:hidden text-gray-500 bg-white rounded-lg shadow-lg"
+        aria-label={isOpen?"Close navigation":"Open navigation"}
+        title={isOpen?"Close navigation":"Open navigation"}
+        className={`fixed top-4 left-4 z-50 p-2 sm:hidden text-gray-500 bg-white rounded-lg shadow-lg`}
       >
         <svg className="h-6" fill="currentColor" viewBox="0 0 20 20">
           <path

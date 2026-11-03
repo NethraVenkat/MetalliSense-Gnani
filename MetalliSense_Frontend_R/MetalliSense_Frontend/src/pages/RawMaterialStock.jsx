@@ -456,8 +456,8 @@ export default function RawMaterialStock() {
   const [qaLot, setQaLot] = useState(null);
   const [approveLot, setApproveLot] = useState(null);
   const [detailId, setDetailId] = useState(null);
-  useRegisterVoicePage({lotId:detailId}, 'RawMaterialStock');
   const [loading, setLoading] = useState(false);
+  useRegisterVoicePage({lotId:detailId}, 'RawMaterialStock',{lots,additives,loading});
 
   const load = useCallback(async () => {
     setLoading(true);

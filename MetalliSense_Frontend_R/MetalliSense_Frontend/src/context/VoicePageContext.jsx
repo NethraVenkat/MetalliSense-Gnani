@@ -1,3 +1,4 @@
+import {wakeWordEnabled} from '../services/wakeWord';
 import React, {createContext,useCallback,useContext,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {voiceEverywhereEnabled,voicePage} from '../services/voicePages';
@@ -21,13 +22,14 @@ export function VoicePageProvider({children}) {
   return <VoicePageContext.Provider value={value}>{children}</VoicePageContext.Provider>;
 }
 // Register only metadata already shown by a page. No requests or factory store.
-export function useRegisterVoicePage(selected,source) {
+export function useRegisterVoicePage(selected,source,loaded=null) {
   const context=useVoicePage();
   const serialized=JSON.stringify(selected);
+  const loadedSerialized=JSON.stringify(loaded);
   const register=context?.register,scope=context?.scope;
   useLayoutEffect(()=>{
-    if(!voiceEverywhereEnabled()||!register)return;
+    if((!voiceEverywhereEnabled()&&!wakeWordEnabled())||!register)return;
     const owner=Symbol('page selection');
-    return register(owner,scope,{selected:JSON.parse(serialized),source,asOf:new Date().toISOString()});
-  },[register,scope,serialized,source]);
+    return register(owner,scope,{selected:JSON.parse(serialized),source,asOf:new Date().toISOString(),loaded:JSON.parse(loadedSerialized)});
+  },[register,scope,serialized,source,loadedSerialized]);
 }
