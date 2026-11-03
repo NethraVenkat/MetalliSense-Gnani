@@ -1,6 +1,6 @@
 import {buildShiftSummary,isSummaryActive} from './shiftSummary';
 export const morningBriefingEnabled=()=>import.meta.env.VITE_MORNING_BRIEFING==='true';
-export const isMorningBriefing=text=>/morning briefing|இன்னைக்கு\s+briefing|आज की ब्रीफिंग/iu.test(text);
+export const isMorningBriefing=text=>/\bbrief(?:ing)?\b|\u0baa\u0bcd\u0bb0\u0bc0\u0b83\u0baa\u0bbf\u0b99\u0bcd|\u0b87\u0ba9\u0bcd\u0ba9\u0bc8\u0b95\u0bcd\u0b95\u0bc1|\u092c\u094d\u0930\u0940\u092b\u093f\u0902\u0917|\u0906\u091c/iu.test(String(text).normalize('NFKC'));
 export const morningUnavailable={ta:'இப்போ ஹீட் தகவல் கிடைக்கல; எண்ணிக்கை சொல்ல முடியல.',hi:'अभी हीट जानकारी नहीं मिली; गिनती नहीं बता सकते।',en:'Heat data is unavailable; counts cannot be reported.'};
 // Status answers report the saved gate decision, not permission to start melting.
 // Only this display copy ignores expiry; the gate engine and F9 stay unchanged.
