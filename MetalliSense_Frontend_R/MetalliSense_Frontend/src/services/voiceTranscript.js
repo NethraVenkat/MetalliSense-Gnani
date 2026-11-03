@@ -1,3 +1,4 @@
+import {voiceActionsEnabled,neverByVoice,screenOnly} from './voiceActions';
 import {morningBriefingEnabled,isMorningBriefing,morningBriefing,morningUnavailable,fetchMorningRows} from './morningBriefing';
 import { getAdditives, getHeats, getHeat, getShiftSummaryHeats } from './premeltService';
 import { sendChatMessage, phraseGateFacts } from './copilotService';
@@ -21,7 +22,7 @@ import {loadedPageAnswersEnabled,isLoadedPageQuestion,loadedPageReply,loadedUnav
 
 // Shared by REST push-to-talk, demo transcripts and hands-free finals. This is
 // the existing read-only answer path; it exposes no approve/start mutations.
-export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false, pageContext: initialPageContext = null, getPageContext, tourControl = () => false, tourActive = () => false, pageAnswerServices = null, dashboardBriefingServices=null, dashboardBriefingLifecycle={begin:()=>undefined,isCurrent:()=>true} }) {
+export function createTranscriptHandler({ lang: currentLang, setHeard, say: output, navigate, resolveHeat, setPhraseSource = () => {}, langBridge = false, pageContext: initialPageContext = null, getPageContext, tourControl = () => false, tourActive = () => false, pageAnswerServices = null, dashboardBriefingServices=null, actionControl=null,dashboardBriefingLifecycle={begin:()=>undefined,isCurrent:()=>true} }) {
   return async function handleTranscript(text, metadata = {}) {
     // Recording/STT can outlive many streaming refreshes. Resolve the loaded
     // snapshot when the transcript arrives, retaining the caller's scope guards.
@@ -47,6 +48,10 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
       const action=prefixedTourCommand(text);
       if(action)return tourControl(action);
       return;
+    }
+    if(voiceActionsEnabled()&&!tourActive()){
+      if(neverByVoice(text)){const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);return output(screenOnly[replyLang],screenOnly[replyLang],replyLang);}
+      if(actionControl&&await actionControl(text,pageContext))return;
     }
     if (intent === 'blocked') {
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);

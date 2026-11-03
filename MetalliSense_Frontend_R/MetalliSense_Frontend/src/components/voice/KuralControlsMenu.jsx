@@ -1,3 +1,7 @@
+import {VoiceLogViewer} from './VoiceActionPanel';
+import {voiceSession} from '../../services/voiceActionApi';
+import {useEffect,useState} from 'react';
+import {menuTalkProps} from './kuralMenuInteraction';
 import React,{Children} from 'react';
 import {Mic,X} from 'lucide-react';
 export const HANDSFREE_PRIVACY="Say 'Kural' after a pause. Audio goes to Gnani only when you start speaking.";
@@ -9,6 +13,8 @@ export function existingMenuActions(children){
  return {talk:Children.toArray(row?.props?.children).find(node=>node?.props?.onPointerDown),demo:nodes.find(node=>node?.type==='details')};
 }
 export default function KuralControlsMenu({wake,onToggle,onClose,controls={},children,menuRef}){
+ const [logging,setLogging]=useState(false),[showLog,setShowLog]=useState(false);
+ useEffect(()=>{if(import.meta.env.VITE_VOICE_ACTIONS!=='true'&&import.meta.env.VITE_VOICE_AUDIT!=='true'&&import.meta.env.VITE_VOICE_AUDIO_LOG!=='true')return;let live=true;voiceSession().then(s=>{if(live)setLogging(s.audit||s.audio);}).catch(()=>{});return()=>{live=false;};},[]);
  const {talk,demo}=existingMenuActions(children),{lang='en',onLanguageChange,languageOptions=['ta','en'],muted=false,onToggleMute,showLatin=false,onLatinChange,latinAvailable=false,latinDisabled=false}=controls;
  const languages=[['ta','தமிழ்'],['hi','हिन्दी'],['en','EN']];
  const moveLanguage=(event,index)=>{const enabled=languages.filter(([value])=>languageOptions.includes(value));let next;
@@ -22,7 +28,8 @@ export default function KuralControlsMenu({wake,onToggle,onClose,controls={},chi
   <div className="kural-menu-row"><span>Language</span><div className="kural-language-segments" role="radiogroup" aria-label="Voice language">{languages.map(([value,label],i)=><button key={value} type="button" role="radio" aria-label={label} aria-checked={lang===value} tabIndex={lang===value?0:-1} data-language={value} disabled={!languageOptions.includes(value)} title={!languageOptions.includes(value)?'Language unavailable':label} onClick={()=>onLanguageChange?.(value)} onKeyDown={event=>moveLanguage(event,i)}>{label}</button>)}</div></div>
   <div className="kural-menu-row"><span>Voice replies</span><Switch label="Voice replies" checked={!muted} onClick={onToggleMute} title={muted?'Unmute spoken replies':'Mute spoken replies'}/></div>
   <div className="kural-menu-row"><span>English letters</span><Switch label="English letters" checked={showLatin} disabled={!latinAvailable||latinDisabled} onClick={()=>onLatinChange?.(!showLatin)} title={!latinAvailable?'English letters unavailable':'Show in English letters'}/></div>
-  {talk&&React.cloneElement(talk,{className:'kural-talk-button',title:'Hold to talk','aria-label':'Hold to talk',children:<><Mic size={18} aria-hidden="true"/>Hold to talk</>})}
+  {talk&&React.cloneElement(talk,{...menuTalkProps(talk,onClose),className:'kural-talk-button',title:'Hold to talk','aria-label':'Hold to talk',children:<><Mic size={18} aria-hidden="true"/>Hold to talk</>})}
+  {logging&&<><small aria-label="Logging on">Logging on</small><button type="button" onClick={()=>setShowLog(true)}>Voice log</button></>}{showLog&&<VoiceLogViewer onClose={()=>setShowLog(false)}/>}
   {import.meta.env.DEV&&demo}
  </div>;
 }

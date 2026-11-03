@@ -62,3 +62,6 @@
 .dark .kural-show-more,[data-theme=dark] .kural-show-more{color:#66dba1}
 
 .is-ready .kural-words{display:none}.is-expanded .kural-card-header{top:8px}.kural-card-body .kural-words--transcript .kural-word{color:inherit}
+
+.voice-action-panel,.voice-log-viewer{font-size:13px;overflow-wrap:anywhere}.voice-action-panel>button{min-height:44px;width:100%;background:#fde8e6;color:#a32d2d;border-radius:8px}.voice-log-viewer{max-height:50dvh;overflow:auto}.voice-log-viewer audio{max-width:100%}
+.kural-controls-popup small[aria-label="Logging on"]::before{content:'\1f534';margin-right:4px}

@@ -68,7 +68,7 @@ class WakeChecker:
             failure('ConfigurationError',503,'Missing backend key or unverified endpoint',started,path='configuration',lease='not_entered')
             raise HTTPException(503,detail={'code':'wake_unavailable'})
         try:
-            response=provider_post(base+'/stt/v3',headers={'X-API-Key-ID':key,'User-Agent':'MetalliSense-Kural-Pause-Audition/1.0'},files={'audio_file':('snippet.wav',audio,'audio/wav')},data=payload_fields('v3'),timeout=15,allow_redirects=False)
+            response=provider_post(base+'/stt/v3',headers={'X-API-Key-ID':key,'User-Agent':'MetalliSense-Kural-Pause-Audition/1.0'},files={'audio_file':('snippet.wav',audio,'audio/wav')},data=payload_fields('v3'),timeout=5,allow_redirects=False)
             body=response.json()
             if response.status_code!=200 or not isinstance(body,dict) or body.get('success') is not True or not isinstance(body.get('transcript'),str):raise ValueError('ProviderFailure')
             if body.get('model') not in (None,'prisma-v3.0'):raise ValueError('UnexpectedModel')

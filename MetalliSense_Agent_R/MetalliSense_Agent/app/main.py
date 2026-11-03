@@ -3,7 +3,7 @@
 MetalliSense AI Service - FastAPI Application
 Main entry point for the AI Intelligence Layer
 """
-from fastapi import FastAPI, HTTPException, status, File, UploadFile, WebSocket
+from fastapi import FastAPI, HTTPException, status, File, UploadFile, WebSocket, Header, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
@@ -69,6 +69,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+from copilot.voice_foundation import router as voice_foundation_router
+app.include_router(voice_foundation_router)
 
 # Add CORS middleware for Node.js integration
 app.add_middleware(
@@ -730,18 +733,20 @@ async def transcribe_handover(audio: UploadFile = File(...)):
 
 
 @app.post('/copilot/voice/wake-check',tags=['Voice'])
-async def wake_check_audio(audio: UploadFile = File(...)):
+async def wake_check_audio(audio: UploadFile = File(...), x_voice_session: str = Header('')):
     from copilot.wake_check import checker,enabled
     try:
         if not enabled():raise HTTPException(404,detail={'code':'wake_disabled'})
         content=await audio.read(50001)
         if len(content)>50000:raise HTTPException(413,detail={'code':'wake_audio_size'})
+        from copilot.voice_foundation import log_interaction
+        await asyncio.to_thread(log_interaction,content,x_voice_session,'wake')
         return await checker.check(content)
     finally:await audio.close()
 
 
 @app.post("/copilot/voice/transcribe", response_model=TranscriptionResponse, tags=["Voice"])
-async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = None):
+async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = None, no_store: bool = Form(False), purpose: str = Form('command'), x_voice_session: str = Header(''), x_voice_no_store: str = Header('')):
     """
     🎤 SPEECH-TO-TEXT - Convert voice input to text
     
@@ -766,6 +771,16 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
     }
     ```
     """
+    from copilot.voice_auth import AUTH as voice_auth
+    private_capture=no_store or x_voice_no_store.lower()=='true' or purpose=='passcode' or voice_auth.sensitive(x_voice_session)
+    if private_capture:
+        from copilot.voice_foundation import private_transcription
+        try:
+            content=await audio.read(1_920_045)
+            result=await asyncio.to_thread(private_transcription,content,language)
+            return TranscriptionResponse(**result)
+        finally:await audio.close()
+
     if voice_service is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -778,6 +793,8 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
             content = await audio.read()
             tmp.write(content)
             tmp_path = tmp.name
+        from copilot.voice_foundation import log_interaction
+        await asyncio.to_thread(log_interaction,content,x_voice_session,purpose,no_store or x_voice_no_store.lower()=='true')
         
         try:
             # Transcribe
@@ -793,7 +810,7 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Transcription error: {str(e)}"
+            detail="Private transcription unavailable" if no_store or purpose=="passcode" else f"Transcription error: {str(e)}"
         )
 
 

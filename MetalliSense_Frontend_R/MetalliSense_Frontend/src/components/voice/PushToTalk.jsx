@@ -1,3 +1,6 @@
+import {createActionFlow,matchAction,voiceActionsEnabled} from '../../services/voiceActions';
+import {voiceActionApi} from '../../services/voiceActionApi';
+import {captureActionReply} from '../../services/voiceActionCapture';
 import {attachMicLevel} from '../../services/micLevel';
 import KuralWakePanel from './KuralWakePanel';
 import React, { useEffect, useRef, useState } from 'react';
@@ -74,6 +77,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const alive = useRef(true);
   const answerSpeech=useRef(Promise.resolve());
   const wakeTurn=useRef(null);
+  const [actionState,setActionState]=useState(null);const actionFlow=useRef(null);const actionDeps=useRef(null);
   const latinDisplay=useRef(null);
   if(!latinDisplay.current)latinDisplay.current=createLatinDisplay({request:transliterateAudio,afterSpeech:()=>answerSpeech.current,onText:text=>{if(alive.current)setHeardLatin(text);}});
   const choose = (ta, en) => lang === 'ta' ? ta : en;
@@ -99,15 +103,18 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     if (!selected) return null;
     return unwrap(await getHeat(selected.heatId));
   }
+  actionDeps.current={say:async text=>{say(text);await answerSpeech.current;},capture:options=>captureActionReply(options,value=>{if(alive.current)setMicLevel(value);})};
+  if(!actionFlow.current)actionFlow.current=createActionFlow({api:voiceActionApi,say:text=>actionDeps.current.say(text),capture:options=>actionDeps.current.capture(options),onChange:value=>{if(alive.current)setActionState(value);}});
+  async function actionControl(text,context){const action=matchAction(text);if(!action)return false;wake.suspend();setHeard('');setHeardLatin('');await actionFlow.current.run(action,{page:context?.route,originalText:text});return true;}
   const recordHeard=text=>{if(isCurrent()){setHeard(wakeTurn.current?.heard||text);setHeardLatin('');}};
   const callbacks=sharedContext?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
   const dashboardBriefingLifecycle={
     begin:()=>++dashboardRequest.current,
     isCurrent:(token,replyLang,requestScope,panelLang)=>token===dashboardRequest.current&&isCurrent()&&languageRef.current===panelLang&&(requestScope??null)===(scope??null)&&pageContext?.isCurrent?.(requestScope)!==false,
   };
-  const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, ...callbacks, resolveHeat, pageContext, getPageContext:()=>pageContextRef.current, dashboardBriefingLifecycle });
+  const handleTranscript = createTranscriptHandler({ lang, setHeard:text=>{latinDisplay.current.invalidate();recordHeard(text);}, ...callbacks, resolveHeat, pageContext, getPageContext:()=>pageContextRef.current, actionControl, dashboardBriefingLifecycle });
   // REST bridge only: hands-free retains the current single-locale Tamil path.
-  const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, getPageContext:()=>pageContextRef.current, langBridge: langBridgeEnabled(), dashboardBriefingLifecycle });
+  const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, getPageContext:()=>pageContextRef.current, actionControl, langBridge: langBridgeEnabled(), dashboardBriefingLifecycle });
   const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current, suspended:hidden||floating });
   const wake=useWakeWord({onQuery:(text,turn)=>run(text,turn),muted,paused:()=>busy.current||held.current||hiddenRef.current||tour.isActive()||handsFree.enabled});
   useEffect(()=>{if(wake.state==='Listening\u2026'){setHeard('');setHeardLatin('');clearAnswer();}},[wake.state]);
@@ -204,7 +211,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     const blur = () => actions.current.stop();
     window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur);
     return () => {
-      speechAbort.current.abort();
+      actionFlow.current?.cancel();speechAbort.current.abort();
       alive.current = false; dashboardRequest.current++; latinDisplay.current.invalidate();actions.current.cancelRecording();
       panels.delete(currentPanel);
       if (owner === currentPanel) owner = panels.values().next().value || null;
@@ -212,6 +219,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     };
   }, []);
   function resetInteraction(){
+    if(actionFlow.current?.active)actionFlow.current.cancel();setActionState(null);
     interactionEpoch.current++;wakeTurn.current=null;dashboardRequest.current++;latinDisplay.current.invalidate();
     cancelRecording();held.current=false;busy.current=false;speechTicket.current++;speechAbort.current.abort();speechAbort.current=new AbortController();setState('idle');setPlayingAnswer(null);
   }
@@ -257,6 +265,6 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     {state === 'error' && <div className="flex flex-wrap gap-2">{['Heat status', 'carbon evvalavu', 'why hold', 'stock evvalavu', 'spectrometer kaattu'].map(text => <button type="button" key={text} onClick={() => run(text)} className="rounded-full bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{text}</button>)}</div>}
   </>;
   return <section ref={panel} hidden={hidden} aria-hidden={hidden||undefined} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" style={hidden?{display:'none'}:floating?{display:'contents'}:undefined} className={`${tour.visible?'relative ':''}rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2`}>
-    {floating?<KuralWakePanel debugLine={import.meta.env.DEV&&import.meta.env.VITE_VOICE_TIMING==='true'?voiceDebug:''} menuControls={menuControls} hidden={hidden} wake={wake} lang={lang} muted={muted} panelState={handsFree.enabled&&state==='idle'?(handsFree.state==='listening'?'listening':handsFree.state==='processing'?'processing':'connecting'):state} statusNote={state==='error'?answer.displayText:wake.note} requestPending={state==='processing'} level={state==='listening'?micLevel:wake.level} heard={showLatin&&heardLatin?heardLatin:heard} answer={answer} playingAnswer={playingAnswer} onToggle={()=>{if(wake.enabled)wake.disable();else{handsFree.stop();wake.start();}}} onRetry={()=>{handsFree.stop();wake.stop();wake.start();}} onPopupDismiss={()=>{if(held.current)stop();}} onClose={closeAssistant} onStopCapture={()=>{wake.stop();handsFree.stop();resetInteraction();}}>{controls}</KuralWakePanel>:controls}
+    {floating?<KuralWakePanel actionState={voiceActionsEnabled()?actionState:null} onActionCancel={()=>actionFlow.current.cancel()} debugLine={import.meta.env.DEV&&import.meta.env.VITE_VOICE_TIMING==='true'?voiceDebug:''} menuControls={menuControls} hidden={hidden} wake={wake} lang={lang} muted={muted} panelState={handsFree.enabled&&state==='idle'?(handsFree.state==='listening'?'listening':handsFree.state==='processing'?'processing':'connecting'):state} statusNote={state==='error'?answer.displayText:wake.note} requestPending={state==='processing'} level={state==='listening'?micLevel:wake.level} heard={showLatin&&heardLatin?heardLatin:heard} answer={answer} playingAnswer={playingAnswer} onToggle={()=>{if(wake.enabled)wake.disable();else{handsFree.stop();wake.start();}}} onRetry={()=>{handsFree.stop();wake.stop();wake.start();}} onPopupDismiss={()=>{if(held.current)stop();}} onClose={closeAssistant} onStopCapture={()=>{wake.stop();handsFree.stop();resetInteraction();}}>{controls}</KuralWakePanel>:controls}
   </section>;
 }

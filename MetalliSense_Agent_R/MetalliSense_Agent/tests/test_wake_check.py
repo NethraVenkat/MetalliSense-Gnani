@@ -74,7 +74,7 @@ def test_provider_diagnostic_and_request_parity(monkeypatch,caplog,status,messag
     expected=calls[0];actual=calls[1]
     assert actual[0]==expected[0]
     assert {k:v for k,v in actual[1].items() if k!='timeout'}=={k:v for k,v in expected[1].items() if k!='timeout'}
-    assert actual[1]['timeout']==15 and expected[1]['timeout']==60
+    assert actual[1]['timeout']==5 and expected[1]['timeout']==60
     assert 'DENIED' in caplog.text and str(status) in caplog.text and 'elapsed_ms=' in caplog.text
     assert 'synthetic-secret' not in caplog.text and 'audio_file' not in caplog.text
     assert 'lease=not_rejected' in caplog.text
