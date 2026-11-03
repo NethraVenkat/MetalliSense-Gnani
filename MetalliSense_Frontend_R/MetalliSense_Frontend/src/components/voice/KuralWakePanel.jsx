@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useId,useLayoutEffect,useRef,useState} from 'react';
 import {X,MoreHorizontal} from 'lucide-react';
 import {drawOrb,orbPaletteKey} from './kuralOrbCanvas';
 import '@fontsource/plus-jakarta-sans/latin-500.css';
@@ -42,41 +42,58 @@ export function KuralCanvas({state,level=0,card=false}){
  return <canvas ref={canvas} className="kural-orb-canvas" aria-hidden="true" data-palette={key} data-motion={hidden||!visible||reduced||key==='err'?'static':'running'}/>;
 }
 export function collisionOffset(box,obstacles,viewportHeight){let offset=0;for(let i=0;i<8;i++){const hit=obstacles.find(r=>box.left<r.right+8&&box.right>r.left-8&&box.top-offset<r.bottom+8&&box.bottom-offset>r.top-8);if(!hit)break;const next=box.bottom-hit.top+12;if(next<=offset)break;offset=Math.min(next,Math.max(0,Math.min(viewportHeight-160,box.top-24)));}return offset;}
-export default function KuralWakePanel({wake,lang='en',muted=false,panelState='idle',statusNote=wake.note,requestPending=false,level=wake.level,heard='',answer='',playingAnswer='',playbackProgress,menuControls={},onToggle,onRetry,onPopupDismiss,onClose,children,hidden=false}){
+export function KuralAnswer({text,progress,muted,reduced,mode='speaking'}){
+ const [showMore,setShowMore]=useState(false),[clipped,setClipped]=useState(false),viewport=useRef(null),id=useId();
+ useLayoutEffect(()=>{setShowMore(false);},[text]);
+ useLayoutEffect(()=>{
+  const node=viewport.current;if(!node)return;
+  const measure=()=>{if(!showMore)setClipped(node.scrollHeight>node.clientHeight+1);};
+  measure();const observer=new ResizeObserver(measure);observer.observe(node);return()=>observer.disconnect();
+ },[text,showMore]);
+ return <div className={`kural-answer${showMore?' is-full':''}${clipped&&!showMore?' is-clipped':''}`}>
+  <div id={id} ref={viewport} className="kural-answer-viewport"><KuralWords text={text} mode={mode} progress={progress} muted={muted} reduced={reduced}/></div>
+  {clipped&&<button type="button" className="kural-show-more" aria-expanded={showMore} aria-controls={id} onClick={()=>setShowMore(value=>!value)}>{showMore?'Show less':'Show more'}</button>}
+ </div>;
+}
+export default function KuralWakePanel({wake,lang='en',muted=false,panelState='idle',statusNote=wake.note,requestPending=false,level=wake.level,heard='',answer='',playingAnswer='',playbackProgress,debugLine='',menuControls={},onToggle,onRetry,onPopupDismiss,onClose,children,hidden=false}){
  const presentation=useSpeechPresentation(),reduced=useKuralReducedMotion();
- const state=wakeVisualState({...wake,note:statusNote},{panelState,muted,requestPending}),key=orbPaletteKey(state);const [open,setOpen]=useState(false),[expanded,setExpanded]=useState(false),[lift,setLift]=useState(0);const previous=useRef(state),wasSpeaking=useRef(false),expectPermission=useRef(false);const root=useRef(null),orb=useRef(null),popup=useRef(null);
+ const hasAnswer=Boolean(typeof answer==='string'?answer:answer?.displayText);
+ const baseState=wakeVisualState({...wake,note:statusNote},{panelState,muted,requestPending}),state=muted&&hasAnswer&&baseState==='waiting'?'muted':baseState,key=orbPaletteKey(state);const [open,setOpen]=useState(false),[expanded,setExpanded]=useState(false),[lift,setLift]=useState(0);const previous=useRef(state),wasSpeaking=useRef(false),expectPermission=useRef(false);const root=useRef(null),orb=useRef(null),popup=useRef(null);
  useEffect(()=>{let timer;const before=previous.current;previous.current=state;
   if(hidden){setExpanded(false);setOpen(false);wasSpeaking.current=false;return;}
   if(state==='speaking'){wasSpeaking.current=true;setExpanded(true);return;}
-  if(state==='permission'){if(panelState==='permission'||wake.permissionRequired||expectPermission.current)setExpanded(true);return;}
+  if(state==='permission'){setExpanded(false);return;}
   if(state==='waiting')expectPermission.current=false;
   if(state==='listening'){setExpanded(true);return;}
   if(state==='processing'){setExpanded(true);return;}
   if(['error','unavailable'].includes(state)){wasSpeaking.current=false;setExpanded(true);timer=setTimeout(()=>setExpanded(false),3000);}
-  else if(wasSpeaking.current||expanded){wasSpeaking.current=false;timer=setTimeout(()=>setExpanded(false),3000);}
+  else {wasSpeaking.current=false;setExpanded(false);}
   return()=>clearTimeout(timer);
  },[state,panelState,hidden,wake.permissionRequired]);
- useEffect(()=>{if(!muted||!answer||['listening','processing'].includes(state))return;setExpanded(true);const timer=setTimeout(()=>setExpanded(false),3000);return()=>clearTimeout(timer);},[muted,answer]);
+ useEffect(()=>{if(!muted||!hasAnswer||['listening','processing','off'].includes(state))return;setExpanded(true);const timer=setTimeout(()=>setExpanded(false),3000);return()=>clearTimeout(timer);},[muted,answer]);
  const collapse=()=>{expectPermission.current=false;setExpanded(false);setOpen(false);onClose?.();orb.current?.focus();};
  const close=()=>{onPopupDismiss?.();setOpen(false);orb.current?.focus();};
  const toggle=()=>{if(open)close();else setOpen(true);};
  useEffect(()=>{if(!open)return;popup.current?.querySelector('button')?.focus();const outside=e=>{if(!root.current?.contains(e.target)){onPopupDismiss?.();setOpen(false);}};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[open]);
- useEffect(()=>{if(hidden)return;let timer;const measure=()=>{clearTimeout(timer);timer=setTimeout(()=>{if(!orb.current)return;const b=root.current.getBoundingClientRect();const width=expanded?Math.min(280,innerWidth-48):parseFloat(getComputedStyle(root.current).getPropertyValue('--rest-size')),height=expanded?276:width;const base={left:b.right-width,right:b.right,top:b.bottom+lift-height,bottom:b.bottom+lift};const obstacles=[...document.querySelectorAll('main button,[data-tour-navbar],[data-primary-action]')].filter(e=>!root.current?.contains(e)).map(e=>e.getBoundingClientRect()).filter(r=>r.width&&r.height&&r.top<innerHeight&&r.bottom>0);setLift(collisionOffset(base,obstacles,innerHeight));},80);};measure();window.addEventListener('resize',measure);window.addEventListener('scroll',measure,true);const observer=new MutationObserver(measure);observer.observe(document.querySelector('main')||document.body,{childList:true,subtree:true});return()=>{clearTimeout(timer);observer.disconnect();window.removeEventListener('resize',measure);window.removeEventListener('scroll',measure,true);};},[hidden,lift,expanded]);
+ useEffect(()=>{if(hidden)return;let timer;const measure=()=>{clearTimeout(timer);timer=setTimeout(()=>{if(!orb.current)return;const b=root.current.getBoundingClientRect();const width=expanded?Math.min(280,innerWidth-48):b.width,height=expanded?(root.current.querySelector('.kural-card-body')?.getBoundingClientRect().height||180)+b.height+12:b.height;const base={left:b.right-width,right:b.right,top:b.bottom+lift-height,bottom:b.bottom+lift};const obstacles=[...document.querySelectorAll('main button,[data-tour-navbar],[data-primary-action]')].filter(e=>!root.current?.contains(e)).map(e=>e.getBoundingClientRect()).filter(r=>r.width&&r.height&&r.top<innerHeight&&r.bottom>0);setLift(collisionOffset(base,obstacles,innerHeight));},80);};measure();window.addEventListener('resize',measure);window.addEventListener('scroll',measure,true);const observer=new MutationObserver(records=>{if(records.some(record=>!root.current?.contains(record.target)))measure();});observer.observe(document.querySelector('main')||document.body,{childList:true,subtree:true});return()=>{clearTimeout(timer);observer.disconnect();window.removeEventListener('resize',measure);window.removeEventListener('scroll',measure,true);};},[hidden,lift,expanded,heard,answer,debugLine]);
  if(hidden)return null;
  const primary=statusLabel(state,muted);
  const onset=state==='waiting'&&Number(level)>=.08; // Existing .01 PCM RMS x8 display level, visual only.
- const words=state==='listening'?heard:state==='speaking'?playingAnswer:muted&&!['listening','processing','permission'].includes(state)?answer:'';
+ const displayAnswer=typeof answer==='string'?answer:answer?.displayText||'';
+ const playingDisplay=typeof playingAnswer==='string'?playingAnswer:playingAnswer?.displayText||'';
+ const words=state==='processing'?heard:state==='speaking'?playingDisplay:muted&&!['listening','processing','permission'].includes(state)?displayAnswer:'';
  const progress=playbackProgress===undefined?presentation.progress:playbackProgress;
  const copy=muted?['MUTED','Answer on screen']:({listening:['LISTENING','Go ahead\u2026'],processing:['UNDERSTANDING','One moment\u2026'],speaking:['SPEAKING',"Here's the answer"]})[state];
  const userToggle=()=>{expectPermission.current=!wake.enabled;onToggle?.();};
  const activate=()=>{if(['permission','unavailable','error'].includes(state)){expectPermission.current=true;(onRetry||onToggle)?.();return;}if(!wake.enabled&&!wake.speaking&&!['listening','processing'].includes(state)){userToggle();return;}toggle();};
  return <div ref={root} className={`kural-floating kural-state-${key}${expanded?' is-expanded':' is-ready'}${onset?' has-onset':''}`} data-wake-state={state} data-card-open={expanded} style={{'--kural-lift':`${lift}px`}} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();if(open)close();else if(expanded)collapse();}}}>
   {open&&<KuralControlsMenu wake={wake} onToggle={userToggle} onClose={close} controls={menuControls} menuRef={popup}>{children}</KuralControlsMenu>}
-  <div className="kural-interaction-card" role={expanded?'region':undefined} aria-label={expanded?'Kural interaction':undefined}>
+  <div className="kural-interaction-card kural-card-body" role={expanded?'region':undefined} aria-label={expanded?'Kural interaction':undefined}>
    <header className="kural-card-header" aria-hidden={!expanded}><strong>Kural</strong><button type="button" tabIndex={expanded?0:-1} aria-label="Kural microphone controls" title="Kural microphone controls" onClick={toggle}><MoreHorizontal size={18}/></button><button type="button" tabIndex={expanded?0:-1} aria-label="Close Kural interaction and stop" title="Close Kural interaction and stop" onClick={collapse}><X size={18}/></button></header>
-   <div className="kural-orb-stage"><button ref={orb} className="kural-floating-orb" type="button" aria-label={`Kural assistant - ${primary}. ${wake.enabled?'Open controls':'Enable hands-free'}`} aria-haspopup="dialog" aria-describedby={!expanded?'kural-ready-tooltip':undefined} aria-expanded={open} onClick={activate} onKeyDown={e=>{if([' ','Enter'].includes(e.key)){e.preventDefault();e.stopPropagation();if(!e.repeat)activate();}}} onKeyUp={e=>{if([' ','Enter'].includes(e.key)){e.preventDefault();e.stopPropagation();}}}><span className="kural-orb-halo" aria-hidden="true"/><span className="kural-orb-ring" aria-hidden="true"/><KuralCanvas state={state} level={level} card={expanded}/></button></div>
    <div className="kural-orb-label" aria-hidden={!expanded} aria-live={expanded?'polite':'off'}>{copy?<><small>{copy[0]}</small><p>{copy[1]}</p></>:<p>{primary}</p>}</div>
-   {words&&<KuralWords text={words} mode={state==='listening'?'listening':'speaking'} progress={progress} muted={muted} reduced={reduced}/>}
-  </div><span id="kural-ready-tooltip" role="tooltip" className="kural-ready-tooltip">{state==='permission'?'Allow microphone':['unavailable','error'].includes(state)?'Unavailable \u2014 tap to retry':wake.enabled?<>Say <span className="kural-wake-tag">Kural</span></>:'Tap to turn on'}</span>
+   {words&&<KuralAnswer text={words} mode={state==='processing'?'transcript':'speaking'} progress={progress} muted={muted} reduced={reduced}/>}
+   {state==='listening'&&<svg className="kural-live-wave" viewBox="0 0 240 28" aria-label="Microphone level">{Array.from({length:40},(_,i)=>{const h=2+Math.min(1,Number(level)||0)*22*(.4+.6*Math.abs(Math.sin(i*1.7)));return <rect key={i} x={i*6} y={(28-h)/2} width="2" height={h} rx="1"/>;})}</svg>}
+   {debugLine&&<small className="kural-route-debug">{debugLine}</small>}
+  </div><div className="kural-orb-stage"><button ref={orb} className="kural-floating-orb" type="button" aria-label={`Kural assistant - ${primary}. ${wake.enabled?'Open controls':'Enable hands-free'}`} aria-haspopup="dialog" aria-describedby={!expanded?'kural-ready-tooltip':undefined} aria-expanded={open} onClick={activate} onKeyDown={e=>{if([' ','Enter'].includes(e.key)){e.preventDefault();e.stopPropagation();if(!e.repeat)activate();}}} onKeyUp={e=>{if([' ','Enter'].includes(e.key)){e.preventDefault();e.stopPropagation();}}}><span className="kural-orb-halo" aria-hidden="true"/><span className="kural-orb-ring" aria-hidden="true"/><KuralCanvas state={state} level={level} card={expanded}/></button></div><span id="kural-ready-tooltip" role="tooltip" className="kural-ready-tooltip">{state==='permission'?'Allow microphone':['unavailable','error'].includes(state)?'Unavailable \u2014 tap to retry':wake.enabled?<>Say <span className="kural-wake-tag">Kural</span></>:'Tap to turn on'}</span>
  </div>;
 }

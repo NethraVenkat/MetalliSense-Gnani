@@ -26,11 +26,11 @@ export const tidyTaggedPunctuation=text=>text.replace(/(\b[A-Z]{1,8}-\d+\b|\b(?:
 function Tagged({text}){const parts=displayParts(text);return parts.map((part,i)=>part.kind==='plain'?part.text:<span key={i} className={`kural-text-tag kural-tag-${part.kind}${/^[:?.!,]/.test(parts[i+1]?.text||'')?' kural-tag-before-punctuation':''}`}>{part.text}</span>);}
 export default function KuralWords({text='',mode='listening',progress=null,muted=false,reduced=false}){
  if(!text.trim())return null;
- const display=tidyTaggedPunctuation(text),transcript=mode==='listening'?leadingWake(display):{wake:false,text:display},pieces=transcript.text.match(/\s+|\S+/gu)||[],count=pieces.filter(p=>p.trim()).length;
+ const display=tidyTaggedPunctuation(text),transcript=mode!=='speaking'?leadingWake(display):{wake:false,text:display},pieces=transcript.text.match(/\s+|\S+/gu)||[],count=pieces.filter(p=>p.trim()).length;
  let index=0;
  // Karaoke is a display-only approximation: playback proportion across words,
  // not forced alignment, phoneme timing or a change to the spoken text.
- return <div className={`kural-words kural-words--${mode}`} aria-label={mode==='listening'?'Transcript':'Answer'}>
+ return <div className={`kural-words kural-words--${mode}`} aria-label={mode!=='speaking'?'Transcript':'Answer'}>
   {transcript.wake&&<><span className="kural-wake-tag">Kural</span>{transcript.text&&' '}</>}
   {pieces.map((word,i)=>{if(!word.trim())return word;const at=index++,phase=mode==='speaking'?spokenWordPhase(at,count,progress,muted||reduced):'done';
    const newest=mode==='listening'&&!reduced&&at===count-1;

@@ -41,3 +41,24 @@
 @media(prefers-reduced-motion:reduce){.kural-words .kural-word,.kural-caret{animation:none!important}.kural-caret{display:none}.kural-word--future,.kural-word--current,.kural-word--newest{color:#123527}.dark .kural-word--future,.dark .kural-word--current,.dark .kural-word--newest{color:#e6fff1}.kural-word--future .kural-text-tag{opacity:1}}
 
 .kural-text-tag.kural-tag-before-punctuation{padding-right:1px}
+
+/* One bounded card owns both its stationary header and answer viewport. */
+.kural-floating.is-expanded{width:var(--rest-size);height:var(--rest-size)}
+.kural-floating{overflow-anchor:none}
+.kural-interaction-card.kural-card-body{display:none;position:absolute;right:0;bottom:calc(100% + 12px);width:var(--card-width);height:auto;box-sizing:border-box;min-height:min(180px,calc(100dvh - var(--rest-size) - 72px - var(--kural-lift,0px)));max-height:calc(100dvh - var(--rest-size) - 72px - var(--kural-lift,0px));padding:8px 14px 16px;border:1px solid #c4dfcfb3;border-radius:20px;background:rgba(247,255,250,.94);backdrop-filter:blur(18px);box-shadow:0 8px 30px #17492c1c;overflow:hidden;overflow-anchor:none;pointer-events:auto;z-index:1}
+.is-expanded .kural-interaction-card.kural-card-body{display:flex;flex-direction:column;gap:12px}
+.kural-card-body .kural-card-header{position:static;flex:0 0 32px;height:32px;min-height:32px;pointer-events:auto;z-index:1}
+.kural-card-body .kural-orb-label{position:static;flex:none;height:auto;opacity:1;visibility:visible;overflow:visible}
+.kural-answer{display:flex;flex-direction:column;min-height:0;overflow:hidden;overflow-anchor:none}
+.kural-answer-viewport{max-height:calc(5 * 1.45 * 17px);min-height:0;overflow:hidden;overflow-anchor:none;scroll-behavior:auto}
+.kural-answer.is-clipped .kural-answer-viewport{mask-image:linear-gradient(to bottom,#000 75%,transparent);-webkit-mask-image:linear-gradient(to bottom,#000 75%,transparent)}
+.kural-answer.is-full .kural-answer-viewport{max-height:none;overflow-y:auto;overscroll-behavior:contain}
+.kural-show-more{flex:none;align-self:center;min-height:32px;padding:5px 12px;border:0;background:transparent;color:#0e8a55;font-size:12px;cursor:pointer}
+.kural-card-body .kural-words{position:static;max-height:none;display:block;overflow:visible;white-space:pre-wrap;-webkit-line-clamp:unset;font-size:17px;margin:0}
+.is-expanded .kural-orb-stage{right:-1px;bottom:-1px;width:var(--rest-size);height:var(--rest-size)}
+.is-expanded .kural-orb-canvas{width:100%;height:100%}
+.kural-live-wave{width:100%;height:28px;fill:#0e8a55}.kural-route-debug{font-size:10px;color:#5b7e6a;overflow-wrap:anywhere}
+.dark .kural-interaction-card.kural-card-body,[data-theme=dark] .kural-interaction-card.kural-card-body{background:rgba(17,39,28,.96);border-color:#547c6399}
+.dark .kural-show-more,[data-theme=dark] .kural-show-more{color:#66dba1}
+
+.is-ready .kural-words{display:none}.is-expanded .kural-card-header{top:8px}.kural-card-body .kural-words--transcript .kural-word{color:inherit}
