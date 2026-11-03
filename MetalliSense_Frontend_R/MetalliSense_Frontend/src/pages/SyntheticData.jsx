@@ -8,12 +8,14 @@ import { formatPercentage } from "../utils/formatters";
 
 const SyntheticData = () => {
   const [generatedReading, setGeneratedReading] = useState(null);
-  useRegisterVoicePage({grade:generatedReading?.metalGrade}, 'SyntheticData');
+
 
   const handleDataGenerated = async (reading, params) => {
     setGeneratedReading(reading);
     toast.success("Synthetic reading generated successfully");
   };
+
+  useRegisterVoicePage({grade:generatedReading?.metalGrade}, 'SyntheticData',{reading:generatedReading});
 
   return (
     <div className="space-y-6">

@@ -45,7 +45,7 @@ const TrainingData = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingSample, setEditingSample] = useState(null);
   const [selectedSample, setSelectedSample] = useState(null);
-  useRegisterVoicePage({grade:selectedSample?.grade||gradeFilter}, 'TrainingData');
+
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -244,6 +244,8 @@ const TrainingData = () => {
       <Badge variant={type === "normal" ? "success" : "error"}>{type}</Badge>
     );
   };
+
+  useRegisterVoicePage({grade:selectedSample?.grade||gradeFilter,sampleId:selectedSample?._id}, 'TrainingData',{trainingData,pagination,selectedSample,loading});
 
   return (
     <div className="space-y-6">

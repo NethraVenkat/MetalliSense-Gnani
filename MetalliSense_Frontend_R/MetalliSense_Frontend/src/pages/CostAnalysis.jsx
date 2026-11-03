@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 // Fully additive: doesn't touch anomaly/RL/OPC logic, just visualizes and
 // edits the price list used to annotate RL candidates with ₹ estimates.
 export default function CostAnalysis() {
-  useRegisterVoicePage({}, 'CostAnalysis');
+
   const [elementPrices, setElementPrices] = useState({});
   const [baseMetalPrices, setBaseMetalPrices] = useState({});
   const [editedElements, setEditedElements] = useState({});
@@ -65,6 +65,8 @@ export default function CostAnalysis() {
     }
   };
 
+  useRegisterVoicePage({}, 'CostAnalysis',{elementPrices,baseMetalPrices,history,loading});
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto">
@@ -74,6 +76,8 @@ export default function CostAnalysis() {
       </div>
     );
   }
+
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

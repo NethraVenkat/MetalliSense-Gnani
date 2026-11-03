@@ -108,7 +108,7 @@ const strategyColor = {
 const RLOptimizer = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunRL, rlDone, acceptStrategy, rejectAll } = useMeltFlow();
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'RLOptimizer');
+
   // Restore the last RL run for this heat when navigating back to the page
   const [reading, setReading] = useState(() => (isUnlocked ? flow.rlResult?._reading || null : null));
   const [result, setResult] = useState(() => (isUnlocked ? flow.rlResult : null));
@@ -268,6 +268,8 @@ const RLOptimizer = () => {
 
   const trendData =
     policyStatus?.reward_trend?.map((r, i) => ({ i, reward: r })) || [];
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'RLOptimizer',{reading,result,policyStatus,flow});
 
   return (
     <div className="space-y-6">

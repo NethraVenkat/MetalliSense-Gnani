@@ -330,7 +330,7 @@ export default function SalesInvoices() {
   const [loading, setLoading] = useState(true);
   const [invFor, setInvFor] = useState(null);
   const [view, setView] = useState(null); // { heatId, invoice, tab }
-  useRegisterVoicePage({heatId:view?.heatId,invoiceId:view?.invoice?.invoiceId}, 'SalesInvoices');
+
 
   const load = useCallback(async () => {
     try {
@@ -359,6 +359,8 @@ export default function SalesInvoices() {
       avgMargin: withMargin.length ? withMargin.reduce((s, h) => s + h.margin.marginPct, 0) / withMargin.length : null,
     };
   }, [heats, invoices]);
+
+  useRegisterVoicePage({heatId:view?.heatId,invoiceId:view?.invoice?.invoiceId}, 'SalesInvoices',{heats,invoices,loading});
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
