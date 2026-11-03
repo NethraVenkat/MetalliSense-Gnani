@@ -1,5 +1,5 @@
 import {observeSpeechPresentation,readElementProgress} from '../services/speechPresentation';
-﻿import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { synthesizeSpeechWithMeta } from '../services/copilotService';
 import { toSpokenText } from '../services/spokenText';
 import { playSpeechStream } from '../services/ttsStream';
