@@ -1,8 +1,9 @@
-// Foundation only: the public registry contains one no-effect RUN action.
+// Existing foundation demo plus page-scoped F17 adapters; defaults remain off.
 import {normalizeSpokenNumbers} from './spokenNumbers';
+import {prepareVoiceAction} from './voiceActionRegistry';
 export const voiceActionsEnabled=()=>import.meta.env.VITE_VOICE_ACTIONS==='true';
 export const screenOnly={ta:'\u0b87\u0ba4\u0bc8 \u0bb8\u0bcd\u0b95\u0bbf\u0bb0\u0bc0\u0ba9\u0bcd\u0bb2 \u0bae\u0b9f\u0bcd\u0b9f\u0bc1\u0bae\u0bcd \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bb2\u0bbe\u0bae\u0bcd.',hi:'\u092f\u0939 \u0915\u0947\u0935\u0932 \u0938\u094d\u0915\u094d\u0930\u0940\u0928 \u092a\u0930 \u0915\u093f\u092f\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964',en:'This one is screen-only.'};
-const deny=[/\b(?:delete|remove|reset(?: demo)?|(?:hold|engineer) override|override|bypass|clear chat(?: history)?|edit (?:grade|price|training)(?: data)?|receive (?:lot|additive)|dri lab(?: entry)?|(?:manual lot )?(?:release|reject)|issue invoice|approve tap|accept strategy)\b/iu,/\u0ba8\u0bc0\u0b95\u0bcd\u0b95\u0bc1|\u0b85\u0bb4\u0bbf|\u0b93\u0bb5\u0bb0\u0bcd\u0bb0\u0bc8\u0b9f\u0bc1|\u0939\u091f\u093e\u0913|\u092e\u093f\u091f\u093e\u0913|\u0913\u0935\u0930\u0930\u093e\u0907\u0921/u];
+const deny=[/\b(?:delete|remove|reset(?: demo)?|(?:hold|engineer) override|override|bypass|clear chat(?: history)?|edit (?:grade|price|training)(?: data)?|receive (?:lot|additive)|dri lab(?: entry)?|(?:manual (?:lot )?(?:release|reject)|(?:release|reject) lot|release)|issue invoice|approve tap|accept strategy|apply (?:ahp|criteria) weights)\b/iu,/\u0ba8\u0bc0\u0b95\u0bcd\u0b95\u0bc1|\u0b85\u0bb4\u0bbf|\u0b93\u0bb5\u0bb0\u0bcd\u0bb0\u0bc8\u0b9f\u0bc1|\u0939\u091f\u093e\u0913|\u092e\u093f\u091f\u093e\u0913|\u0913\u0935\u0930\u0930\u093e\u0907\u0921/u];
 export const neverByVoice=text=>deny.some(rule=>rule.test(String(text).normalize('NFKC')));
 export const registry=Object.freeze([{id:'test-action',page:'*',level:'RUN',phrases:{ta:['\u0b9f\u0bc6\u0bb8\u0bcd\u0b9f\u0bcd \u0b86\u0b95\u0bcd\u0bb7\u0ba9\u0bcd'],hi:['\u091f\u0947\u0938\u094d\u091f \u090f\u0915\u094d\u0936\u0928'],en:['test action']},requiredRoles:[],buildSummary:()=>({displayText:'Test action: no plant or backend effect.',spokenText:'Test action. No plant or backend effect. Say yes to continue.'}),precheck:()=>({ok:true}),execute:async()=>({status:200,ids:[],demo:true})}]);
 export const normalizePasscode=text=>normalizeSpokenNumbers(text).replace(/\s+/g,'');
@@ -11,7 +12,7 @@ export const MASK='\u2022'.repeat(6);
 // silently classified as silence, and no transcript is inferred from RMS.
 export const hasConfirmationWords=text=>/[\p{L}\p{N}]/u.test(String(text||'').replace(/[\[(]\s*(?:noise|silence|music|inaudible|no speech)\s*[\])]/giu,''));
 export const yesNo=text=>/^(?:yes|ok|okay|\u0b86\u0bae\u0bcd|\u0b86\u0bae\u0bbe|\u0b86\u0bae\u0bbe\u0bae\u0bcd|\u0939\u093e\u0901|\u0939\u093e\u0902)$/iu.test(String(text).normalize('NFKC').replace(/\p{P}/gu,'').trim())?'yes':/^(?:no|\u0b87\u0bb2\u0bcd\u0bb2\u0bc8|\u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bbe\u0bae\u0bcd|\u0928\u0939\u0940\u0902|\u0928\u0939\u0940)$/iu.test(String(text).normalize('NFKC').replace(/\p{P}/gu,'').trim())?'no':null;
-export const matchAction=text=>registry.find(a=>Object.values(a.phrases).flat().includes(String(text).normalize('NFKC').toLowerCase().replace(/[.!?]/g,'').trim()));
+export const matchAction=(text,context)=>registry.find(a=>Object.values(a.phrases).flat().includes(String(text).normalize('NFKC').toLowerCase().replace(/[.!?]/g,'').trim()))||prepareVoiceAction(text,context);
 // Dependency-injected state machine: no microphone, transport, navigation or plant service owner.
 export function createActionFlow({api,say,capture,onChange=()=>{},setTimer=setTimeout,clearTimer=clearTimeout}){
  let active=false,generation=0,timer,abort,currentPage='',originalText='';
@@ -24,7 +25,8 @@ export function createActionFlow({api,say,capture,onChange=()=>{},setTimer=setTi
    if(neverByVoice(action.id)||neverByVoice(ctx.originalText||'')||ctx.gate?.decision==='HOLD'&&action.level==='APPROVE')throw Error('screen-only');
    const check=await action.precheck(ctx);if(!check?.ok){decision='refused';throw Error('Precheck refused');}
    const summary=action.buildSummary(ctx);publish({phase:'readback',level:action.level,summary:summary.displayText});await say(summary.spokenText);if(signal.aborted)throw Error('cancelled');
-   await api.readback({action_id:action.id,summary:summary.displayText,page:ctx.page});
+   if(action.needsReason){publish({phase:'reason',level:action.level,prompt:'Reason?',summary:summary.displayText});await say('Reason?');const reply=await capture({signal,timeout:12000,no_store:false,purpose:'reason'});ctx.reason=String(typeof reply==='string'?reply:reply.text||'').trim();if(ctx.reason.length<5){decision='refused';throw Error('A reason of at least 5 characters is required.');}}
+   if(action.level!=='ASK')await api.readback({action_id:action.id,summary:summary.displayText,page:ctx.page});
    if(action.level==='RUN'){
     const base={level:'RUN',summary:summary.displayText};publish({...base,phase:'confirm-starting',prompt:'Starting confirmation microphone...'});
     const response=await capture({signal,timeout:8000,no_store:false,purpose:'confirmation',onState:phase=>{if(!signal.aborted)publish({...base,phase:phase==='listening'?'confirm':phase==='processing'?'confirm-processing':'confirm-starting',prompt:phase==='listening'?'Listening... say yes or no':phase==='processing'?'Checking confirmation...':'Starting confirmation microphone...'});}});if(signal.aborted)throw Error('cancelled');
@@ -39,13 +41,13 @@ export function createActionFlow({api,say,capture,onChange=()=>{},setTimer=setTi
     const auth=await api.authorize({action_id:action.id,required_roles:action.requiredRoles,spoken_code_text:text});
     if(!auth.ok){decision=auth.locked?'locked':'refused';throw Error(auth.locked?'Voice approvals locked for 10 minutes':'Approval refused');}
     for(let seconds=5;seconds>0;seconds--){publish({phase:'countdown',level:'APPROVE',summary:summary.displayText,seconds,user:auth.user});await wait(1000);}
-    if(signal.aborted)throw Error('cancelled');const consumed=await api.consume({token:auth.token,action_id:action.id});if(!consumed.ok)throw Error('Approval expired');
+    if(signal.aborted)throw Error('cancelled');const consumed=await api.consume({token:auth.token,action_id:action.id});if(!consumed.ok)throw Error('Approval expired');ctx.user=consumed.user||auth.user;
    }
    if(signal.aborted||ticket!==generation)throw Error('cancelled');publish({phase:'executing',level:action.level,summary:summary.displayText});
    const result=await action.execute(ctx);if(!result||result.status<200||result.status>=300)throw Error('Backend action failed');decision='executed';
-   await audit(action,decision,{summary:summary.displayText,backend_result:{status:result.status,ids:result.ids||[]}});publish({phase:'result',level:action.level,result:'Completed',summary:summary.displayText});return true;
-  }catch(error){if(signal.aborted)decision='cancelled';try{await audit(action,decision,{error:signal.aborted?'cancelled_by_user_or_context':reason,summary:signal.aborted?'Cancelled':String(error.message).slice(0,120)});}catch{publish({phase:'error',result:'Audit unavailable; no success recorded'});return false;}
-   if(ticket===generation)publish({phase:decision==='cancelled'?'cancelled':decision==='timeout'?'timeout':'error',level:action.level,result:decision==='cancelled'?'Cancelled':error.message});return false;
+   await audit(action,decision,{summary:summary.displayText,backend_result:{status:result.status,ids:result.ids||[]}});publish({phase:'result',level:action.level,result:result.message||'Completed',summary:summary.displayText});if(result.message)await say(result.message);return true;
+  }catch(error){if(error.refused||[400,403,409,422].includes(error.response?.status))decision='refused';if(signal.aborted)decision='cancelled';const message=error.response?.data?.message||error.message;try{await audit(action,decision,{error:signal.aborted?'cancelled_by_user_or_context':reason,summary:signal.aborted?'Cancelled':String(message).slice(0,200),...(error.response?{backend_result:{status:error.response.status,ids:[]}}:{})});}catch{publish({phase:'error',result:'Audit unavailable; no success recorded'});return false;}
+   if(ticket===generation){publish({phase:decision==='cancelled'?'cancelled':decision==='timeout'?'timeout':'error',level:action.level,result:decision==='cancelled'?'Cancelled':error.message});if(decision==='refused')await say(error.response?.data?.message||error.message);}return false;
   }finally{active=false;clearTimer(timer);}
  }};
 }

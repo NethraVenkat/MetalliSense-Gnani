@@ -69,7 +69,7 @@ export default function FullAnalysis() {
   const navigate = useNavigate();
   const { flow, isUnlocked, acceptStrategy } = useMeltFlow();
   const [reading, setReading] = useState(null);
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'FullAnalysis');
+
   const [batchWeightKg, setBatchWeightKg] = useState(1000);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -169,6 +169,8 @@ export default function FullAnalysis() {
   };
 
   const steps = result?.steps;
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'FullAnalysis',{reading,result,batchWeightKg,busy:loading},({data})=>{setResult(data);setChosenStrategy(null);});
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

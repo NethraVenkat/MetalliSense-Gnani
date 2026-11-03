@@ -1,0 +1,18 @@
+{
+  "mocked": true,
+  "providerCalls": 0,
+  "physicalMicrophone": false,
+  "states": [
+    "run-readback",
+    "run-listening",
+    "run-completed",
+    "approve-readback",
+    "approve-passcode",
+    "approve-countdown",
+    "approve-result",
+    "hold-refusal",
+    "never-list-refusal"
+  ],
+  "width": 1280,
+  "theme": "light"
+}

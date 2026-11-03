@@ -24,7 +24,7 @@ export default function YardInspection() {
   const [status, setStatus] = useState(null);
   const [lots, setLots] = useState([]);
   const [form, setForm] = useState({ lotId: params.get("lot") || "", device: "XRF", pieces: 15, surfacePrepared: false, inspector: "" });
-  useRegisterVoicePage({lotId:form.lotId}, 'YardInspection');
+
   const [live, setLive] = useState(null);
   const [running, setRunning] = useState(false);
   const [sessions, setSessions] = useState([]);
@@ -108,6 +108,8 @@ export default function YardInspection() {
   const connected = status?.client?.isConnected;
   const progress = live?.piecesPlanned ? Math.round((live.piecesDone / live.piecesPlanned) * 100) : 0;
   const decision = live?.result?.decision;
+
+  useRegisterVoicePage({lotId:form.lotId}, 'YardInspection',{status,lots,form,live,sessions,running},({id,data})=>{loadStatus();loadLots();if(id==='inspect_lot'){setLive(data);setRunning(true);poll();}});
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

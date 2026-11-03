@@ -22,7 +22,7 @@ const Spectrometer = () => {
   const [readings, setReadings] = useState([]);
   const [latestReading, setLatestReading] = useState(null);
   const [loading, setLoading] = useState(false);
-  useRegisterVoicePage({}, 'Spectrometer',{latestReading,loading});
+  useRegisterVoicePage({}, 'Spectrometer',{latestReading,readings,loading,opcConnected:opcStatus?.connected},()=>fetchReadings());
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {

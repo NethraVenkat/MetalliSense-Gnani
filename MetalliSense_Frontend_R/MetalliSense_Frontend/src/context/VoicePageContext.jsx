@@ -22,14 +22,15 @@ export function VoicePageProvider({children}) {
   return <VoicePageContext.Provider value={value}>{children}</VoicePageContext.Provider>;
 }
 // Register only metadata already shown by a page. No requests or factory store.
-export function useRegisterVoicePage(selected,source,loaded=null) {
+export function useRegisterVoicePage(selected,source,loaded=null,actions=null,enabled=true) {
   const context=useVoicePage();
+  const actionsRef=useRef(actions);actionsRef.current=actions;
   const serialized=JSON.stringify(selected);
   const loadedSerialized=JSON.stringify(loaded);
   const register=context?.register,scope=context?.scope;
   useLayoutEffect(()=>{
-    if((!voiceEverywhereEnabled()&&!wakeWordEnabled())||!register)return;
+    if(!enabled||(!voiceEverywhereEnabled()&&!wakeWordEnabled()&&import.meta.env.VITE_VOICE_ACTIONS!=='true')||!register)return;
     const owner=Symbol('page selection');
-    return register(owner,scope,{selected:JSON.parse(serialized),source,asOf:new Date().toISOString(),loaded:JSON.parse(loadedSerialized)});
-  },[register,scope,serialized,source,loadedSerialized]);
+    return register(owner,scope,{selected:JSON.parse(serialized),source,asOf:new Date().toISOString(),loaded:JSON.parse(loadedSerialized),notifyAction:value=>actionsRef.current?.(value)});
+  },[register,scope,serialized,source,loadedSerialized,enabled]);
 }

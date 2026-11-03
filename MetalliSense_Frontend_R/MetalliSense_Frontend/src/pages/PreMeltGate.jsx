@@ -296,7 +296,7 @@ export default function PreMeltGate() {
   const [heats, setHeats] = useState([]);
   const [heatId, setHeatId] = useState("");
   const [heat, setHeat] = useState(null);
-  useRegisterVoicePage({heatId,grade:heat?.heatId===heatId?heat.grade:undefined}, 'PreMeltGate');
+
   const [lots, setLots] = useState([]);
   const [grades, setGrades] = useState([]);
   const [charge, setCharge] = useState([]);
@@ -410,6 +410,8 @@ export default function PreMeltGate() {
   const specDetail = gate?.checks.find((c) => c.id === "spec_prediction")?.details || [];
   const residualDetail = gate?.checks.find((c) => c.id === "residuals")?.details || [];
   const statusOf = (list, el) => list.find((d) => d.element === el)?.status;
+
+  useRegisterVoicePage({heatId,grade:heat?.heatId===heatId?heat.grade:undefined}, 'PreMeltGate',{heats,heat,lots,charge,dirty,loading:booting,busy:checking},()=>{loadHeat(heatId);loadHeats(heatId);loadAudit();});
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

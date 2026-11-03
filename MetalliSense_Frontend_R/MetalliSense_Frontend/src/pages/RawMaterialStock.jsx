@@ -313,6 +313,7 @@ function LotDetailModal({ lotId, onClose, onChanged }) {
   const [decision, setDecision] = useState({ status: "RELEASED", by: "", reason: "", managerApproval: false });
   const load = useCallback(() => lotId && getLot(lotId).then((r) => setD(r.data.data)).catch((e) => toast.error(errMsg(e))), [lotId]);
   useEffect(() => { setD(null); load(); }, [load]);
+  useRegisterVoicePage({lotId}, 'RawMaterialStockDetail',{detail:d,lots:d?.lot?[d.lot]:[],loading:!d},()=>{load();onChanged();},Boolean(lotId));
   if (!lotId) return null;
 
   const manual = async () => {
@@ -457,7 +458,7 @@ export default function RawMaterialStock() {
   const [approveLot, setApproveLot] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [loading, setLoading] = useState(false);
-  useRegisterVoicePage({lotId:detailId}, 'RawMaterialStock',{lots,additives,loading});
+  useRegisterVoicePage({lotId:detailId}, 'RawMaterialStock',{lots,additives,loading},()=>load());
 
   const load = useCallback(async () => {
     setLoading(true);

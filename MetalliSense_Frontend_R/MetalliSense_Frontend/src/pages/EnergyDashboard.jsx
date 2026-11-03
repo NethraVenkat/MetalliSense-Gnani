@@ -41,12 +41,12 @@ function TipIcon({ k }) {
 }
 
 // ────────────────────────────────────────────── heat analysis
-function HeatAnalysis({ heats, onChanged }) {
+function HeatAnalysis({ heats, onChanged, summary }) {
   const [params] = useSearchParams();
   const current = heats.filter((h) => !h.history);
   const past = heats.filter((h) => h.history);
   const [heatId, setHeatId] = useState(params.get("heat") || current[0]?.heatId || heats[0]?.heatId || "");
-  useRegisterVoicePage({heatId}, 'EnergyDashboard');
+
   const [tapTempC, setTapTempC] = useState("");
   const [holdingMin, setHoldingMin] = useState(15);
   const [hour, setHour] = useState(new Date().getHours());
@@ -75,6 +75,7 @@ function HeatAnalysis({ heats, onChanged }) {
     } catch (err) { toast.error(errMsg(err)); } finally { setBusy(false); }
   };
 
+  useRegisterVoicePage({heatId}, 'EnergyDashboard',{heats,energy:e,data:summary,busy});
   const heatRow = heats.find((h) => h.heatId === heatId);
   const maxDriver = e ? Math.max(...e.drivers.map((d) => Math.abs(d.kwh))) : 1;
   let running = 0;
@@ -243,7 +244,7 @@ function HeatAnalysis({ heats, onChanged }) {
 
 // ────────────────────────────────────────────── page
 export default function EnergyDashboard() {
-  useRegisterVoicePage({}, 'EnergyDashboard');
+
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -266,6 +267,8 @@ export default function EnergyDashboard() {
   })), [d]);
   const driverChart = useMemo(() => (d?.drivers || []).filter((x) => x.key !== "base").map((x) => ({ ...x, name: x.label })), [d]);
   const baseDriver = d?.drivers?.find((x) => x.key === "base");
+
+  useRegisterVoicePage({}, 'EnergyDashboard',{data:d,loading});
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -389,7 +392,7 @@ export default function EnergyDashboard() {
             </Card>
           </div>
 
-          <HeatAnalysis heats={d.heats} onChanged={load} />
+          <HeatAnalysis heats={d.heats} onChanged={load} summary={d} />
 
           <Card title="All heats">
             <div className="overflow-x-auto -mx-2">

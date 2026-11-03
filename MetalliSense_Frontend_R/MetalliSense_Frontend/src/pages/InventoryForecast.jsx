@@ -498,7 +498,7 @@ export default function InventoryForecast() {
   const [prs, setPrs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(params.get("item") || null);
-  useRegisterVoicePage({item:detail}, 'InventoryForecast');
+
   const [prFor, setPrFor] = useState(null);
   const [act, setAct] = useState(null); // { pr, mode }
 
@@ -528,6 +528,8 @@ export default function InventoryForecast() {
     }
     return big ? <button onClick={(e) => { e.stopPropagation(); setPrFor(i); }} className="w-full text-xs font-semibold text-metal-500 hover:text-primary-700 py-1.5">Create PR anyway</button> : null;
   };
+
+  useRegisterVoicePage({item:detail}, 'InventoryForecast',{data,prs,loading},()=>load());
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

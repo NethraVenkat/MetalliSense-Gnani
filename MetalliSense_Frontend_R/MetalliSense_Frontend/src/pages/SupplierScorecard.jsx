@@ -683,7 +683,7 @@ function SupplierDrawer({ s, trendLabels, windowDays, onClose }) {
 
 // ─────────────────────────────────────────────── page
 export default function SupplierScorecard() {
-  useRegisterVoicePage({}, 'SupplierScorecard');
+
   const [type, setType] = useState("");
   const [view, setView] = useState("overall");
   const [data, setData] = useState(null);
@@ -733,6 +733,8 @@ export default function SupplierScorecard() {
   }, [suppliers]);
 
   const pillarLine = data?.pillars?.map((p) => `${p.label} ${Math.round(p.weight)}%`).join(" · ");
+
+  useRegisterVoicePage({}, 'SupplierScorecard',{data,loading,materialTypes:[...new Set((data?.suppliers||[]).map(s=>s.materialType))]});
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

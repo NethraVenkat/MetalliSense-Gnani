@@ -153,3 +153,19 @@ def test_bad_authorize_body_never_echoes_secret(monkeypatch):
         assert response.status_code==422 and secret not in response.text
         monkeypatch.setenv('VOICE_ACTIONS_ENABLED','false')
         assert c.post('/copilot/voice/authorize',json=secret).status_code==404
+
+@pytest.mark.parametrize('action,roles',[('start_melting',['Supervisor','Unit Controller']),('approve_pr',['Manager']),('reject_pr',['Manager']),('approve_dri_qa',['Supervisor','Manager']),('reject_dri_qa',['Supervisor','Manager']),('inspect_lot',['Supervisor'])])
+def test_f17_roles_are_server_owned(action,roles):
+    assert ACTIONS[action]['roles']==roles
+    s=auth.VoiceAuth();sid=s.session()
+    assert s.readback(sid,action,'Fixture target PR-7 10 kg','/fixture')
+    assert not s.authorize(sid,action,[], 'not a credential')['ok']
+    assert not s.readback(sid,'start_melting','H-1053 HOLD','/premelt-gate')
+
+def test_f17_frontend_and_server_action_policy_parity():
+    import re,ast
+    source=(Path(__file__).resolve().parents[3]/'MetalliSense_Frontend_R/MetalliSense_Frontend/src/services/voiceActionRegistry.js').read_text(encoding='utf-8')
+    entries=re.findall(r"\['([^']+)','[^']+','([^']+)',(\[[^\]]*\]),'[^']+','[^']+'\]",source)
+    assert len(entries)==21
+    for action,level,roles in entries:
+        assert ACTIONS[action]=={'level':level,'roles':ast.literal_eval(roles)}

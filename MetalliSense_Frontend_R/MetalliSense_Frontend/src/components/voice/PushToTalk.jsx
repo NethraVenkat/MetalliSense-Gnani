@@ -105,7 +105,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   }
   actionDeps.current={say:async text=>{say(text);await answerSpeech.current;},capture:options=>captureActionReply(options,value=>{if(alive.current)setMicLevel(value);})};
   if(!actionFlow.current)actionFlow.current=createActionFlow({api:voiceActionApi,say:text=>actionDeps.current.say(text),capture:options=>actionDeps.current.capture(options),onChange:value=>{if(alive.current)setActionState(value);}});
-  async function actionControl(text,context){const action=matchAction(text);if(!action)return false;wake.suspend();setHeard('');setHeardLatin('');await actionFlow.current.run(action,{page:context?.route,originalText:text});return true;}
+  async function actionControl(text,context,options={}){if(options.refused){await voiceActionApi.audit({page:context?.route,transcript:text,level:'ASK',intent:'screen-only',decision:'refused',summary:'Not permitted by voice.'});return true;}const action=matchAction(text,context);if(!action)return false;wake.suspend();setHeard('');setHeardLatin('');await actionFlow.current.run(action,{page:context?.route,originalText:text});return true;}
   const recordHeard=text=>{if(isCurrent()){setHeard(wakeTurn.current?.heard||text);setHeardLatin('');}};
   const callbacks=sharedContext?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
   const dashboardBriefingLifecycle={

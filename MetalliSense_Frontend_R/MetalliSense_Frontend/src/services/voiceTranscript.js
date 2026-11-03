@@ -1,4 +1,5 @@
 import {voiceActionsEnabled,neverByVoice,screenOnly} from './voiceActions';
+import {voiceAskReply,isHistoricalVoiceAsk} from './voiceAskAnswers';
 import {morningBriefingEnabled,isMorningBriefing,morningBriefing,morningUnavailable,fetchMorningRows} from './morningBriefing';
 import { getAdditives, getHeats, getHeat, getShiftSummaryHeats } from './premeltService';
 import { sendChatMessage, phraseGateFacts } from './copilotService';
@@ -50,13 +51,19 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: outp
       return;
     }
     if(voiceActionsEnabled()&&!tourActive()){
-      if(neverByVoice(text)){const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);return output(screenOnly[replyLang],screenOnly[replyLang],replyLang);}
+      if(neverByVoice(text)){const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);await actionControl?.(text,pageContext,{refused:true});return output(screenOnly[replyLang],screenOnly[replyLang],replyLang);}
       if(actionControl&&await actionControl(text,pageContext))return;
     }
-    if (intent === 'blocked') {
+    const historicalRead=loadedPageAnswersEnabled()&&!tourActive()&&isHistoricalVoiceAsk(text);
+    if (intent === 'blocked'&&!historicalRead) {
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
       const refusal=blockedVoiceReplies[replyLang];
       return output(refusal,refusal,replyLang,...(metadata.voiceTiming?[{stt_ms:metadata.stt_ms??null,answer_ms:performance.now()-started}]:[]));
+    }
+    if(loadedPageAnswersEnabled()&&!tourActive()&&(historicalRead||intent==='ask_copilot'||intent==='element_value'&&!params.heatNumber)&&pageContext?.route!=='/dashboard'){
+      const answerLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);
+      const answer=voiceAskReply(text,pageContext,answerLang);
+      if(answer){metadata.onIntent?.('draft-page-answer');return output(answer.displayText,answer.spokenText,answerLang,{pronunciationOnly:true});}
     }
     if(loadedPageAnswersEnabled()&&!tourActive()&&isLoadedPageQuestion(text,pageContext?.route)){
       const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);

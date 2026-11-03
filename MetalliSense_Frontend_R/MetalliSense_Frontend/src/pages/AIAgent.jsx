@@ -14,7 +14,7 @@ import { formatPercentage } from "../utils/formatters";
 const AIAgent = () => {
   const { flow, isUnlocked } = useMeltFlow();
   const [syntheticReading, setSyntheticReading] = useState(null); // Store synthetic data separately
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:syntheticReading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'AIAgent');
+
   const [result, setResult] = useState(null);
   const [aiAvailable, setAIAvailable] = useState(true);
   const [aiExplanation, setAiExplanation] = useState(null);
@@ -197,6 +197,8 @@ const AIAgent = () => {
       handleGenerate(gateReading);
     }
   }, [isUnlocked]);
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:syntheticReading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'AIAgent',{reading:syntheticReading,result,explanation:aiExplanation},({id,data})=>{if(id==='agent_analyze')setResult(data);else setAiExplanation(data?.geminiExplanation?.explanation||'');});
 
   return (
     <div className="space-y-6">
