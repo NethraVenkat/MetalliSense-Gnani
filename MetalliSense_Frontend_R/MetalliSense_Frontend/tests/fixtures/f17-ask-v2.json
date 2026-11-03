@@ -1,0 +1,1837 @@
+{
+  "now": "2026-11-04T12:00:00+05:30",
+  "provenance": {
+    "lot_qa": "premeltGate/store seeded PIG-0901 / QA-00001",
+    "grade": "src/mock/models/grade-model-specs.json SG-IRON",
+    "chemistry_training": "src/mock/seed.js trainingSeed[0]",
+    "supplier_inventory_energy": "offline pure premeltGate computeScorecard/forecastAll/predictHeat seeded output",
+    "other_examples": "Representative response-shaped mock fixtures, not live plant measurements; dates fixed for reproducible review."
+  },
+  "pages": {
+    "/spectrometer": {
+      "latestReading": {
+        "heatId": "H-1053",
+        "metalGrade": "SG-IRON",
+        "composition": {
+          "C": 3.7258,
+          "Si": 2.646,
+          "Mn": 0.7147,
+          "P": 0.0597,
+          "S": 0.024,
+          "Fe": 88.1963
+        },
+        "timestamp": "2026-11-04T09:05:00+05:30",
+        "deviationElements": [
+          "C",
+          "Si",
+          "Mn",
+          "P"
+        ],
+        "deviationPercentage": 5
+      }
+    },
+    "/grades": {
+      "grades": [
+        {
+          "grade": "SG-IRON",
+          "description": "Spheroidal Graphite Cast Iron (Ductile Iron)",
+          "standard": "ISO 1083",
+          "composition_ranges": {
+            "Fe": [
+              82,
+              90
+            ],
+            "C": [
+              3,
+              4
+            ],
+            "Si": [
+              1.8,
+              2.8
+            ],
+            "Mn": [
+              0.3,
+              1
+            ],
+            "P": [
+              0.01,
+              0.08
+            ],
+            "S": [
+              0.01,
+              0.03
+            ]
+          },
+          "typical_applications": [
+            "Automotive components",
+            "Pipe systems",
+            "Machinery parts"
+          ],
+          "properties": {
+            "tensile_strength_mpa": [
+              400,
+              700
+            ],
+            "elongation_percent": [
+              10,
+              18
+            ],
+            "hardness_hb": [
+              140,
+              250
+            ]
+          },
+          "physical_properties": {
+            "tensile_strength_mpa": [
+              400,
+              600
+            ]
+          }
+        }
+      ]
+    },
+    "/supplier-scorecard": {
+      "data": {
+        "suppliers": [
+          {
+            "supplier": "Madurai Cast Scrap Co.",
+            "materialType": "CI_SCRAP",
+            "group": "CI_SCRAP",
+            "materialLabel": "Cast iron scrap",
+            "lots": 4,
+            "decidedLots": 4,
+            "receivedKg": 17760,
+            "statusCounts": {
+              "RELEASED": 4
+            },
+            "evidence": {
+              "lotsTotal": 4,
+              "lotsDecided": 4,
+              "released": 4,
+              "restricted": 0,
+              "rejected": 0,
+              "labTestedLots": 4,
+              "gunLots": 4,
+              "piecesTested": 60,
+              "piecesFlagged": 0,
+              "avgYieldPct": 93.5,
+              "nominalYieldPct": 93,
+              "deliveryLots": 4,
+              "lateLots": 0,
+              "avgLateDays": 0,
+              "weighedLots": 4,
+              "avgShortPct": 0.79,
+              "shortKg": 140,
+              "docLots": 4,
+              "docsMissing": 0,
+              "docsTotal": 12,
+              "heatsUsed": 10,
+              "heatsHold": 2,
+              "heatsWarn": 3,
+              "heatList": [
+                {
+                  "heatId": "H-1027",
+                  "decision": "GO"
+                },
+                {
+                  "heatId": "H-1021",
+                  "decision": "GO"
+                },
+                {
+                  "heatId": "H-1020",
+                  "decision": "GO"
+                },
+                {
+                  "heatId": "H-1019",
+                  "decision": "WARN"
+                },
+                {
+                  "heatId": "H-1018",
+                  "decision": "HOLD"
+                },
+                {
+                  "heatId": "H-1034",
+                  "decision": "GO"
+                },
+                {
+                  "heatId": "H-1032",
+                  "decision": "GO"
+                },
+                {
+                  "heatId": "H-1037",
+                  "decision": "HOLD"
+                },
+                {
+                  "heatId": "H-1036",
+                  "decision": "WARN"
+                },
+                {
+                  "heatId": "H-1033",
+                  "decision": "WARN"
+                }
+              ]
+            },
+            "perLot": [
+              {
+                "lotId": "CIS-0707",
+                "status": "RELEASED",
+                "consumed": true,
+                "history": true,
+                "receivedAt": "2026-10-01T09:25:03.194Z",
+                "receivedKg": 3800,
+                "invoiceKg": 3830,
+                "costPerKg": 37.2,
+                "acceptance": 100,
+                "accuracy": 88,
+                "gun": {
+                  "piecesTested": 15,
+                  "flagged": 0,
+                  "surfaceBad": 1
+                },
+                "yieldPct": 93.4,
+                "lateDays": 0,
+                "shortPct": 0.78,
+                "docs": {
+                  "testCertificate": true,
+                  "weighbridgeSlip": true,
+                  "ewayBill": true
+                },
+                "heats": [
+                  "H-1033 WARN"
+                ]
+              },
+              {
+                "lotId": "CIS-0706",
+                "status": "RELEASED",
+                "consumed": true,
+                "history": true,
+                "receivedAt": "2026-09-11T03:16:42.494Z",
+                "receivedKg": 4130,
+                "invoiceKg": 4170,
+                "costPerKg": 36.4,
+                "acceptance": 100,
+                "accuracy": 92,
+                "gun": {
+                  "piecesTested": 15,
+                  "flagged": 0,
+                  "surfaceBad": 2
+                },
+                "yieldPct": 93.3,
+                "lateDays": 0,
+                "shortPct": 0.96,
+                "docs": {
+                  "testCertificate": true,
+                  "weighbridgeSlip": true,
+                  "ewayBill": true
+                },
+                "heats": [
+                  "H-1037 HOLD",
+                  "H-1036 WARN"
+                ]
+              },
+              {
+                "lotId": "CIS-0705",
+                "status": "RELEASED",
+                "consumed": true,
+                "history": true,
+                "receivedAt": "2026-08-16T07:26:42.987Z",
+                "receivedKg": 4860,
+                "invoiceKg": 4900,
+                "costPerKg": 36.7,
+                "acceptance": 100,
+                "accuracy": 94,
+                "gun": {
+                  "piecesTested": 15,
+                  "flagged": 0,
+                  "surfaceBad": 1
+                },
+                "yieldPct": 93.5,
+                "lateDays": 0,
+                "shortPct": 0.82,
+                "docs": {
+                  "testCertificate": true,
+                  "weighbridgeSlip": true,
+                  "ewayBill": true
+                },
+                "heats": [
+                  "H-1034 GO",
+                  "H-1032 GO"
+                ]
+              },
+              {
+                "lotId": "CIS-0704",
+                "status": "RELEASED",
+                "consumed": true,
+                "history": true,
+                "receivedAt": "2026-07-24T08:27:47.412Z",
+                "receivedKg": 4970,
+                "invoiceKg": 5000,
+                "costPerKg": 36.2,
+                "acceptance": 100,
+                "accuracy": 93,
+                "gun": {
+                  "piecesTested": 15,
+                  "flagged": 0,
+                  "surfaceBad": 2
+                },
+                "yieldPct": 93.7,
+                "lateDays": 0,
+                "shortPct": 0.6,
+                "docs": {
+                  "testCertificate": true,
+                  "weighbridgeSlip": true,
+                  "ewayBill": true
+                },
+                "heats": [
+                  "H-1027 GO",
+                  "H-1021 GO",
+                  "H-1020 GO",
+                  "H-1019 WARN",
+                  "H-1018 HOLD"
+                ]
+              }
+            ],
+            "costBreakdown": {
+              "invoiceRsPerT": 36597,
+              "yieldPct": 93.5,
+              "yieldLossRsPerT": 2555,
+              "rejectSharePct": 0,
+              "rejectPenaltyRsPerKg": 10,
+              "rejectCostRsPerT": 0,
+              "effectiveRsPerT": 39152
+            },
+            "invoiceRsPerT": 36597,
+            "effectiveRsPerT": 39152,
+            "heatsUsed": 10,
+            "heatsWarnOrHold": 5,
+            "accuracyDetail": [
+              {
+                "lotId": "CIS-0707",
+                "element": "C",
+                "declared": 3.3,
+                "tested": 2.926,
+                "errorPct": 12.8
+              },
+              {
+                "lotId": "CIS-0707",
+                "element": "Si",
+                "declared": 2,
+                "tested": 1.745,
+                "errorPct": 14.6
+              },
+              {
+                "lotId": "CIS-0707",
+                "element": "Mn",
+                "declared": 0.6,
+                "tested": 0.525,
+                "errorPct": 14.3
+              },
+              {
+                "lotId": "CIS-0707",
+                "element": "P",
+                "declared": 0.1,
+                "tested": 0.083,
+                "errorPct": 20.5
+              },
+              {
+                "lotId": "CIS-0707",
+                "element": "S",
+                "declared": 0.08,
+                "tested": 0.077,
+                "errorPct": 3.9
+              },
+              {
+                "lotId": "CIS-0707",
+                "element": "Cu",
+                "declared": 0.2,
+                "tested": 0.241,
+                "errorPct": 17
+              },
+              {
+                "lotId": "CIS-0707",
+                "element": "Cr",
+                "declared": 0.1,
+                "tested": 0.112,
+                "errorPct": 10.7
+              },
+              {
+                "lotId": "CIS-0707",
+                "element": "Ni",
+                "declared": 0.05,
+                "tested": 0.052,
+                "errorPct": 3.8
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "C",
+                "declared": 3.3,
+                "tested": 3.146,
+                "errorPct": 4.9
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "Si",
+                "declared": 2,
+                "tested": 2.024,
+                "errorPct": 1.2
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "Mn",
+                "declared": 0.6,
+                "tested": 0.584,
+                "errorPct": 2.7
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "P",
+                "declared": 0.1,
+                "tested": 0.096,
+                "errorPct": 4.2
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "S",
+                "declared": 0.08,
+                "tested": 0.082,
+                "errorPct": 2.4
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "Cu",
+                "declared": 0.2,
+                "tested": 0.237,
+                "errorPct": 15.6
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "Cr",
+                "declared": 0.1,
+                "tested": 0.114,
+                "errorPct": 12.3
+              },
+              {
+                "lotId": "CIS-0706",
+                "element": "Ni",
+                "declared": 0.05,
+                "tested": 0.066,
+                "errorPct": 24.2
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "C",
+                "declared": 3.3,
+                "tested": 3.284,
+                "errorPct": 0.5
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "Si",
+                "declared": 2,
+                "tested": 2.076,
+                "errorPct": 3.7
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "Mn",
+                "declared": 0.6,
+                "tested": 0.635,
+                "errorPct": 5.5
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "P",
+                "declared": 0.1,
+                "tested": 0.101,
+                "errorPct": 1
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "S",
+                "declared": 0.08,
+                "tested": 0.075,
+                "errorPct": 6.7
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "Cu",
+                "declared": 0.2,
+                "tested": 0.238,
+                "errorPct": 16
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "Cr",
+                "declared": 0.1,
+                "tested": 0.111,
+                "errorPct": 9.9
+              },
+              {
+                "lotId": "CIS-0705",
+                "element": "Ni",
+                "declared": 0.05,
+                "tested": 0.054,
+                "errorPct": 7.4
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "C",
+                "declared": 3.3,
+                "tested": 3.661,
+                "errorPct": 9.9
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "Si",
+                "declared": 2,
+                "tested": 2.029,
+                "errorPct": 1.4
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "Mn",
+                "declared": 0.6,
+                "tested": 0.609,
+                "errorPct": 1.5
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "P",
+                "declared": 0.1,
+                "tested": 0.091,
+                "errorPct": 9.9
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "S",
+                "declared": 0.08,
+                "tested": 0.071,
+                "errorPct": 12.7
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "Cu",
+                "declared": 0.2,
+                "tested": 0.207,
+                "errorPct": 3.4
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "Cr",
+                "declared": 0.1,
+                "tested": 0.107,
+                "errorPct": 6.5
+              },
+              {
+                "lotId": "CIS-0704",
+                "element": "Ni",
+                "declared": 0.05,
+                "tested": 0.056,
+                "errorPct": 10.7
+              }
+            ],
+            "lotList": [
+              {
+                "lotId": "CIS-0704",
+                "status": "CONSUMED",
+                "receivedAt": "2026-07-24T08:27:47.412Z",
+                "receivedKg": 4970,
+                "costPerKg": 36.2,
+                "statusReason": "All stock charged"
+              },
+              {
+                "lotId": "CIS-0705",
+                "status": "CONSUMED",
+                "receivedAt": "2026-08-16T07:26:42.987Z",
+                "receivedKg": 4860,
+                "costPerKg": 36.7,
+                "statusReason": "All stock charged"
+              },
+              {
+                "lotId": "CIS-0706",
+                "status": "CONSUMED",
+                "receivedAt": "2026-09-11T03:16:42.494Z",
+                "receivedKg": 4130,
+                "costPerKg": 36.4,
+                "statusReason": "All stock charged"
+              },
+              {
+                "lotId": "CIS-0707",
+                "status": "CONSUMED",
+                "receivedAt": "2026-10-01T09:25:03.194Z",
+                "receivedKg": 3800,
+                "costPerKg": 37.2,
+                "statusReason": "All stock charged"
+              }
+            ],
+            "dearerPct": 0,
+            "criteria": [
+              {
+                "key": "acceptance",
+                "label": "Acceptance rate",
+                "pillar": "quality",
+                "weight": 20,
+                "score": 100,
+                "weightShare": 19.6,
+                "points": 19.6,
+                "evidence": "4 released, 0 restricted, 0 quarantined/rejected of 4 decided lots",
+                "formula": "(released + 0.5 Ã— restricted) Ã· decided lots"
+              },
+              {
+                "key": "accuracy",
+                "label": "Declaration accuracy",
+                "pillar": "quality",
+                "weight": 11,
+                "score": 92,
+                "weightShare": 10.8,
+                "points": 9.9,
+                "evidence": "4 lab-tested lot(s), 32 element comparisons",
+                "formula": "1 âˆ’ average |declared âˆ’ tested| Ã· tested (per element, capped at 100%)"
+              },
+              {
+                "key": "contamination",
+                "label": "Clean pieces (gun)",
+                "pillar": "quality",
+                "weight": 10,
+                "score": 100,
+                "weightShare": 9.8,
+                "points": 9.8,
+                "evidence": "0 flagged of 60 gun-tested pieces (4 lot(s))",
+                "formula": "1 âˆ’ flagged pieces Ã· tested pieces (Cu-high, stainless, alloy)"
+              },
+              {
+                "key": "heatImpact",
+                "label": "Heat impact",
+                "pillar": "quality",
+                "weight": 9,
+                "score": 65,
+                "weightShare": 8.8,
+                "points": 5.7,
+                "evidence": "10 heat(s) used their lots: 2 HOLD, 3 WARN",
+                "formula": "1 âˆ’ (HOLD + 0.5 Ã— WARN) Ã· heats using their lots"
+              },
+              {
+                "key": "effectiveCost",
+                "label": "Effective cost",
+                "pillar": "cost",
+                "weight": 21,
+                "score": 100,
+                "weightShare": 20.6,
+                "points": 20.6,
+                "evidence": "â‚¹39,152/t effective â€” cheapest good metal in Cast iron scrap",
+                "formula": "1 âˆ’ 2.5 Ã— (% dearer than the cheapest effective â‚¹/t) Ã· 100"
+              },
+              {
+                "key": "yield",
+                "label": "Metal yield",
+                "pillar": "cost",
+                "weight": 8,
+                "score": 100,
+                "weightShare": 7.8,
+                "points": 7.8,
+                "evidence": "93.5% metal yield vs 93% nominal",
+                "formula": "1 âˆ’ 12.5 Ã— (% points below nominal yield) Ã· 100"
+              },
+              {
+                "key": "onTime",
+                "label": "On-time delivery",
+                "pillar": "delivery",
+                "weight": 9,
+                "score": 100,
+                "weightShare": 8.8,
+                "points": 8.8,
+                "evidence": "4 of 4 trucks on time",
+                "formula": "trucks received on or before the promised date Ã· trucks"
+              },
+              {
+                "key": "weightMatch",
+                "label": "Weight match (invoice vs weighbridge)",
+                "pillar": "delivery",
+                "weight": 6,
+                "score": 84,
+                "weightShare": 5.9,
+                "points": 4.9,
+                "evidence": "invoice weight 0.79% above weighbridge on average (140 kg short in total)",
+                "formula": "1 âˆ’ |invoice kg âˆ’ weighbridge kg| Ã· invoice kg Ã· 5% (5% short = 0)"
+              },
+              {
+                "key": "documents",
+                "label": "Document compliance",
+                "pillar": "service",
+                "weight": 8,
+                "score": 100,
+                "weightShare": 7.8,
+                "points": 7.8,
+                "evidence": "12 of 12 documents received (test certificate, weighbridge slip, e-way bill)",
+                "formula": "documents received Ã· documents required"
+              }
+            ],
+            "score": 95,
+            "pillars": [
+              {
+                "key": "quality",
+                "label": "Quality",
+                "score": 92,
+                "weight": 50,
+                "weightPct": 49,
+                "points": 45,
+                "rank": 1
+              },
+              {
+                "key": "cost",
+                "label": "Cost",
+                "score": 100,
+                "weight": 29,
+                "weightPct": 28.4,
+                "points": 28.4,
+                "rank": 1
+              },
+              {
+                "key": "delivery",
+                "label": "Delivery",
+                "score": 94,
+                "weight": 15,
+                "weightPct": 14.7,
+                "points": 13.7,
+                "rank": 1
+              },
+              {
+                "key": "service",
+                "label": "Service",
+                "score": 100,
+                "weight": 8,
+                "weightPct": 7.8,
+                "points": 7.8,
+                "rank": 1
+              }
+            ],
+            "coverage": 100,
+            "grade": "A",
+            "gradeLabel": "Preferred",
+            "inspectPieces": 10,
+            "rank": 1,
+            "rankOf": 2,
+            "rankVs": {
+              "supplier": "Tiruppur Castings Scrap",
+              "rank": 2,
+              "score": 80,
+              "gap": 15,
+              "diffs": [
+                {
+                  "label": "Acceptance rate",
+                  "pillar": "quality",
+                  "delta": 7.2
+                },
+                {
+                  "label": "Effective cost",
+                  "pillar": "cost",
+                  "delta": 3.1
+                },
+                {
+                  "label": "Document compliance",
+                  "pillar": "service",
+                  "delta": 1.5
+                },
+                {
+                  "label": "Metal yield",
+                  "pillar": "cost",
+                  "delta": 1.3
+                },
+                {
+                  "label": "Declaration accuracy",
+                  "pillar": "quality",
+                  "delta": 0.7
+                },
+                {
+                  "label": "Weight match (invoice vs weighbridge)",
+                  "pillar": "delivery",
+                  "delta": 0.5
+                },
+                {
+                  "label": "Heat impact",
+                  "pillar": "quality",
+                  "delta": 0.4
+                },
+                {
+                  "label": "Clean pieces (gun)",
+                  "pillar": "quality",
+                  "delta": 0.3
+                },
+                {
+                  "label": "On-time delivery",
+                  "pillar": "delivery",
+                  "delta": 0
+                }
+              ]
+            },
+            "rankReason": "Ranked #1, 15 points ahead of Tiruppur Castings Scrap. Biggest differences: Acceptance rate (+7.2 pts) and Effective cost (+3.1 pts).",
+            "topsis": {
+              "closeness": 1,
+              "dPlus": 0,
+              "dMinus": 0.0689,
+              "rank": 1
+            },
+            "trend": [
+              {
+                "label": "Jul",
+                "score": 95,
+                "grade": "A",
+                "lots": 4
+              },
+              {
+                "label": "Aug",
+                "score": 95,
+                "grade": "A",
+                "lots": 5
+              },
+              {
+                "label": "Sep",
+                "score": 95,
+                "grade": "A",
+                "lots": 4
+              },
+              {
+                "label": "Oct",
+                "score": 95,
+                "grade": "A",
+                "lots": 4
+              },
+              {
+                "label": "Now",
+                "score": 95,
+                "grade": "A",
+                "lots": 4
+              }
+            ],
+            "trendDelta": 0,
+            "trendDirection": "stable"
+          }
+        ],
+        "alerts": [
+          {
+            "text": "Supplier grade needs review"
+          }
+        ]
+      }
+    },
+    "/inventory-forecast": {
+      "data": {
+        "items": [
+          {
+            "item": "FeSi-75",
+            "label": "FeSi-75",
+            "group": "ALLOY",
+            "materialType": "FERROALLOY",
+            "alloyName": "FeSi-75",
+            "note": "Raises silicon",
+            "inHouse": false,
+            "usableKg": 169.6,
+            "notUsableKg": 0,
+            "notUsableByStatus": {},
+            "onHandKg": 169.6,
+            "valueRs": 17808,
+            "smoothedKgPerDay": 26.7,
+            "plannedKg": 24,
+            "plannedKgPerDay": 1.7,
+            "dailyDemandKg": 26.7,
+            "demandBasis": "history",
+            "sigmaKg": 12.4,
+            "lowHistory": false,
+            "leadDays": 5,
+            "z": 1.65,
+            "safetyStockKg": 46,
+            "reorderPointKg": 179,
+            "extraCommittedKg": 0,
+            "netKg": 169.6,
+            "eoqKg": 1243,
+            "orderKg": 1250,
+            "coverDays": 6.4,
+            "stockOutAt": "2026-11-07T10:30:00+05:30",
+            "status": "REORDER",
+            "statusReason": "At or below the reorder point (170 â‰¤ 179 kg) â€” order now to arrive in 5 days",
+            "warnings": [],
+            "supplier": {
+              "name": "Nava Bharat Ferro Alloys",
+              "grade": "A",
+              "score": 97,
+              "rank": 1,
+              "rankOf": 2,
+              "effectiveRsPerT": 118160,
+              "invoiceRsPerT": 106344,
+              "lastRsPerKg": 105
+            },
+            "supplierOptions": [
+              {
+                "name": "Nava Bharat Ferro Alloys",
+                "grade": "A",
+                "gradeLabel": "Preferred",
+                "score": 97,
+                "rank": 1,
+                "rankOf": 2,
+                "lastRsPerKg": 105,
+                "effectiveRsPerT": 118160,
+                "invoiceRsPerT": 106344,
+                "estTotalRs": 131250,
+                "trueCostDiffRs": 0,
+                "recommended": true,
+                "blocked": false,
+                "note": "Best rank â€” recommended",
+                "inspectPieces": 10
+              },
+              {
+                "name": "Coastal Ferro Alloys",
+                "grade": "A",
+                "gradeLabel": "Preferred",
+                "score": 93,
+                "rank": 2,
+                "rankOf": 2,
+                "lastRsPerKg": 103.2,
+                "effectiveRsPerT": 116431,
+                "invoiceRsPerT": 102460,
+                "estTotalRs": 129000,
+                "trueCostDiffRs": -2161,
+                "recommended": false,
+                "blocked": false,
+                "note": "Grade A",
+                "inspectPieces": 10,
+                "whyNot": {
+                  "title": "Why Nava Bharat Ferro Alloys and not Coastal Ferro Alloys?",
+                  "points": [
+                    {
+                      "tone": "con",
+                      "text": "Coastal is â‚¹2,161 cheaper in true cost for 1,250 kg (1.5% less)."
+                    },
+                    {
+                      "tone": "pro",
+                      "text": "On time: Nava Bharat 5 of 5 trucks, Coastal 3 of 4 (late ones 3 days late)."
+                    },
+                    {
+                      "tone": "pro",
+                      "text": "Usable metal: 90% from Nava Bharat, 88% from Coastal."
+                    },
+                    {
+                      "tone": "risk",
+                      "text": "Stock is at the reorder point and delivery takes 5 days. A late truck could leave heats without chemistry corrections."
+                    }
+                  ],
+                  "verdict": "The saving is small next to the risk, so Nava Bharat stays first (score 97 vs 93)."
+                }
+              }
+            ],
+            "whyRecommended": {
+              "title": "Why Nava Bharat Ferro Alloys and not Coastal Ferro Alloys?",
+              "points": [
+                {
+                  "tone": "con",
+                  "text": "Coastal is â‚¹2,161 cheaper in true cost for 1,250 kg (1.5% less)."
+                },
+                {
+                  "tone": "pro",
+                  "text": "On time: Nava Bharat 5 of 5 trucks, Coastal 3 of 4 (late ones 3 days late)."
+                },
+                {
+                  "tone": "pro",
+                  "text": "Usable metal: 90% from Nava Bharat, 88% from Coastal."
+                },
+                {
+                  "tone": "risk",
+                  "text": "Stock is at the reorder point and delivery takes 5 days. A late truck could leave heats without chemistry corrections."
+                }
+              ],
+              "verdict": "The saving is small next to the risk, so Nava Bharat stays first (score 97 vs 93)."
+            },
+            "estTotalRs": 131250,
+            "openPr": null
+          }
+        ]
+      },
+      "prs": [
+        {
+          "prId": "PR-00001",
+          "approvedBy": "K. Senthil"
+        }
+      ]
+    },
+    "/raw-material-stock": {
+      "lots": [
+        {
+          "lotId": "PIG-0901",
+          "materialType": "PIG_IRON",
+          "description": "SG-grade pig iron (low Mn, low P)",
+          "alloyName": null,
+          "supplier": "Kovai Pig Iron Co.",
+          "truckNo": null,
+          "grnNo": "GRN-00001",
+          "bay": "Bay 1",
+          "receivedAt": "2026-10-28T19:38:15.558Z",
+          "receivedKg": 4000,
+          "costPerKg": 50,
+          "declared": {
+            "C": 4.1,
+            "Si": 1.1,
+            "Mn": 0.08,
+            "P": 0.035,
+            "S": 0.015,
+            "Cu": 0.01,
+            "Cr": 0.02,
+            "Ni": 0.02,
+            "Mo": 0.005,
+            "Sn": 0.002
+          },
+          "tested": null,
+          "chemistrySource": "CERTIFICATE",
+          "status": "RELEASED",
+          "statusReason": "Chemistry from certificate / parent heat",
+          "restriction": null,
+          "flags": [],
+          "storage": {
+            "wet": false
+          },
+          "promisedAt": "2026-10-28T19:38:15.558Z",
+          "invoiceKg": 4010,
+          "docs": {
+            "testCertificate": true,
+            "weighbridgeSlip": true,
+            "ewayBill": true
+          },
+          "parentHeatId": null,
+          "qaIds": [],
+          "sessionIds": [],
+          "version": 1,
+          "updatedAt": "2026-11-03T19:38:15.559Z",
+          "materialLabel": "Pig iron",
+          "availableKg": 4000,
+          "demoLoadCondition": "clean"
+        }
+      ],
+      "detail": {
+        "qa": [],
+        "movements": [
+          {
+            "lotId": "PIG-0901",
+            "kg": -100,
+            "heatId": "H-1053",
+            "by": "Shift supervisor",
+            "at": "2026-11-04T09:05:00+05:30"
+          }
+        ]
+      }
+    },
+    "/yard-inspection": {
+      "status": {
+        "client": {
+          "isConnected": true
+        }
+      },
+      "live": {
+        "piecesDone": 3,
+        "piecesPlanned": 8,
+        "result": {
+          "evidence": {
+            "worst": {
+              "Cu": {
+                "value": 0.12,
+                "pieceNo": 3
+              }
+            }
+          },
+          "decision": {
+            "status": "QUARANTINE",
+            "reason": "Copper above limit"
+          }
+        }
+      }
+    },
+    "/premelt-gate": {
+      "heat": {
+        "heatId": "H-1053",
+        "charge": [
+          {
+            "lotId": "PIG-0901",
+            "kg": 2000
+          },
+          {
+            "lotId": "RET-1043",
+            "kg": 2500
+          },
+          {
+            "lotId": "SCR-0902",
+            "kg": 500
+          },
+          {
+            "lotId": "DRI-0911",
+            "kg": 100
+          }
+        ],
+        "gateResult": {
+          "decision": "HOLD",
+          "validUntil": "2026-11-04T09:35:00+05:30",
+          "blocking": [
+            "Cu 0.12% above the 0.08% limit",
+            "Charge needs review"
+          ],
+          "checks": [
+            {
+              "status": "FAIL",
+              "details": [
+                {
+                  "element": "Cu",
+                  "value": 0.12,
+                  "max": 0.08,
+                  "status": "FAIL"
+                }
+              ]
+            }
+          ],
+          "prediction": {
+            "composition": {
+              "Cu": 0.12
+            },
+            "sigma": {
+              "Cu": 0.01
+            }
+          }
+        }
+      }
+    },
+    "/energy": {
+      "energy": {
+        "heatId": "H-1052",
+        "grade": "SG-IRON",
+        "chargeT": 1,
+        "kwh": 556,
+        "kwhPerT": 556,
+        "baselineKwhPerT": 570,
+        "hour": 1,
+        "tapTempC": 1500,
+        "holdingMin": 15,
+        "tariffBand": "off-peak",
+        "tariffScenarios": [
+          {
+            "band": "off-peak",
+            "rate": 6.8,
+            "rs": 3778
+          },
+          {
+            "band": "normal",
+            "rate": 8,
+            "rs": 4445
+          },
+          {
+            "band": "peak",
+            "rate": 9.6,
+            "rs": 5334
+          }
+        ],
+        "profile": {
+          "rustSharePct": 0,
+          "driSharePct": 35,
+          "lightScrapSharePct": 0,
+          "denseSharePct": 65,
+          "driMoisturePct": 0.3,
+          "driFinesPct": 2.8,
+          "alloyKg": 0,
+          "lines": [
+            {
+              "lotId": "PIG-0901",
+              "materialType": "PIG_IRON",
+              "kg": 350,
+              "supplier": "Kovai Pig Iron Co."
+            },
+            {
+              "lotId": "DRI-0911",
+              "materialType": "DRI",
+              "kg": 350,
+              "supplier": "Trichy Iron & Alloys"
+            },
+            {
+              "lotId": "RET-1043",
+              "materialType": "RETURNS",
+              "kg": 300,
+              "supplier": "In-house"
+            }
+          ]
+        },
+        "tariffRsPerKwh": 6.8,
+        "rs": 3778,
+        "rsPerT": 3778,
+        "co2Kg": 394,
+        "drivers": [
+          {
+            "key": "base",
+            "label": "Melt 1 t of SG-IRON charge",
+            "kwh": 570
+          },
+          {
+            "key": "dri",
+            "label": "Sponge iron 35% of charge",
+            "kwh": 23.9
+          },
+          {
+            "key": "moisture",
+            "label": "DRI moisture 0.3%",
+            "kwh": 1.2
+          },
+          {
+            "key": "fines",
+            "label": "DRI fines 2.8%",
+            "kwh": 1.1
+          },
+          {
+            "key": "dense",
+            "label": "Pig iron / returns 65%",
+            "kwh": -55.6
+          },
+          {
+            "key": "holding",
+            "label": "Holding 15 min at temperature",
+            "kwh": 15
+          }
+        ],
+        "tips": [
+          {
+            "key": "holding",
+            "text": "Cut holding time from 15 to 10 min (have ladle and moulds ready before tap)",
+            "kwhSaved": 5,
+            "rsSaved": 34
+          }
+        ],
+        "potentialKwhSaved": 5,
+        "potentialRsSaved": 34,
+        "actual": {
+          "actualKwh": 540,
+          "source": "METER_SIMULATED"
+        },
+        "disclaimer": "Illustrative energy factors â€” calibrate with the plant energy meter."
+      },
+      "data": {
+        "savings": {
+          "rsAvoided": 2500
+        }
+      }
+    },
+    "/anomaly": {
+      "reading": {
+        "heatId": "H-1053",
+        "metalGrade": "SG-IRON",
+        "composition": {
+          "C": 3.7258,
+          "Si": 2.646,
+          "Mn": 0.7147,
+          "P": 0.0597,
+          "S": 0.024,
+          "Fe": 88.1963
+        },
+        "timestamp": "2026-11-04T09:05:00+05:30",
+        "deviationElements": [
+          "C",
+          "Si",
+          "Mn",
+          "P"
+        ],
+        "deviationPercentage": 5
+      },
+      "result": {
+        "severity": "MEDIUM",
+        "anomaly_score": 0.72,
+        "compliance": {
+          "summary": {
+            "compliant": 4,
+            "total": 6
+          }
+        },
+        "aiAnalysis": {
+          "serviceAvailable": true,
+          "anomalyDetection": {
+            "severity": "MEDIUM",
+            "anomaly_score": 0.72
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "alternative_grades": [
+              "GREY-IRON",
+              "SG-IRON",
+              "LOW-CARBON-STEEL",
+              "MEDIUM-CARBON-STEEL"
+            ]
+          }
+        },
+        "candidates": [
+          {
+            "strategy": "balanced",
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCost": 2400
+          }
+        ],
+        "steps": {
+          "anomalyDetection": {
+            "severity": "MEDIUM"
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCarbon": {
+              "totalBatchCo2Kg": 128
+            }
+          },
+          "rootCauseHint": "Carbon above the selected range"
+        }
+      }
+    },
+    "/recommendation": {
+      "reading": {
+        "heatId": "H-1053",
+        "metalGrade": "SG-IRON",
+        "composition": {
+          "C": 3.7258,
+          "Si": 2.646,
+          "Mn": 0.7147,
+          "P": 0.0597,
+          "S": 0.024,
+          "Fe": 88.1963
+        },
+        "timestamp": "2026-11-04T09:05:00+05:30",
+        "deviationElements": [
+          "C",
+          "Si",
+          "Mn",
+          "P"
+        ],
+        "deviationPercentage": 5
+      },
+      "result": {
+        "severity": "MEDIUM",
+        "anomaly_score": 0.72,
+        "compliance": {
+          "summary": {
+            "compliant": 4,
+            "total": 6
+          }
+        },
+        "aiAnalysis": {
+          "serviceAvailable": true,
+          "anomalyDetection": {
+            "severity": "MEDIUM",
+            "anomaly_score": 0.72
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "alternative_grades": [
+              "GREY-IRON",
+              "SG-IRON",
+              "LOW-CARBON-STEEL",
+              "MEDIUM-CARBON-STEEL"
+            ]
+          }
+        },
+        "candidates": [
+          {
+            "strategy": "balanced",
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCost": 2400
+          }
+        ],
+        "steps": {
+          "anomalyDetection": {
+            "severity": "MEDIUM"
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCarbon": {
+              "totalBatchCo2Kg": 128
+            }
+          },
+          "rootCauseHint": "Carbon above the selected range"
+        }
+      }
+    },
+    "/rl-optimizer": {
+      "result": {
+        "severity": "MEDIUM",
+        "anomaly_score": 0.72,
+        "compliance": {
+          "summary": {
+            "compliant": 4,
+            "total": 6
+          }
+        },
+        "aiAnalysis": {
+          "serviceAvailable": true,
+          "anomalyDetection": {
+            "severity": "MEDIUM",
+            "anomaly_score": 0.72
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "alternative_grades": [
+              "GREY-IRON",
+              "SG-IRON",
+              "LOW-CARBON-STEEL",
+              "MEDIUM-CARBON-STEEL"
+            ]
+          }
+        },
+        "candidates": [
+          {
+            "strategy": "balanced",
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCost": 2400
+          }
+        ],
+        "steps": {
+          "anomalyDetection": {
+            "severity": "MEDIUM"
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCarbon": {
+              "totalBatchCo2Kg": 128
+            }
+          },
+          "rootCauseHint": "Carbon above the selected range"
+        }
+      },
+      "policyStatus": {
+        "n_updates": 12
+      },
+      "flow": {
+        "suggestedAdditions": [
+          {
+            "lotId": "FESI-0901",
+            "kg": 12
+          },
+          {
+            "lotId": "FEMN-0901",
+            "kg": 8
+          },
+          {
+            "lotId": "REC-0901",
+            "kg": 5
+          },
+          {
+            "lotId": "PIG-0901",
+            "kg": 20
+          }
+        ]
+      }
+    },
+    "/full-analysis": {
+      "result": {
+        "severity": "MEDIUM",
+        "anomaly_score": 0.72,
+        "compliance": {
+          "summary": {
+            "compliant": 4,
+            "total": 6
+          }
+        },
+        "aiAnalysis": {
+          "serviceAvailable": true,
+          "anomalyDetection": {
+            "severity": "MEDIUM",
+            "anomaly_score": 0.72
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "alternative_grades": [
+              "GREY-IRON",
+              "SG-IRON",
+              "LOW-CARBON-STEEL",
+              "MEDIUM-CARBON-STEEL"
+            ]
+          }
+        },
+        "candidates": [
+          {
+            "strategy": "balanced",
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCost": 2400
+          }
+        ],
+        "steps": {
+          "anomalyDetection": {
+            "severity": "MEDIUM"
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCarbon": {
+              "totalBatchCo2Kg": 128
+            }
+          },
+          "rootCauseHint": "Carbon above the selected range"
+        }
+      },
+      "reading": {
+        "heatId": "H-1053",
+        "metalGrade": "SG-IRON",
+        "composition": {
+          "C": 3.7258,
+          "Si": 2.646,
+          "Mn": 0.7147,
+          "P": 0.0597,
+          "S": 0.024,
+          "Fe": 88.1963
+        },
+        "timestamp": "2026-11-04T09:05:00+05:30",
+        "deviationElements": [
+          "C",
+          "Si",
+          "Mn",
+          "P"
+        ],
+        "deviationPercentage": 5
+      }
+    },
+    "/agent": {
+      "reading": {
+        "heatId": "H-1053",
+        "metalGrade": "SG-IRON",
+        "composition": {
+          "C": 3.7258,
+          "Si": 2.646,
+          "Mn": 0.7147,
+          "P": 0.0597,
+          "S": 0.024,
+          "Fe": 88.1963
+        },
+        "timestamp": "2026-11-04T09:05:00+05:30",
+        "deviationElements": [
+          "C",
+          "Si",
+          "Mn",
+          "P"
+        ],
+        "deviationPercentage": 5
+      },
+      "result": {
+        "severity": "MEDIUM",
+        "anomaly_score": 0.72,
+        "compliance": {
+          "summary": {
+            "compliant": 4,
+            "total": 6
+          }
+        },
+        "aiAnalysis": {
+          "serviceAvailable": true,
+          "anomalyDetection": {
+            "severity": "MEDIUM",
+            "anomaly_score": 0.72
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "alternative_grades": [
+              "GREY-IRON",
+              "SG-IRON",
+              "LOW-CARBON-STEEL",
+              "MEDIUM-CARBON-STEEL"
+            ]
+          }
+        },
+        "candidates": [
+          {
+            "strategy": "balanced",
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCost": 2400
+          }
+        ],
+        "steps": {
+          "anomalyDetection": {
+            "severity": "MEDIUM"
+          },
+          "alloyRecommendation": {
+            "recommended_additions": {
+              "C": 0.1,
+              "Si": 0.2,
+              "Mn": 0.05,
+              "Fe": 0.3
+            },
+            "estimatedCarbon": {
+              "totalBatchCo2Kg": 128
+            }
+          },
+          "rootCauseHint": "Carbon above the selected range"
+        }
+      },
+      "explanation": "Carbon is above the selected range"
+    },
+    "/mechanical-properties": {
+      "result": {
+        "predicted_uts_mpa": 450,
+        "predicted_elongation_pct": 12,
+        "quality_result": "PASS"
+      },
+      "finished": {
+        "tap": {
+          "at": "2026-11-04T09:05:00+05:30",
+          "castingsKg": 850,
+          "soldGrade": "SG-IRON",
+          "approvedBy": "Shift supervisor",
+          "sellingRsPerKg": 85
+        }
+      }
+    },
+    "/sales": {
+      "heats": [
+        {
+          "heatId": "H-1052",
+          "tap": {
+            "at": "2026-11-04T09:05:00+05:30",
+            "castingsKg": 850,
+            "soldGrade": "SG-IRON",
+            "approvedBy": "Shift supervisor",
+            "sellingRsPerKg": 85
+          }
+        }
+      ],
+      "invoices": [
+        {
+          "invoiceId": "INV-00001"
+        }
+      ]
+    },
+    "/synthetic": {
+      "reading": {
+        "heatId": "H-1053",
+        "metalGrade": "SG-IRON",
+        "composition": {
+          "C": 3.7258,
+          "Si": 2.646,
+          "Mn": 0.7147,
+          "P": 0.0597,
+          "S": 0.024,
+          "Fe": 88.1963
+        },
+        "timestamp": "2026-11-04T09:05:00+05:30",
+        "deviationElements": [
+          "C",
+          "Si",
+          "Mn",
+          "P"
+        ],
+        "deviationPercentage": 5
+      }
+    },
+    "/training-data": {
+      "trainingData": [
+        {
+          "_id": "1",
+          "grade": "SG-IRON",
+          "Fe": 88.1963,
+          "C": 3.7258,
+          "Si": 2.646,
+          "Mn": 0.7147,
+          "P": 0.0597,
+          "S": 0.024,
+          "total_composition": 95.3665,
+          "deviated": 0,
+          "sample_type": "normal",
+          "severity": "none",
+          "createdAt": "2025-02-19 18:05:00",
+          "updatedAt": "2025-02-19 18:05:00"
+        }
+      ],
+      "pagination": {
+        "totalDocuments": 200
+      }
+    },
+    "/semantic-search": {
+      "results": [
+        {
+          "title": "SG-IRON grade specification",
+          "score": 0.93
+        }
+      ],
+      "collection": "grades"
+    },
+    "/cost-analysis": {
+      "elementPrices": {
+        "C": {
+          "pricePerKg": 80
+        }
+      },
+      "baseMetalPrices": {
+        "SG-IRON": {
+          "costPerKg": 50
+        }
+      },
+      "history": [
+        {
+          "totalBatchCost": 120000,
+          "totalAdditionsCost": 2400
+        }
+      ]
+    }
+  },
+  "overrides": {
+    "/raw-material-stock/phosphorus": {
+      "lots": [
+        {
+          "lotId": "DRI-0911",
+          "materialType": "DRI",
+          "description": "Coal-based sponge iron lumps",
+          "alloyName": null,
+          "supplier": "Trichy Iron & Alloys",
+          "truckNo": "TN 45 AF 1122",
+          "grnNo": "GRN-00007",
+          "bay": "Covered shed",
+          "receivedAt": "2026-11-01T19:42:36.174Z",
+          "receivedKg": 3000,
+          "costPerKg": 28,
+          "declared": {
+            "feTotal": 91,
+            "feMetallic": 81.9,
+            "C": 0.15,
+            "P": 0.045,
+            "S": 0.018,
+            "SiO2": 5,
+            "Al2O3": 2.5,
+            "fines": 3
+          },
+          "tested": {
+            "feTotal": 90.8,
+            "feMetallic": 81.5,
+            "C": 0.14,
+            "S": 0.018,
+            "P": 0.045,
+            "SiO2": 5.2,
+            "Al2O3": 2.6,
+            "CaO": 0.9,
+            "MgO": 0.4,
+            "moisture": 0.3,
+            "fines": 2.8
+          },
+          "chemistrySource": "LAB",
+          "status": "RELEASED",
+          "statusReason": "QA approved: metallization 89.8%, P 0.045%",
+          "restriction": null,
+          "flags": [],
+          "storage": {
+            "wet": false
+          },
+          "promisedAt": "2026-11-01T19:42:36.174Z",
+          "invoiceKg": 3030,
+          "docs": {
+            "testCertificate": true,
+            "weighbridgeSlip": true,
+            "ewayBill": true
+          },
+          "parentHeatId": null,
+          "qaIds": [
+            "QA-00001"
+          ],
+          "sessionIds": [],
+          "version": 1,
+          "updatedAt": "2026-11-03T19:42:36.174Z",
+          "materialLabel": "Sponge iron (DRI)",
+          "availableKg": 3000,
+          "demoLoadCondition": "clean"
+        }
+      ],
+      "detail": {
+        "qa": [
+          {
+            "qaId": "QA-00001",
+            "lotId": "DRI-0911",
+            "version": 1,
+            "sampleId": "S-0911-1",
+            "sampledAt": "2026-11-02T00:30:36.174Z",
+            "testedAt": "2026-11-02T05:18:36.174Z",
+            "values": {
+              "feTotal": 90.8,
+              "feMetallic": 81.5,
+              "C": 0.14,
+              "S": 0.018,
+              "P": 0.045,
+              "SiO2": 5.2,
+              "Al2O3": 2.6,
+              "CaO": 0.9,
+              "MgO": 0.4,
+              "moisture": 0.3,
+              "fines": 2.8
+            },
+            "method": "Ferric chloride",
+            "analyst": "R. Priya (QA)",
+            "status": "APPROVED",
+            "approvedBy": "K. Senthil (QA Head)",
+            "approvedAt": "2026-11-02T07:42:36.174Z",
+            "enteredAt": "2026-11-02T05:18:36.174Z",
+            "calculated": {
+              "metallization": 89.76,
+              "equivalentMetallization": 90.46
+            }
+          }
+        ]
+      }
+    }
+  }
+}

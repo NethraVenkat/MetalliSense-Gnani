@@ -1,4 +1,4 @@
-// DRAFT · Builder: Nethra. All F17 ASK sentences for team review.
+// ASK wording v2 · Builder: Nethra. All rows team-approved after review fixes.
 export const voiceAskDrafts=[
   {
     "page": "/spectrometer",
@@ -6,9 +6,12 @@ export const voiceAskDrafts=[
     "pattern": "timestamp|when|நேரம்|कब",
     "path": "latestReading.timestamp",
     "fallback": "latestReading.createdAt",
-    "ta": "ரீடிங் நேரம்: {value}.",
-    "hi": "रीडिंग का समय: {value}।",
-    "en": "Reading time: {value}."
+    "ta": "ரீடிங் {value}-க்கு எடுத்தது.",
+    "hi": "रीडिंग {value} बजे ली गई थी।",
+    "en": "The reading was taken at {value}.",
+    "format": "time",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/spectrometer",
@@ -16,9 +19,13 @@ export const voiceAskDrafts=[
     "pattern": "carbon|கார்பன்|कार्बन",
     "path": "latestReading.C",
     "fallback": "latestReading.composition.C",
-    "ta": "கார்பன்: {value}.",
-    "hi": "कार्बन: {value}।",
-    "en": "Carbon: {value}."
+    "ta": "கார்பன் {value}%.",
+    "hi": "कार्बन {value}% है।",
+    "en": "Carbon is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 90,
+    "decimals": 2
   },
   {
     "page": "/spectrometer",
@@ -26,9 +33,13 @@ export const voiceAskDrafts=[
     "pattern": "silicon|சிலிக்கான்|सिलिकॉन",
     "path": "latestReading.Si",
     "fallback": "latestReading.composition.Si",
-    "ta": "சிலிக்கான்: {value}.",
-    "hi": "सिलिकॉन: {value}।",
-    "en": "Silicon: {value}."
+    "ta": "சிலிக்கான் {value}%.",
+    "hi": "सिलिकॉन {value}% है।",
+    "en": "Silicon is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 90,
+    "decimals": 2
   },
   {
     "page": "/spectrometer",
@@ -36,9 +47,12 @@ export const voiceAskDrafts=[
     "pattern": "heat|ஹீட்|हीट",
     "path": "latestReading.heatId",
     "fallback": null,
-    "ta": "ரீடிங் ஹீட்: {value}.",
-    "hi": "रीडिंग हीट: {value}।",
-    "en": "Reading heat: {value}."
+    "ta": "இந்த ரீடிங் {value}-க்கு.",
+    "hi": "यह रीडिंग हीट {value} की है।",
+    "en": "This reading is for heat {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/grades",
@@ -46,9 +60,12 @@ export const voiceAskDrafts=[
     "pattern": "carbon|கார்பன்|कार्बन",
     "path": "grade.composition_ranges.C",
     "fallback": null,
-    "ta": "கார்பன் ரேஞ்ச்: {value}.",
-    "hi": "कार्बन रेंज: {value}।",
-    "en": "Carbon range: {value}."
+    "ta": "{grade} கார்பன் {value}%.",
+    "hi": "{grade} कार्बन {value}% है।",
+    "en": "{grade} carbon range is {value}%.",
+    "format": "range",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/grades",
@@ -56,9 +73,12 @@ export const voiceAskDrafts=[
     "pattern": "standard|ஸ்டாண்டர்ட்|मानक",
     "path": "grade.standard",
     "fallback": null,
-    "ta": "ஸ்டாண்டர்ட்: {value}.",
-    "hi": "मानक: {value}।",
-    "en": "Standard: {value}."
+    "ta": "ஸ்டாண்டர்ட் {value}.",
+    "hi": "मानक {value} है।",
+    "en": "Standard: {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/grades",
@@ -66,9 +86,12 @@ export const voiceAskDrafts=[
     "pattern": "tensile|வலிமை|तन्य",
     "path": "grade.physical_properties.tensile_strength_mpa",
     "fallback": null,
-    "ta": "Tensile ரேஞ்ச்: {value}.",
-    "hi": "Tensile रेंज: {value}।",
-    "en": "Tensile range: {value}."
+    "ta": "{grade} வலிமை {value} MPa.",
+    "hi": "{grade} की तन्य ताकत {value} MPa है।",
+    "en": "{grade} tensile strength range is {value} MPa.",
+    "format": "range",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/grades",
@@ -76,9 +99,12 @@ export const voiceAskDrafts=[
     "pattern": "applications|பயன்பாடு|उपयोग",
     "path": "grade.typical_applications",
     "fallback": null,
-    "ta": "பயன்பாடுகள்: {value}.",
-    "hi": "उपयोग: {value}।",
-    "en": "Applications: {value}."
+    "ta": "இதோட பயன்பாடு {value}.",
+    "hi": "इसका उपयोग {value} के लिए होता है।",
+    "en": "It is used for {value}.",
+    "format": "list",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/supplier-scorecard",
@@ -86,9 +112,12 @@ export const voiceAskDrafts=[
     "pattern": "score|ஸ்கோர்|स्कोर",
     "path": "supplier.score",
     "fallback": null,
-    "ta": "சப்ளையர் ஸ்கோர்: {value}.",
-    "hi": "सप्लायर स्कोर: {value}।",
-    "en": "Supplier score: {value}."
+    "ta": "சப்ளையர் ஸ்கோர் {value}.",
+    "hi": "सप्लायर का स्कोर {value} है।",
+    "en": "The supplier score is {value}.",
+    "format": "number",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/supplier-scorecard",
@@ -96,9 +125,12 @@ export const voiceAskDrafts=[
     "pattern": "grade|கிரேட்|ग्रेड",
     "path": "supplier.grade",
     "fallback": null,
-    "ta": "சப்ளையர் கிரேட்: {value}.",
-    "hi": "सप्लायर ग्रेड: {value}।",
-    "en": "Supplier grade: {value}."
+    "ta": "சப்ளையர் கிரேட் {value}.",
+    "hi": "सप्लायर का ग्रेड {value} है।",
+    "en": "The supplier grade is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 60
   },
   {
     "page": "/supplier-scorecard",
@@ -106,9 +138,12 @@ export const voiceAskDrafts=[
     "pattern": "pillar|காரணம்|कारण",
     "path": "supplier.pillars",
     "fallback": null,
-    "ta": "ஸ்கோர் விவரம்: {value}.",
-    "hi": "स्कोर विवरण: {value}।",
-    "en": "Score pillars: {value}."
+    "ta": "ஸ்கோர் விவரம் {value}.",
+    "hi": "स्कोर का विवरण {value} है।",
+    "en": "The score breakdown is {value}.",
+    "format": "pillars",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/supplier-scorecard",
@@ -116,9 +151,12 @@ export const voiceAskDrafts=[
     "pattern": "alert|அலர்ட்|चेतावनी",
     "path": "data.alerts",
     "fallback": null,
-    "ta": "சப்ளையர் அலர்ட்: {value}.",
-    "hi": "सप्लायर अलर्ट: {value}।",
-    "en": "Supplier alerts: {value}."
+    "ta": "சப்ளையர் அலர்ட் {value}.",
+    "hi": "सप्लायर की चेतावनियाँ {value} हैं।",
+    "en": "The supplier alerts are {value}.",
+    "format": "alerts",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/inventory-forecast",
@@ -126,19 +164,28 @@ export const voiceAskDrafts=[
     "pattern": "usable|available|இருப்பு|उपलब्ध",
     "path": "item.usableKg",
     "fallback": null,
-    "ta": "பயன்படுத்தக்கூடிய இருப்பு kg: {value}.",
-    "hi": "उपयोग योग्य स्टॉक kg: {value}।",
-    "en": "Usable stock kg: {value}."
+    "ta": "{item} {value} கிலோ பயன்படுத்தலாம்.",
+    "hi": "{item} {value} किलो इस्तेमाल लायक है।",
+    "en": "{item}: {value} kg usable.",
+    "format": "number",
+    "approved": true,
+    "priority": 50,
+    "decimals": 0,
+    "grouped": true
   },
   {
     "page": "/inventory-forecast",
     "intent": "cover",
-    "pattern": "cover|எத்தனை நாள்|दिन",
+    "pattern": "cover|how many days|lasts|எத்தனை நாள்|दिन",
     "path": "item.coverDays",
     "fallback": null,
-    "ta": "இருப்பு வரும் நாட்கள்: {value}.",
-    "hi": "स्टॉक के दिन: {value}।",
-    "en": "Cover days: {value}."
+    "ta": "சுமார் {value} நாள் வரும்; {date}-க்கு தீரும்.",
+    "hi": "करीब {value} दिन चलेगा, {date} को खत्म होगा।",
+    "en": "It lasts about {value} days, running out on {date}.",
+    "format": "number",
+    "approved": true,
+    "priority": 90,
+    "decimals": 0
   },
   {
     "page": "/inventory-forecast",
@@ -146,9 +193,14 @@ export const voiceAskDrafts=[
     "pattern": "order|ஆர்டர்|ऑर्डर",
     "path": "item.orderKg",
     "fallback": null,
-    "ta": "ஆர்டர் அளவு kg: {value}.",
-    "hi": "ऑर्डर मात्रा kg: {value}।",
-    "en": "Order kg: {value}."
+    "ta": "{value} கிலோ ஆர்டர் பண்ணலாம்னு சஜஷன்.",
+    "hi": "{value} किलो ऑर्डर करने का सुझाव है।",
+    "en": "Suggested order: {value} kg.",
+    "format": "number",
+    "approved": true,
+    "priority": 60,
+    "decimals": 0,
+    "grouped": true
   },
   {
     "page": "/inventory-forecast",
@@ -156,9 +208,12 @@ export const voiceAskDrafts=[
     "pattern": "approved|approver|அனுமதி|मंजूर",
     "path": "pr.approvedBy",
     "fallback": null,
-    "ta": "அனுமதிச்சவர்: {value}.",
-    "hi": "मंजूरी देने वाले: {value}।",
-    "en": "Approved by: {value}."
+    "ta": "{pr}-ஐ {value} அப்ரூவ் பண்ணாங்க.",
+    "hi": "{pr} को {value} ने मंज़ूर किया।",
+    "en": "{pr} was approved by {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/raw-material-stock",
@@ -166,9 +221,14 @@ export const voiceAskDrafts=[
     "pattern": "available|amount|எவ்வளவு|कितना",
     "path": "lot.availableKg",
     "fallback": null,
-    "ta": "லாட் இருப்பு kg: {value}.",
-    "hi": "लॉट स्टॉक kg: {value}।",
-    "en": "Lot available kg: {value}."
+    "ta": "{lot} லாட்ல {value} கிலோ இருக்கு.",
+    "hi": "लॉट {lot} में {value} किलो उपलब्ध है।",
+    "en": "Lot {lot} has {value} kg available.",
+    "format": "number",
+    "approved": true,
+    "priority": 70,
+    "maxDecimals": 1,
+    "grouped": true
   },
   {
     "page": "/raw-material-stock",
@@ -176,9 +236,12 @@ export const voiceAskDrafts=[
     "pattern": "reason|quarantine|காரணம்|कारण",
     "path": "lot.statusReason",
     "fallback": null,
-    "ta": "லாட் நிலைக்கான காரணம்: {value}.",
-    "hi": "लॉट स्थिति का कारण: {value}।",
-    "en": "Lot status reason: {value}."
+    "ta": "{status} — {value}.",
+    "hi": "{status} — {value}।",
+    "en": "{status} — {value}.",
+    "format": "stockReason",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/raw-material-stock",
@@ -186,9 +249,12 @@ export const voiceAskDrafts=[
     "pattern": "phosphorus|பாஸ்பரஸ்|फॉस्फोरस",
     "path": "detail.qa.0.values.P",
     "fallback": "lot.tested.P",
-    "ta": "லேப் P %: {value}.",
-    "hi": "लैब P %: {value}।",
-    "en": "Lab P %: {value}."
+    "ta": "லேப் பாஸ்பரஸ் {value}%.",
+    "hi": "लैब फॉस्फोरस {value}% है।",
+    "en": "Lab phosphorus is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/raw-material-stock",
@@ -196,19 +262,25 @@ export const voiceAskDrafts=[
     "pattern": "movement|changed|மாற்றம்|बदला",
     "path": "detail.movements",
     "fallback": null,
-    "ta": "ஸ்டாக் மாற்றங்கள்: {value}.",
-    "hi": "स्टॉक बदलाव: {value}।",
-    "en": "Stock movements: {value}."
+    "ta": "கடைசியா {value}.",
+    "hi": "आख़िरी: {value}।",
+    "en": "Last move: {value}.",
+    "format": "movements",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/yard-inspection",
     "intent": "connected",
-    "pattern": "connect|கனெக்ட்|कनेक्ट",
+    "pattern": "\\b(?:dis)?connect(?:ed|ion)?\\b|கனெக்ட்|कनेक्ट",
     "path": "status.client.isConnected",
     "fallback": null,
-    "ta": "கன் இணைப்பு: {value}.",
-    "hi": "गन कनेक्शन: {value}।",
-    "en": "Gun connected: {value}."
+    "ta": "{value}",
+    "hi": "{value}",
+    "en": "{value}",
+    "format": "connected",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/yard-inspection",
@@ -216,9 +288,12 @@ export const voiceAskDrafts=[
     "pattern": "pieces|பீஸ்|टुकड़े",
     "path": "live.piecesDone",
     "fallback": null,
-    "ta": "முடிஞ்ச பீஸ்: {value}.",
-    "hi": "पूरे हुए टुकड़े: {value}।",
-    "en": "Pieces done: {value}."
+    "ta": "{planned}-ல {value} பீஸ் முடிஞ்சது.",
+    "hi": "{planned} में से {value} टुकड़े हो गए।",
+    "en": "{value} of {planned} pieces done.",
+    "format": "number",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/yard-inspection",
@@ -226,9 +301,12 @@ export const voiceAskDrafts=[
     "pattern": "copper|காப்பர்|कॉपर",
     "path": "live.result.evidence.worst.Cu.value",
     "fallback": null,
-    "ta": "அதிகமான Cu %: {value}.",
-    "hi": "सबसे अधिक Cu %: {value}।",
-    "en": "Worst Cu %: {value}."
+    "ta": "அதிகபட்ச காப்பர் {value}%, பீஸ் {n}.",
+    "hi": "सबसे ज़्यादा कॉपर {value}%, टुकड़ा {n}।",
+    "en": "Highest copper: {value}%, piece {n}.",
+    "format": "number",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/yard-inspection",
@@ -236,9 +314,12 @@ export const voiceAskDrafts=[
     "pattern": "reason|காரணம்|कारण",
     "path": "live.result.decision.reason",
     "fallback": null,
-    "ta": "லாட் முடிவுக்கான காரணம்: {value}.",
-    "hi": "लॉट निर्णय का कारण: {value}।",
-    "en": "Lot decision reason: {value}."
+    "ta": "{value}, அதனால லாட் {decision} ஆச்சு.",
+    "hi": "{value}, इसलिए लॉट {decision} हुआ।",
+    "en": "The lot was {decision} because {value}.",
+    "format": "reason",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/premelt-gate",
@@ -246,19 +327,25 @@ export const voiceAskDrafts=[
     "pattern": "decision|status|நிலை|स्थिति",
     "path": "heat.gateResult.decision",
     "fallback": null,
-    "ta": "கேட் முடிவு: {value}.",
-    "hi": "गेट निर्णय: {value}।",
-    "en": "Gate decision: {value}."
+    "ta": "{heat} {value}ல இருக்கு.",
+    "hi": "हीट {heat} {value} पर है।",
+    "en": "Heat {heat} is on {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 60
   },
   {
     "page": "/premelt-gate",
     "intent": "blocking",
-    "pattern": "block|reason|தடை|कारण",
+    "pattern": "\\bblock(?:ing|ers?)?\\b|\\breasons?\\b|தடை|कारण",
     "path": "heat.gateResult.blocking",
     "fallback": null,
-    "ta": "ஸ்டார்ட் தடை: {value}.",
-    "hi": "शुरू करने की बाधाएँ: {value}।",
-    "en": "Start blockers: {value}."
+    "ta": "{value}",
+    "hi": "{value}",
+    "en": "{value}",
+    "format": "blocking",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/premelt-gate",
@@ -266,9 +353,14 @@ export const voiceAskDrafts=[
     "pattern": "copper|காப்பர்|कॉपर",
     "path": "heat.gateResult.prediction.composition.Cu",
     "fallback": null,
-    "ta": "கணிச்ச Cu %: {value}.",
-    "hi": "अनुमानित Cu %: {value}।",
-    "en": "Predicted Cu %: {value}."
+    "ta": "கணிச்ச காப்பர் {value}%, கூடக்குறைய {sigma}.",
+    "hi": "अनुमानित कॉपर {value}%, लगभग {sigma} ऊपर-नीचे।",
+    "en": "Predicted copper is {value}%, give or take {sigma}.",
+    "format": "number",
+    "approved": true,
+    "priority": 80,
+    "decimals": 3,
+    "sigmaDecimals": 3
   },
   {
     "page": "/premelt-gate",
@@ -276,9 +368,12 @@ export const voiceAskDrafts=[
     "pattern": "valid|expiry|காலம்|वैध",
     "path": "heat.gateResult.validUntil",
     "fallback": null,
-    "ta": "கேட் முடிவு காலம்; freshness மறுபடி சரிபார்க்கணும்: {value}.",
-    "hi": "गेट समय सीमा; freshness फिर जाँचनी होगी: {value}।",
-    "en": "Gate valid-until; freshness must be rechecked: {value}."
+    "ta": "இந்த செக் {value} வரைக்கும் செல்லும்.",
+    "hi": "यह जाँच {value} बजे तक मान्य है।",
+    "en": "This check is valid until {value}.",
+    "format": "time",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/premelt-gate",
@@ -286,9 +381,12 @@ export const voiceAskDrafts=[
     "pattern": "charge|சார்ஜ்|चार्ज",
     "path": "heat.charge",
     "fallback": null,
-    "ta": "சார்ஜ் லாட் மற்றும் kg: {value}.",
-    "hi": "चार्ज लॉट और kg: {value}।",
-    "en": "Charge lots and kg: {value}."
+    "ta": "சார்ஜ்: {value}.",
+    "hi": "चार्ज: {value}।",
+    "en": "The charge is {value}.",
+    "format": "charge",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/energy",
@@ -296,9 +394,12 @@ export const voiceAskDrafts=[
     "pattern": "predicted|energy|எனர்ஜி|ऊर्जा",
     "path": "energy.kwh",
     "fallback": null,
-    "ta": "கணிச்ச energy kWh: {value}.",
-    "hi": "अनुमानित ऊर्जा kWh: {value}।",
-    "en": "Predicted energy kWh: {value}."
+    "ta": "கணிச்ச Energy {value} kWh.",
+    "hi": "अनुमानित ऊर्जा {value} kWh है।",
+    "en": "Predicted energy is {value} kWh.",
+    "format": "number",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/energy",
@@ -306,9 +407,12 @@ export const voiceAskDrafts=[
     "pattern": "meter|மீட்டர்|मीटर",
     "path": "energy.actual.actualKwh",
     "fallback": null,
-    "ta": "பதிவான meter kWh: {value}.",
-    "hi": "दर्ज मीटर kWh: {value}।",
-    "en": "Recorded meter kWh: {value}."
+    "ta": "{value}",
+    "hi": "{value}",
+    "en": "{value}",
+    "format": "meter",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/energy",
@@ -316,9 +420,12 @@ export const voiceAskDrafts=[
     "pattern": "driver|காரணம்|कारण",
     "path": "energy.drivers",
     "fallback": null,
-    "ta": "Energy காரணங்கள்: {value}.",
-    "hi": "ऊर्जा के कारण: {value}।",
-    "en": "Energy drivers: {value}."
+    "ta": "Energy காரணங்கள் {value}.",
+    "hi": "ऊर्जा के कारण {value} हैं।",
+    "en": "The energy drivers are {value}.",
+    "format": "drivers",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/energy",
@@ -326,9 +433,13 @@ export const voiceAskDrafts=[
     "pattern": "saving|சேமிப்பு|बचत",
     "path": "data.savings.rsAvoided",
     "fallback": null,
-    "ta": "மாதிரி கணக்கில் சேமிச்ச ரூபாய்: {value}.",
-    "hi": "मॉडल के अनुसार बचत रुपये: {value}।",
-    "en": "Modeled savings INR: {value}."
+    "ta": "கணிச்ச சேமிப்பு {value} ரூபாய்.",
+    "hi": "अनुमानित बचत {value} रुपये है।",
+    "en": "Predicted savings are {value} rupees.",
+    "format": "number",
+    "approved": true,
+    "priority": 80,
+    "money": true
   },
   {
     "page": "/anomaly",
@@ -336,9 +447,12 @@ export const voiceAskDrafts=[
     "pattern": "severity|deviation|தீவிரம்|गंभीर",
     "path": "result.severity",
     "fallback": null,
-    "ta": "Deviation தீவிரம்: {value}.",
-    "hi": "Deviation की गंभीरता: {value}।",
-    "en": "Deviation severity: {value}."
+    "ta": "Deviation தீவிரம் {value}.",
+    "hi": "बदलाव की गंभीरता {value} है।",
+    "en": "The deviation severity is {value}.",
+    "format": "severity",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/anomaly",
@@ -346,19 +460,26 @@ export const voiceAskDrafts=[
     "pattern": "score|ஸ்கோர்|स्कोर",
     "path": "result.anomaly_score",
     "fallback": null,
-    "ta": "Anomaly ஸ்கோர்: {value}.",
-    "hi": "Anomaly स्कोर: {value}।",
-    "en": "Anomaly score: {value}."
+    "ta": "Anomaly ஸ்கோர் {value}.",
+    "hi": "असामान्यता का स्कोर {value} है।",
+    "en": "The anomaly score is {value}.",
+    "format": "number",
+    "approved": true,
+    "priority": 90,
+    "decimals": 2
   },
   {
     "page": "/anomaly",
     "intent": "compliance",
-    "pattern": "compli|பொருத்தம்|अनुपालन",
+    "pattern": "compliance|within range|பொருத்தம்|ரேஞ்சுக்குள்ள|अनुपालन|सीमा में",
     "path": "result.compliance.summary",
     "fallback": null,
-    "ta": "பொருந்துற element விவரம்: {value}.",
-    "hi": "अनुपालन विवरण: {value}।",
-    "en": "Compliance summary: {value}."
+    "ta": "{value}",
+    "hi": "{value}",
+    "en": "{value}",
+    "format": "compliance",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/anomaly",
@@ -366,9 +487,13 @@ export const voiceAskDrafts=[
     "pattern": "carbon|கார்பன்|कार्बन",
     "path": "reading.composition.C",
     "fallback": null,
-    "ta": "பகுப்பாய்வில் C %: {value}.",
-    "hi": "विश्लेषण में C %: {value}।",
-    "en": "Analyzed C %: {value}."
+    "ta": "பார்த்த கார்பன் {value}%.",
+    "hi": "विश्लेषण में कार्बन {value}% है।",
+    "en": "The analyzed carbon is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 80,
+    "decimals": 2
   },
   {
     "page": "/recommendation",
@@ -376,9 +501,13 @@ export const voiceAskDrafts=[
     "pattern": "addition|சேர்க்கை|जोड़",
     "path": "result.aiAnalysis.alloyRecommendation.recommended_additions",
     "fallback": null,
-    "ta": "பரிந்துரைத்த சேர்க்கைகள்: {value}.",
-    "hi": "सुझाए गए मिश्रण: {value}।",
-    "en": "Proposed additions: {value}."
+    "ta": "சேர்க்கை சஜஷன் {value}.",
+    "hi": "जोड़ने का सुझाव {value} है।",
+    "en": "Suggested additions are {value}.",
+    "format": "additions",
+    "approved": true,
+    "priority": 70,
+    "decimals": 2
   },
   {
     "page": "/recommendation",
@@ -386,19 +515,25 @@ export const voiceAskDrafts=[
     "pattern": "alternative|மாற்று|विकल्प",
     "path": "result.aiAnalysis.alloyRecommendation.alternative_grades",
     "fallback": null,
-    "ta": "மாற்று கிரேட்கள்: {value}.",
-    "hi": "वैकल्पिक ग्रेड: {value}।",
-    "en": "Alternative grades: {value}."
+    "ta": "மாற்று கிரேட் சஜஷன் {value}.",
+    "hi": "वैकल्पिक ग्रेड का सुझाव {value} है।",
+    "en": "Suggested alternative grades are {value}.",
+    "format": "grades",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/recommendation",
     "intent": "available",
-    "pattern": "available|service|கிடைக்குதா|उपलब्ध",
+    "pattern": "\\b(?:ai|service)\\b.*\\b(?:available|unavailable)\\b|\\b(?:available|unavailable)\\b.*\\b(?:ai|service)\\b|(?:AI|சேவை).*கிடை|கிடை.*(?:AI|சேவை)|(?:AI|एआई|सेवा).*उपलब्ध|उपलब्ध.*(?:AI|एआई|सेवा)",
     "path": "result.aiAnalysis.serviceAvailable",
     "fallback": null,
-    "ta": "சேவை கிடைக்குற நிலை: {value}.",
-    "hi": "सेवा उपलब्धता: {value}।",
-    "en": "Service available: {value}."
+    "ta": "{value}",
+    "hi": "{value}",
+    "en": "{value}",
+    "format": "service",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/recommendation",
@@ -406,9 +541,13 @@ export const voiceAskDrafts=[
     "pattern": "chemistry|composition|கலவை|संरचना",
     "path": "reading.composition",
     "fallback": null,
-    "ta": "பிளான் போட்ட கலவை: {value}.",
-    "hi": "योजना की संरचना: {value}।",
-    "en": "Plan input composition: {value}."
+    "ta": "பிளான்ல எடுத்த கலவை {value}.",
+    "hi": "योजना में {value} लिया गया है।",
+    "en": "The plan uses {value}.",
+    "format": "chemistry",
+    "approved": true,
+    "priority": 80,
+    "decimals": 2
   },
   {
     "page": "/rl-optimizer",
@@ -416,9 +555,13 @@ export const voiceAskDrafts=[
     "pattern": "addition|சேர்க்கை|जोड़",
     "path": "candidate.recommended_additions",
     "fallback": null,
-    "ta": "தேர்ந்த ஸ்ட்ராடஜி சேர்க்கைகள்: {value}.",
-    "hi": "चुनी रणनीति के मिश्रण: {value}।",
-    "en": "Selected strategy additions: {value}."
+    "ta": "ஸ்ட்ராடஜி சஜஷன் {value}.",
+    "hi": "रणनीति का सुझाव {value} है।",
+    "en": "The strategy suggests {value}.",
+    "format": "additions",
+    "approved": true,
+    "priority": 70,
+    "decimals": 3
   },
   {
     "page": "/rl-optimizer",
@@ -426,9 +569,14 @@ export const voiceAskDrafts=[
     "pattern": "cost|செலவு|लागत",
     "path": "candidate.estimatedCost",
     "fallback": null,
-    "ta": "கணிச்ச செலவு: {value}.",
-    "hi": "अनुमानित लागत: {value}।",
-    "en": "Estimated cost: {value}."
+    "ta": "கணிச்ச செலவு {value} ரூபாய்.",
+    "hi": "अनुमानित लागत {value} रुपये है।",
+    "en": "Predicted cost is {value} rupees.",
+    "format": "number",
+    "approved": true,
+    "priority": 100,
+    "money": true,
+    "decimals": 2
   },
   {
     "page": "/rl-optimizer",
@@ -436,9 +584,12 @@ export const voiceAskDrafts=[
     "pattern": "update|அப்டேட்|अपडेट",
     "path": "policyStatus.n_updates",
     "fallback": null,
-    "ta": "Policy அப்டேட்கள்: {value}.",
-    "hi": "Policy अपडेट: {value}।",
-    "en": "Policy updates: {value}."
+    "ta": "கத்துக்கிட்ட அப்டேட் {value}.",
+    "hi": "सीखने के {value} अपडेट हुए हैं।",
+    "en": "There have been {value} learning updates.",
+    "format": "number",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/rl-optimizer",
@@ -446,9 +597,12 @@ export const voiceAskDrafts=[
     "pattern": "lot|லாட்|लॉट",
     "path": "flow.suggestedAdditions",
     "fallback": null,
-    "ta": "பக்கத்தில் காட்டுற லாட் விவரம்; deduction உறுதி இல்லை: {value}.",
-    "hi": "स्क्रीन पर लॉट विवरण; कटौती की पुष्टि नहीं: {value}।",
-    "en": "Shown lot suggestions; deduction not confirmed: {value}."
+    "ta": "லாட் சஜஷன் {value}.",
+    "hi": "सुझाए गए लॉट {value} हैं।",
+    "en": "The suggested lots are {value}.",
+    "format": "charge",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/full-analysis",
@@ -456,9 +610,12 @@ export const voiceAskDrafts=[
     "pattern": "severity|தீவிரம்|गंभीर",
     "path": "result.steps.anomalyDetection.severity",
     "fallback": null,
-    "ta": "கண்ட deviation தீவிரம்: {value}.",
-    "hi": "Deviation की गंभीरता: {value}।",
-    "en": "Run deviation severity: {value}."
+    "ta": "இந்த ரன்ல Deviation தீவிரம் {value}.",
+    "hi": "इस विश्लेषण में बदलाव की गंभीरता {value} है।",
+    "en": "The run found {value} deviation severity.",
+    "format": "severity",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/full-analysis",
@@ -466,19 +623,40 @@ export const voiceAskDrafts=[
     "pattern": "correction|addition|சேர்க்கை|सुधार",
     "path": "result.steps.alloyRecommendation.recommended_additions",
     "fallback": null,
-    "ta": "பரிந்துரைத்த correction: {value}.",
-    "hi": "सुझाया सुधार: {value}।",
-    "en": "Proposed correction: {value}."
+    "ta": "Correction சஜஷன் {value}.",
+    "hi": "सुधार का सुझाव {value} है।",
+    "en": "The suggested correction is {value}.",
+    "format": "additions",
+    "approved": true,
+    "priority": 70,
+    "decimals": 3
   },
   {
     "page": "/full-analysis",
     "intent": "carbon",
-    "pattern": "carbon|co2|கார்பன்|कार्बन",
+    "pattern": "carbon|கார்பன்|कार्बन",
+    "path": "reading.composition.C",
+    "fallback": null,
+    "ta": "கார்பன் {value}%.",
+    "hi": "कार्बन {value}% है।",
+    "en": "Carbon is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 60,
+    "decimals": 3
+  },
+  {
+    "page": "/full-analysis",
+    "intent": "co2",
+    "pattern": "\\bco2\\b|\\bemissions?\\b|\\bcarbon footprint\\b|கார்பன் உமிழ்வு|उत्सर्जन",
     "path": "result.steps.alloyRecommendation.estimatedCarbon.totalBatchCo2Kg",
     "fallback": null,
-    "ta": "Batch CO2 கணிப்பு kg: {value}.",
-    "hi": "Batch CO2 अनुमान kg: {value}।",
-    "en": "Batch CO2 estimate kg: {value}."
+    "ta": "கணிச்ச பேட்ச் CO2 {value} கிலோ.",
+    "hi": "अनुमानित बैच CO2 {value} किलो है।",
+    "en": "Predicted batch CO2 is {value} kg.",
+    "format": "number",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/full-analysis",
@@ -486,9 +664,12 @@ export const voiceAskDrafts=[
     "pattern": "root|காரணம்|कारण",
     "path": "result.steps.rootCauseHint",
     "fallback": null,
-    "ta": "சாத்தியமான காரணம்; உறுதியான காரணம் இல்லை: {value}.",
-    "hi": "संभावित कारण; पुष्टि नहीं: {value}।",
-    "en": "Root-cause hint; not confirmed: {value}."
+    "ta": "காரணம் சஜஷன் {value}.",
+    "hi": "सुझाया कारण {value} है।",
+    "en": "The suggested cause is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/agent",
@@ -496,9 +677,12 @@ export const voiceAskDrafts=[
     "pattern": "grade|கிரேட்|ग्रेड",
     "path": "reading.metalGrade",
     "fallback": null,
-    "ta": "பகுப்பாய்வு கிரேட்: {value}.",
-    "hi": "विश्लेषण ग्रेड: {value}।",
-    "en": "Analyzed grade: {value}."
+    "ta": "பார்த்த கிரேட் {value}.",
+    "hi": "विश्लेषण का ग्रेड {value} है।",
+    "en": "The analyzed grade is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/agent",
@@ -506,9 +690,12 @@ export const voiceAskDrafts=[
     "pattern": "anomaly|deviation|டெவியேஷன்|विचलन",
     "path": "result.aiAnalysis.anomalyDetection",
     "fallback": null,
-    "ta": "Agent anomaly விவரம்: {value}.",
-    "hi": "Agent anomaly विवरण: {value}।",
-    "en": "Agent anomaly result: {value}."
+    "ta": "{value}",
+    "hi": "{value}",
+    "en": "{value}",
+    "format": "anomaly",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/agent",
@@ -516,9 +703,13 @@ export const voiceAskDrafts=[
     "pattern": "addition|சேர்க்கை|जोड़",
     "path": "result.aiAnalysis.alloyRecommendation.recommended_additions",
     "fallback": null,
-    "ta": "பரிந்துரைத்த சேர்க்கைகள்: {value}.",
-    "hi": "सुझाए मिश्रण: {value}।",
-    "en": "Proposed additions: {value}."
+    "ta": "சேர்க்கை சஜஷன் {value}.",
+    "hi": "जोड़ने का सुझाव {value} है।",
+    "en": "The suggested additions are {value}.",
+    "format": "additions",
+    "approved": true,
+    "priority": 80,
+    "decimals": 2
   },
   {
     "page": "/agent",
@@ -526,9 +717,12 @@ export const voiceAskDrafts=[
     "pattern": "explain|விளக்கம்|समझा",
     "path": "explanation",
     "fallback": null,
-    "ta": "கிடைச்ச விளக்கம்: {value}.",
-    "hi": "मिला स्पष्टीकरण: {value}।",
-    "en": "Returned explanation: {value}."
+    "ta": "விளக்கம் {value}.",
+    "hi": "स्पष्टीकरण {value} है।",
+    "en": "The explanation is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/mechanical-properties",
@@ -536,9 +730,13 @@ export const voiceAskDrafts=[
     "pattern": "tensile|வலிமை|तन्य",
     "path": "result.predicted_uts_mpa",
     "fallback": null,
-    "ta": "கணிச்ச tensile MPa; test செய்து உறுதி செய்யணும்: {value}.",
-    "hi": "अनुमानित tensile MPa; test से पुष्टि करें: {value}।",
-    "en": "Predicted tensile MPa; verify by testing: {value}."
+    "ta": "கணிச்ச வலிமை {value} MPa.",
+    "hi": "अनुमानित तन्य ताकत {value} MPa है।",
+    "en": "Predicted tensile strength is {value} MPa.",
+    "format": "number",
+    "approved": true,
+    "priority": 70,
+    "decimals": 1
   },
   {
     "page": "/mechanical-properties",
@@ -546,9 +744,13 @@ export const voiceAskDrafts=[
     "pattern": "elongation|நீட்சி|बढ़ाव",
     "path": "result.predicted_elongation_pct",
     "fallback": null,
-    "ta": "கணிச்ச elongation %: {value}.",
-    "hi": "अनुमानित elongation %: {value}।",
-    "en": "Predicted elongation %: {value}."
+    "ta": "கணிச்ச நீட்சி {value}%.",
+    "hi": "अनुमानित बढ़ाव {value}% है।",
+    "en": "Predicted elongation is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 80,
+    "decimals": 1
   },
   {
     "page": "/mechanical-properties",
@@ -556,9 +758,12 @@ export const voiceAskDrafts=[
     "pattern": "quality|pass|தரம்|गुणवत्ता",
     "path": "result.quality_result",
     "fallback": null,
-    "ta": "கணிப்பின் தர முடிவு: {value}.",
-    "hi": "अनुमान का गुणवत्ता परिणाम: {value}।",
-    "en": "Estimate quality result: {value}."
+    "ta": "கணிச்ச தர முடிவு {value}.",
+    "hi": "अनुमानित गुणवत्ता परिणाम {value} है।",
+    "en": "The predicted quality result is {value}.",
+    "format": "quality",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/mechanical-properties",
@@ -566,9 +771,12 @@ export const voiceAskDrafts=[
     "pattern": "tap|finished|டேப்|पूरा",
     "path": "finished.tap",
     "fallback": null,
-    "ta": "பதிவான tap விவரம்: {value}.",
-    "hi": "दर्ज tap विवरण: {value}।",
-    "en": "Recorded tap details: {value}."
+    "ta": "பதிவான tap {value}.",
+    "hi": "दर्ज tap {value} है।",
+    "en": "The recorded tap is {value}.",
+    "format": "tap",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/sales",
@@ -576,9 +784,12 @@ export const voiceAskDrafts=[
     "pattern": "weight|எடை|वजन",
     "path": "saleHeat.tap.castingsKg",
     "fallback": null,
-    "ta": "Invoiceக்கு தயாரான எடை kg: {value}.",
-    "hi": "Invoice के लिए तैयार वजन kg: {value}।",
-    "en": "Weight ready for invoice kg: {value}."
+    "ta": "இன்வாய்ஸ்க்கு ரெடியான எடை {value} கிலோ.",
+    "hi": "इनवॉइस के लिए तैयार वजन {value} किलो है।",
+    "en": "The weight ready for invoice is {value} kg.",
+    "format": "number",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/sales",
@@ -586,9 +797,12 @@ export const voiceAskDrafts=[
     "pattern": "downgrade|grade|கிரேட்|ग्रेड",
     "path": "saleHeat.tap.soldGrade",
     "fallback": null,
-    "ta": "விற்பனை கிரேட்: {value}.",
-    "hi": "बिक्री ग्रेड: {value}।",
-    "en": "Sold grade: {value}."
+    "ta": "விற்ற கிரேட் {value}.",
+    "hi": "बिक्री का ग्रेड {value} है।",
+    "en": "The sold grade is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/sales",
@@ -596,9 +810,12 @@ export const voiceAskDrafts=[
     "pattern": "invoice|இன்வாய்ஸ்|इनवॉइस",
     "path": "invoice.invoiceId",
     "fallback": null,
-    "ta": "இந்த ஹீட் invoice: {value}.",
-    "hi": "इस हीट का invoice: {value}।",
-    "en": "Heat invoice: {value}."
+    "ta": "இன்வாய்ஸ் {value}.",
+    "hi": "इनवॉइस {value} है।",
+    "en": "The invoice is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/sales",
@@ -606,9 +823,13 @@ export const voiceAskDrafts=[
     "pattern": "rate|விலை|दर",
     "path": "saleHeat.tap.sellingRsPerKg",
     "fallback": null,
-    "ta": "பரிந்துரைத்த விலை ரூபாய்/kg: {value}.",
-    "hi": "सुझाई दर रुपये/kg: {value}।",
-    "en": "Suggested rate INR/kg: {value}."
+    "ta": "விலை சஜஷன் கிலோவுக்கு {value} ரூபாய்.",
+    "hi": "सुझाई दर {value} रुपये प्रति किलो है।",
+    "en": "The suggested rate is {value} rupees per kg.",
+    "format": "number",
+    "approved": true,
+    "priority": 100,
+    "money": true
   },
   {
     "page": "/synthetic",
@@ -616,9 +837,12 @@ export const voiceAskDrafts=[
     "pattern": "grade|கிரேட்|ग्रेड",
     "path": "reading.metalGrade",
     "fallback": null,
-    "ta": "உருவாக்கிய synthetic கிரேட்: {value}.",
-    "hi": "बनाया synthetic ग्रेड: {value}।",
-    "en": "Generated synthetic grade: {value}."
+    "ta": "Synthetic கிரேட் {value}.",
+    "hi": "सिंथेटिक ग्रेड {value} है।",
+    "en": "The synthetic grade is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/synthetic",
@@ -626,9 +850,13 @@ export const voiceAskDrafts=[
     "pattern": "carbon|கார்பன்|कार्बन",
     "path": "reading.composition.C",
     "fallback": null,
-    "ta": "Synthetic C %: {value}.",
-    "hi": "Synthetic C %: {value}।",
-    "en": "Synthetic C %: {value}."
+    "ta": "Synthetic கார்பன் {value}%.",
+    "hi": "सिंथेटिक कार्बन {value}% है।",
+    "en": "Synthetic carbon is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 80,
+    "decimals": 2
   },
   {
     "page": "/synthetic",
@@ -636,9 +864,12 @@ export const voiceAskDrafts=[
     "pattern": "element|deviated|எலிமெண்ட்|तत्व",
     "path": "reading.deviationElements",
     "fallback": null,
-    "ta": "மாற்றிய elements: {value}.",
-    "hi": "बदले गए elements: {value}।",
-    "en": "Deliberately deviated elements: {value}."
+    "ta": "மாத்தின element {value}.",
+    "hi": "बदले गए तत्व {value} हैं।",
+    "en": "The changed elements are {value}.",
+    "format": "list",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/synthetic",
@@ -646,9 +877,13 @@ export const voiceAskDrafts=[
     "pattern": "percentage|percent|சதவீதம்|प्रतिशत",
     "path": "reading.deviationPercentage",
     "fallback": null,
-    "ta": "கேட்ட deviation %: {value}.",
-    "hi": "माँगा deviation %: {value}।",
-    "en": "Requested deviation %: {value}."
+    "ta": "கேட்ட Deviation {value}%.",
+    "hi": "माँगा गया बदलाव {value}% है।",
+    "en": "The requested deviation is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 100,
+    "decimals": 2
   },
   {
     "page": "/training-data",
@@ -656,9 +891,12 @@ export const voiceAskDrafts=[
     "pattern": "count|how many|எத்தனை|कितने",
     "path": "pagination.totalDocuments",
     "fallback": null,
-    "ta": "ஃபில்டருக்கு பொருந்துற பதிவுகள்: {value}.",
-    "hi": "फिल्टर से मिले रिकॉर्ड: {value}।",
-    "en": "Matching records: {value}."
+    "ta": "பொருந்துற பதிவு {value} இருக்கு.",
+    "hi": "मेल खाने वाले {value} रिकॉर्ड हैं।",
+    "en": "There are {value} matching records.",
+    "format": "number",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/training-data",
@@ -666,9 +904,13 @@ export const voiceAskDrafts=[
     "pattern": "carbon|கார்பன்|कार्बन",
     "path": "sample.C",
     "fallback": null,
-    "ta": "பதிவில் C %: {value}.",
-    "hi": "रिकॉर्ड में C %: {value}।",
-    "en": "Record C %: {value}."
+    "ta": "பதிவுல கார்பன் {value}%.",
+    "hi": "रिकॉर्ड में कार्बन {value}% है।",
+    "en": "The record's carbon is {value}%.",
+    "format": "number",
+    "approved": true,
+    "priority": 90,
+    "decimals": 3
   },
   {
     "page": "/training-data",
@@ -676,9 +918,12 @@ export const voiceAskDrafts=[
     "pattern": "severity|தீவிரம்|गंभीर",
     "path": "sample.severity",
     "fallback": null,
-    "ta": "பதிவின் severity: {value}.",
-    "hi": "रिकॉर्ड की severity: {value}।",
-    "en": "Record severity: {value}."
+    "ta": "பதிவோட தீவிரம் {value}.",
+    "hi": "रिकॉर्ड की गंभीरता {value} है।",
+    "en": "The record's severity is {value}.",
+    "format": "severity",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/training-data",
@@ -686,9 +931,12 @@ export const voiceAskDrafts=[
     "pattern": "normal|sample|வகை|प्रकार",
     "path": "sample.sample_type",
     "fallback": null,
-    "ta": "Sample வகை: {value}.",
-    "hi": "Sample प्रकार: {value}।",
-    "en": "Sample type: {value}."
+    "ta": "சாம்பிள் வகை {value}.",
+    "hi": "सैंपल का प्रकार {value} है।",
+    "en": "The sample type is {value}.",
+    "format": "sampleType",
+    "approved": true,
+    "priority": 70
   },
   {
     "page": "/semantic-search",
@@ -696,9 +944,12 @@ export const voiceAskDrafts=[
     "pattern": "result|found|find|கிடைச்ச|मिला",
     "path": "results",
     "fallback": null,
-    "ta": "தேடலில் கிடைச்சது: {value}.",
-    "hi": "खोज के परिणाम: {value}।",
-    "en": "Search results: {value}."
+    "ta": "தேடல்ல கிடைச்சது {value}.",
+    "hi": "खोज में {value} मिला।",
+    "en": "The search found {value}.",
+    "format": "search",
+    "approved": true,
+    "priority": 80
   },
   {
     "page": "/semantic-search",
@@ -706,9 +957,12 @@ export const voiceAskDrafts=[
     "pattern": "score|match|ஸ்கோர்|स्कोर",
     "path": "searchResult.score",
     "fallback": null,
-    "ta": "பொருத்த ஸ்கோர்: {value}.",
-    "hi": "मिलान स्कोर: {value}।",
-    "en": "Match score: {value}."
+    "ta": "பொருத்த ஸ்கோர் {value}.",
+    "hi": "मिलान का स्कोर {value} है।",
+    "en": "The match score is {value}.",
+    "format": "number",
+    "approved": true,
+    "priority": 100
   },
   {
     "page": "/semantic-search",
@@ -716,9 +970,12 @@ export const voiceAskDrafts=[
     "pattern": "collection|தொகுப்பு|संग्रह",
     "path": "collection",
     "fallback": null,
-    "ta": "தேடிய collection: {value}.",
-    "hi": "खोजा collection: {value}।",
-    "en": "Searched collection: {value}."
+    "ta": "தேடின collection {value}.",
+    "hi": "खोजा गया संग्रह {value} है।",
+    "en": "The searched collection is {value}.",
+    "format": "text",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/cost-analysis",
@@ -726,9 +983,13 @@ export const voiceAskDrafts=[
     "pattern": "carbon|கார்பன்|कार्बन",
     "path": "elementPrices.C.pricePerKg",
     "fallback": null,
-    "ta": "C விலை ரூபாய்/kg: {value}.",
-    "hi": "C दर रुपये/kg: {value}।",
-    "en": "C price INR/kg: {value}."
+    "ta": "கார்பன் விலை கிலோவுக்கு {value} ரூபாய்.",
+    "hi": "कार्बन की कीमत {value} रुपये प्रति किलो है।",
+    "en": "Carbon costs {value} rupees per kg.",
+    "format": "number",
+    "approved": true,
+    "priority": 90,
+    "money": true
   },
   {
     "page": "/cost-analysis",
@@ -736,9 +997,13 @@ export const voiceAskDrafts=[
     "pattern": "base|sg iron|அடிப்படை|आधार",
     "path": "baseMetalPrices.SG-IRON",
     "fallback": null,
-    "ta": "SG-IRON அடிப்படை செலவு: {value}.",
-    "hi": "SG-IRON आधार लागत: {value}।",
-    "en": "SG-IRON base cost: {value}."
+    "ta": "SG-IRON அடிப்படை உலோக விலை கிலோவுக்கு {value} ரூபாய்.",
+    "hi": "SG-IRON आधार धातु की कीमत {value} रुपये प्रति किलो है।",
+    "en": "SG-IRON base metal costs {value} rupees per kg.",
+    "format": "price",
+    "approved": true,
+    "priority": 80,
+    "money": true
   },
   {
     "page": "/cost-analysis",
@@ -746,19 +1011,27 @@ export const voiceAskDrafts=[
     "pattern": "batch|estimate|பேட்ச்|बैच",
     "path": "costRecord.totalBatchCost",
     "fallback": null,
-    "ta": "பதிவான batch செலவு: {value}.",
-    "hi": "दर्ज batch लागत: {value}।",
-    "en": "Recorded batch cost: {value}."
+    "ta": "பதிவான பேட்ச் செலவு {value} ரூபாய்.",
+    "hi": "दर्ज बैच लागत {value} रुपये है।",
+    "en": "The recorded batch cost is {value} rupees.",
+    "format": "number",
+    "approved": true,
+    "priority": 70,
+    "money": true
   },
   {
     "page": "/cost-analysis",
     "intent": "additions",
-    "pattern": "addition|சேர்க்கை|जोड़",
+    "pattern": "\\badditions? cost\\b|\\bcost of (?:the )?additions?\\b|சேர்க்கை(?:கள்)?\\s*செலவு|(?:जोड़|मिश्रण).*लागत",
     "path": "costRecord.totalAdditionsCost",
     "fallback": null,
-    "ta": "சேர்க்கைகள் செலவு: {value}.",
-    "hi": "मिश्रण लागत: {value}।",
-    "en": "Additions cost: {value}."
+    "ta": "சேர்க்கை செலவு {value} ரூபாய்.",
+    "hi": "जोड़ने की लागत {value} रुपये है।",
+    "en": "The additions cost {value} rupees.",
+    "format": "number",
+    "approved": true,
+    "priority": 100,
+    "money": true
   },
   {
     "page": "/supplier-scorecard",
@@ -766,19 +1039,27 @@ export const voiceAskDrafts=[
     "pattern": "rank|ரேங்க்|रैंक",
     "path": "supplier.rank",
     "fallback": null,
-    "ta": "சப்ளையர் ரேங்க்: {value}.",
-    "hi": "सप्लायर रैंक: {value}।",
-    "en": "Supplier rank: {value}."
+    "ta": "சப்ளையர் ரேங்க் {value}.",
+    "hi": "सप्लायर की रैंक {value} है।",
+    "en": "The supplier rank is {value}.",
+    "format": "number",
+    "approved": true,
+    "priority": 90
   },
   {
     "page": "/inventory-forecast",
     "intent": "eoq",
-    "pattern": "eoq|ஈஓக்யூ|ईओक्यू",
+    "pattern": "eoq|ஈஓக்யூ|ईओक्यू|economic order|சிக்கன ஆர்டர்|किफायती ऑर्डर",
     "path": "item.eoqKg",
     "fallback": null,
-    "ta": "EOQ அளவு kg: {value}.",
-    "hi": "EOQ मात्रा kg: {value}।",
-    "en": "EOQ kg: {value}."
+    "ta": "சிக்கன ஆர்டர் சஜஷன் {value} கிலோ.",
+    "hi": "किफायती ऑर्डर का सुझाव {value} किलो है।",
+    "en": "Suggested economic order: {value} kg.",
+    "format": "number",
+    "approved": true,
+    "priority": 80,
+    "decimals": 0,
+    "grouped": true
   },
   {
     "page": "/inventory-forecast",
@@ -786,9 +1067,12 @@ export const voiceAskDrafts=[
     "pattern": "run out|stockout|தீரும் நேரம்|खत्म",
     "path": "item.stockOutAt",
     "fallback": null,
-    "ta": "இருப்பு தீரும்னு கணிச்ச நேரம்: {value}.",
-    "hi": "स्टॉक खत्म होने का अनुमानित समय: {value}।",
-    "en": "Projected stock-out time: {value}."
+    "ta": "Stock {value}-க்கு தீரும்னு கணிப்பு.",
+    "hi": "स्टॉक {value} बजे खत्म होने का अनुमान है।",
+    "en": "The stock is predicted to run out at {value}.",
+    "format": "time",
+    "approved": true,
+    "priority": 100
   }
 ];
-export const voiceAskUnavailable={ta:'இந்த பேஜ்ல அந்த தகவல் இன்னும் வரல.',hi:'यह जानकारी इस पेज पर उपलब्ध नहीं है।',en:'That information is not available on this page.'};
+export const voiceAskUnavailable={"ta": "இது இந்த பேஜ்ல இன்னும் இல்ல.", "hi": "यह इस पेज पर अभी नहीं दिख रहा।", "en": "That isn't shown on this page yet."};
