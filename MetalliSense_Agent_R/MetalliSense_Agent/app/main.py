@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
+import asyncio
 from pathlib import Path
 import sys
 from typing import Optional, Literal
@@ -613,7 +614,7 @@ async def explain_analysis(request: ExplainAnalysisRequest, include_voice: bool 
         agent_result = agent_manager.analyze(composition, grade)
         
         # Generate explanation
-        explanation_result = copilot.explain_analysis(
+        explanation_result = await asyncio.to_thread(copilot.explain_analysis,
             composition=composition,
             grade=grade,
             anomaly_result=agent_result.get("anomaly_agent"),
@@ -671,7 +672,7 @@ async def chat_with_copilot(request: ChatRequest):
         )
     
     try:
-        response = copilot.chat(
+        response = await asyncio.to_thread(copilot.chat,
             user_message=request.message,
             include_context=request.include_context
         )
@@ -728,6 +729,17 @@ async def transcribe_handover(audio: UploadFile = File(...)):
         await audio.close()
 
 
+@app.post('/copilot/voice/wake-check',tags=['Voice'])
+async def wake_check_audio(audio: UploadFile = File(...)):
+    from copilot.wake_check import checker,enabled
+    try:
+        if not enabled():raise HTTPException(404,detail={'code':'wake_disabled'})
+        content=await audio.read(50001)
+        if len(content)>50000:raise HTTPException(413,detail={'code':'wake_audio_size'})
+        return await checker.check(content)
+    finally:await audio.close()
+
+
 @app.post("/copilot/voice/transcribe", response_model=TranscriptionResponse, tags=["Voice"])
 async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = None):
     """
@@ -769,7 +781,7 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
         
         try:
             # Transcribe
-            result = voice_service.transcribe_audio(tmp_path, language)
+            result = await asyncio.to_thread(voice_service.transcribe_audio, tmp_path, language)
             return TranscriptionResponse(**result)
         finally:
             # Clean up temp file
@@ -834,7 +846,7 @@ async def synthesize_speech(request: TTSRequest):
         )
     
     try:
-        audio_bytes = voice_service.text_to_speech(
+        audio_bytes = await asyncio.to_thread(voice_service.text_to_speech,
             text=request.text,
             language=request.language,
             slow=request.slow,

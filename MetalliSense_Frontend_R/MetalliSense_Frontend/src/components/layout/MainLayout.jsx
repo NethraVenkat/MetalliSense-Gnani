@@ -1,3 +1,4 @@
+import {wakeWordEnabled} from '../../services/wakeWord';
 import React, { Suspense, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Joyride from "react-joyride";
@@ -122,7 +123,7 @@ const LayoutBody = () => {
           style={{position:'relative',width:'100%',boxSizing:'border-box',zIndex:10002}}
         />:null}/>
         <main onPointerDownCapture={event=>{const node=event.currentTarget;if(voiceTour.state.active&&node.scrollHeight>node.clientHeight&&event.clientX>=node.getBoundingClientRect().right-20)voiceTour.control('user-scroll');}} onWheelCapture={()=>voiceTour.state.active&&voiceTour.control('user-scroll')} onTouchMoveCapture={()=>voiceTour.state.active&&voiceTour.control('user-scroll')} onKeyDownCapture={event=>{if(voiceTour.state.active&&['PageDown','PageUp','Home','End','ArrowDown','ArrowUp',' '].includes(event.key)&&!event.target.closest('button,select,input,textarea'))voiceTour.control('user-scroll');}} className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">
-          {voiceEverywhereEnabled() && <VoiceErrorBoundary><PushToTalk shared tour={voiceTour} hidden={voiceTour.state.active} /></VoiceErrorBoundary>}
+          {(voiceEverywhereEnabled()||wakeWordEnabled()) && <VoiceErrorBoundary><PushToTalk shared tour={voiceTour} hidden={voiceTour.state.active} /></VoiceErrorBoundary>}
           <Suspense fallback={<div role="status" className="p-6">Loading page...</div>}><Outlet /></Suspense>
         </main>
       </div>

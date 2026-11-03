@@ -9,32 +9,20 @@ import math
 from pathlib import Path
 import sys
 import time
-import unicodedata
 import uuid
 import wave
 
 ROOT=Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
+from app.copilot.wake_rules import FIELDS, RULE, RULE_V2, payload_fields, wake, first_word_wake, wake_parts
+
 OUTPUT=ROOT/'tools/local_wake_data/kural-prisma-pause-v1'
-FIELDS={'model':'prisma-v3.0','language_code':'ta-IN,en-IN','format':'codemix','keyterms':'["குரல்"]'}
-def payload_fields(variant='v2'):
-    if variant not in ('v2','v3'):raise ValueError('Unknown variant')
-    return {k:v for k,v in FIELDS.items() if variant!='v3' or k!='keyterms'}
-RULE={'frame_samples':320,'rms_threshold':.01,'silence_frames':25,'snippet_samples':24000,'initial_silence_credit':False,'transcript_match':'NFC casefold substring: குரல் | குறள் | kural'}
-RULE_V2={**RULE,'initial_silence_credit':True,'minimum_speech_frames':5,'pad_snippets_to_samples':24000,'transcript_match':'NFC casefold first word, punctuation stripped: குரல் | குறள் | kural'}
+
 def now():return datetime.now(timezone.utc).isoformat()
 def sha(data):return hashlib.sha256(data).hexdigest()
 def read(p):return json.loads(Path(p).read_text(encoding='utf-8'))
 def write(p,value):
     p=Path(p);tmp=p.with_suffix('.tmp');tmp.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');tmp.replace(p)
-def wake(text):
-    text=unicodedata.normalize('NFC',text).casefold()
-    return any(term in text for term in ('குரல்','குறள்','kural'))
-def first_word_wake(text):
-    text=unicodedata.normalize('NFC',text).casefold()
-    # Punctuation becomes separators; Tamil combining marks remain part of words.
-    text=''.join(' ' if unicodedata.category(c).startswith('P') else c for c in text)
-    words=text.split()
-    return bool(words and words[0] in ('குரல்','குறள்','kural'))
 def onsets_v2(pcm):
     samples=array('h');samples.frombytes(pcm)
     if sys.byteorder!='little':samples.byteswap()

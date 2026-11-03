@@ -8,6 +8,8 @@ provisional recognized text. Stop pads the last PCM frame and sends commit.
 Reference: https://docs.gnani.ai/api/STT/stt-websocket.md (2026-10-31).
 """
 import asyncio
+from .provider_calls import provider_slot
+timeout = asyncio.timeout
 from contextlib import suppress
 from dataclasses import dataclass, replace
 import json
@@ -156,7 +158,7 @@ class PcmFrames:
 
 async def _client_message(client):
     try:
-        async with asyncio.timeout(IDLE_SECONDS):
+        async with timeout(IDLE_SECONDS):
             message = await client.receive()
     except TimeoutError:
         raise StreamFailure("idle_timeout") from None
@@ -285,7 +287,7 @@ async def _pump(client, upstream, settings):
             # allow late speech_start/processing events to arrive, then close if
             # nothing remains outstanding instead of waiting for provider idle.
             with suppress(TimeoutError):
-                async with asyncio.timeout(IDLE_SECONDS):
+                async with timeout(IDLE_SECONDS):
                     if saw_final and not pending_processing and not open_utterances:
                         done, _ = await asyncio.wait({receiver}, timeout=STOP_GRACE_SECONDS)
                         if receiver in done:
@@ -309,7 +311,7 @@ async def proxy_stream(client: WebSocket):
     reason, close_code = "stopped", 1000
     phase = "configuration"
     try:
-        async with asyncio.timeout(SESSION_SECONDS):
+        async with timeout(SESSION_SECONDS):
             if not stream_status()["stream_enabled"]:
                 raise StreamFailure("stream_disabled")
             try:
@@ -324,13 +326,13 @@ async def proxy_stream(client: WebSocket):
             except (TypeError, ValueError, OverflowError):
                 raise StreamFailure("invalid_start") from None
             phase = "upstream handshake"
-            async with connect(settings.url, additional_headers=settings.headers,
+            async with provider_slot(), connect(settings.url, additional_headers=settings.headers,
                                open_timeout=IDLE_SECONDS, close_timeout=1,
                                ping_interval=20, ping_timeout=10, compression=None,
                                max_size=65536, max_queue=16) as upstream:
                 phase = "upstream ready event"
                 try:
-                    async with asyncio.timeout(IDLE_SECONDS):
+                    async with timeout(IDLE_SECONDS):
                         event = _provider_message(await upstream.recv())
                 except TimeoutError:
                     raise StreamFailure("upstream_error") from None

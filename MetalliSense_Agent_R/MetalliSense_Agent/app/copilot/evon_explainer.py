@@ -19,6 +19,7 @@ from types import SimpleNamespace
 from typing import Dict, List, Optional
 
 import requests
+from .provider_calls import post as provider_post
 
 from .groq_explainer import ExplainableAICopilot
 
@@ -94,11 +95,11 @@ class _EvonCompletions:
         }
         url = f"{self.base_url}/chat/completions"
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
+            response = provider_post(url, json=payload, headers=headers, timeout=self.timeout)
             if response.status_code == 400 and "chat_template_kwargs" in response.text:
                 # Server doesn't accept template kwargs — retry once without them.
                 payload.pop("chat_template_kwargs")
-                response = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
+                response = provider_post(url, json=payload, headers=headers, timeout=self.timeout)
         except requests.RequestException:
             raise RuntimeError("Evon unavailable") from None
         if response.status_code != 200:

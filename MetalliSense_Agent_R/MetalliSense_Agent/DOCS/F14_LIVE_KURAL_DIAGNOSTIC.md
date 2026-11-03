@@ -276,6 +276,14 @@ Next required manual action: open boundary-review mode above, choose the real pr
 
 ### Pause-v3 predeclaration — no keyterm, fresh devval-v2
 
+### Overnight Task 1 — pause-v3 measured PASS and opt-in integration
+
+2026-11-03. Builder: Manish. Existing user-run evidence `kural-prisma-pause-v3/evaluation/2c520de30585837d26bb/{plan,journal,results}.json` records25 successful calls: **10/10 wakes (8 குரல்,2 குறள்),0/10 confusables,0/5 conversation snippets**. Conversation65–68s (exact plan duration retained),4.48 calls/min. This is the predeclared small development-screen **PASS**, not reliability certification. One speaker, quiet/headphones, one roughly65s conversation, network required; approximately1s latency is a reported expectation, not established end-to-end wake latency. No new live call was made overnight.
+
+Trail: English Sherpa0/6 Kural positives (official English controls passed); CNN v1/v2 failed; Prisma pause-v1 failed (short-input bug plus conversation false wake); keyterm-biased pause-v2 failed (20/20 wakes,6/10 confusables); no-keyterm v3 passed this small screen. Earlier failed evidence remains intact.
+
+Experimental integration requires backend `WAKE_WORD_ENABLED=true` and frontend `VITE_WAKE_WORD=true`, both documented defaults false. The new Hands-free (Kural) toggle is OFF on load. Only local pause-triggered1.5s audio is sent to `/copilot/voice/wake-check`, which uses the exact v3 fields with NO keyterms and the shared first-word helper. A wake-only result captures one bounded command (30s cap) through the normal STT/query path; a remainder enters the same safety-first transcript path directly. No voice writes/actions are introduced. Single wake-check in flight,1.1s spacing and15 calls/min per server process; excess requests return429. No credential in browser or logs. Detection pauses during playback/PTT/tour/hidden tab, with resource release and stale-response suppression. After3 consecutive errors, use PTT fallback. Real microphone/echo/network checks remain manual.
+
 2026-11-03. Builder: Manish. Written before any v3 call. No pause-v3 provider call or integration is performed in this preparation task.
 
 > Pause-v3 is identical to pause-v2 in onset detection, clip-start silence credit,100ms minimum burst,1.5s tail-padded snippets, first-word normalization/matching, locale and codemix. The ONLY request-field difference is omission of the `keyterms` field entirely; no replacement keyterm, empty keyterm field, prompt or other API parameter is added.

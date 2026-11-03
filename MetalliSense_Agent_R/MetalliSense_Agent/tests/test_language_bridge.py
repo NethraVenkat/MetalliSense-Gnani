@@ -21,7 +21,7 @@ def client(monkeypatch, tmp_path):
 
 def test_bridge_off_retains_exact_request_params(client, monkeypatch):
     post = Mock(return_value=Mock(status_code=200, json=lambda: {'transcript': 'test'}))
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     client.transcribe(_silent_wav(), 'en-IN', max_attempts=1)
     assert post.call_args.kwargs['data'] == {
         'language_code': 'en-IN', 'format': 'transcribe', 'model': client.stt_model, 'keyterms': client.stt_keyterms}
@@ -31,7 +31,7 @@ def test_bridge_off_retains_exact_request_params(client, monkeypatch):
 def test_bridge_on_uses_language_list_and_codemix(client, monkeypatch, hint):
     monkeypatch.setenv('LANG_BRIDGE', 'on')
     post = Mock(return_value=Mock(status_code=200, json=lambda: {'transcript': 'test', 'detected_language_code': 'hi-IN'}))
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     result = client.transcribe(_silent_wav(), hint, max_attempts=1)
     assert post.call_args.kwargs['data'] == {
         'language_code': 'ta-IN,hi-IN,en-IN', 'format': 'codemix', 'model': client.stt_model, 'keyterms': client.stt_keyterms}
@@ -42,14 +42,14 @@ def test_bridge_language_override(client, monkeypatch):
     monkeypatch.setenv('LANG_BRIDGE', 'on')
     monkeypatch.setenv('GNANI_STT_LANGUAGE_BRIDGE', 'indic-auto')
     post = Mock(return_value=Mock(status_code=200, json=lambda: {'transcript': 'test'}))
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     client.transcribe(_silent_wav(), max_attempts=1)
     assert post.call_args.kwargs['data']['language_code'] == 'indic-auto'
 
 
 def test_hindi_tts_uses_same_voice_model_and_language_cache(client, monkeypatch):
     post = Mock(return_value=Mock(status_code=200, content=_silent_wav()))
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     assert client.synthesize('unit test', 'hi', max_calls=1)
     payload = post.call_args.kwargs['json']
     assert (payload['model'], payload['voice'], payload['language']) == ('timbre-v3.0', 'Kalpana', 'hi-IN')

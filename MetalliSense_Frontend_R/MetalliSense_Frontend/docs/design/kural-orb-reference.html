@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kural orb reference (approved final)</title>
+<!--
+  APPROVED FINAL DESIGN REFERENCE for the Kural orb and card (team-approved 2026-11-03).
+  Visual reference only. In the app: states come from the existing truthful state source,
+  the Listening level from the existing mic RMS (no extra mic stream), playback from actual playback.
+
+  Approved settings:
+    READY orb 80 px desktop / 64 px at <=480 px, bottom-right, 24 px from edges, gentle 4 px float (2.6 s).
+    Orb outline ALWAYS a perfect circle. Orb wave A = 0.15:
+        radius = base * (1 - A/2 + A/2 * (w + 1)),  w = 0.6*sin(2.2t) + 0.4*sin(3.7t + 1)
+    Rotating glow ring: 3 px conic gradient #0e8a55 > #5cf0a8 > #e8c45a > #2fd0c0 > #0e8a55 + blurred halo.
+        Ready = calm (6 s/turn, halo .25); Listening/Understanding/Speaking = active (3 s/turn, halo .45);
+        Off = no ring; Unavailable = amber, not rotating.
+    Inner symbol: 5 voice bars, MINT GLOW (#b9ffd9, glow #5cf0a8), bar size 90 %, bar wave 0.7.
+    Off = SLEEPING: darker green orb, very slow breathe (~0.9 rad/s, +/-2 %), slow inner lights, bars lie flat.
+    Card: medium ~280 x 236 px frosted glass, opens on confirmed wake or Hold-to-talk; Understanding
+        shows flowing ribbons inside the circle; auto-collapse ~3 s after playback.
+-->
+<style>
+  body{margin:0;font-family:system-ui,sans-serif;background:#f4f8f5;color:#163a28}
+  h1{font-size:18px;font-weight:500;margin:20px 24px 4px}
+  p.note{margin:0 24px 12px;font-size:13px;color:#4d7563}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:0 24px}
+  .tile{background:#fff;border:1px solid #dce9e1;border-radius:12px;padding:18px 6px 12px;text-align:center}
+  .tile.dark{background:#0f1a15;border-color:#0f1a15}.tile.dark p{color:#d6f3e3}.tile.dark small{color:#9fd8b9}
+  .tile p{margin:8px 0 0;font-size:14px;font-weight:500}.tile small{font-size:12px;color:#4d7563}
+  .wr{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;margin:0 auto}
+  .ring,.halo{position:absolute;border-radius:50%;background:conic-gradient(from var(--a),#0e8a55,#5cf0a8,#e8c45a,#2fd0c0,#0e8a55);animation:rot var(--sp,3s) linear infinite}
+  .ring{inset:0;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px))}
+  .halo{inset:-6px;filter:blur(10px);opacity:var(--ho,.45)}
+  @property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
+  @keyframes rot{to{--a:360deg}}
+  .calm{--sp:6s;--ho:.25}.noring .ring,.noring .halo{display:none}
+  .amber .ring,.amber .halo{background:#e0a030;animation:none}.amber .halo{opacity:.3}
+  .fl{animation:fl 2.6s ease-in-out infinite}@keyframes fl{50%{transform:translateY(-4px)}}
+  .stage{position:relative;height:300px;border-radius:12px;background:#eef4f0;margin:16px 24px 24px;overflow:hidden}
+  .card{position:absolute;right:16px;bottom:16px;width:280px;height:236px;border-radius:20px;background:rgba(255,255,255,.92);border:1px solid #d9e8df;box-shadow:0 18px 40px -18px rgba(14,80,50,.35)}
+  .ib{width:30px;height:30px;border-radius:15px;border:1px solid #e1ebe5;display:flex;align-items:center;justify-content:center;color:#2f5a44;font-size:14px}
+  .btns{display:flex;gap:6px;flex-wrap:wrap;margin:16px 24px 0}
+  button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid #9cbfab;background:#fff;cursor:pointer}
+  button[aria-pressed="true"]{background:#0e8a55;color:#fff;border-color:#0e8a55}
+  @media (prefers-reduced-motion:reduce){.ring,.halo,.fl{animation:none!important}}
+</style>
+</head>
+<body>
+<h1>Kural orb — approved final</h1>
+<p class="note">All states at 80 px (light and dark), and the medium card. Reference only; the app drives states from real data.</p>
+<div class="grid" id="grid"></div>
+<div class="btns" id="btns"></div>
+<div class="stage">
+  <div class="card">
+    <div style="position:absolute;left:16px;right:12px;top:12px;display:flex;align-items:center;gap:8px"><b style="font-weight:500;font-size:15px">Kural</b><span class="ib" style="margin-left:auto" aria-label="Menu">⋯</span><span class="ib" aria-label="Close">✕</span></div>
+    <div class="wr" style="position:absolute;left:50%;top:44px;transform:translateX(-50%);width:104px;height:104px"><div class="halo"></div><div class="ring"></div><canvas id="cc" width="176" height="176" style="width:88px;height:88px;position:relative"></canvas></div>
+    <div style="position:absolute;left:0;right:0;top:156px;text-align:center"><p id="cl" style="margin:0;font-size:17px;font-weight:500"></p><p id="cs" style="margin:0;font-size:12px;color:#4d7563"></p><span id="chip" style="display:inline-block;margin-top:6px;background:#eef3ef;border-radius:999px;padding:3px 12px;font-size:12px;color:#2b4a3a;max-width:240px"></span></div>
+  </div>
+</div>
+<script>
+const B=.9,BW=.7,OW=.15;
+const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;let t=0;
+const STATES=[
+  ['ready','Ready','Calm ring, gentle float','fl calm'],
+  ['listen','Listening','Bars follow your voice',''],
+  ['think','Understanding','Fast sweep',''],
+  ['speak','Speaking','Pulse + light waves',''],
+  ['off','Off (sleeping)','Dark green, slow breathe','noring'],
+  ['err','Unavailable','Amber, still','amber']
+];
+const grid=document.getElementById('grid');const cvs=[];
+[false,true].forEach(dark=>STATES.forEach(([s,name,desc,cls])=>{
+  const d=document.createElement('div');d.className='tile'+(dark?' dark':'');
+  d.innerHTML=`<div class="wr ${cls}"><div class="halo"></div><div class="ring"></div><canvas width="160" height="160" style="width:80px;height:80px;position:relative"></canvas></div><p>${name}${dark?' · dark':''}</p><small>${desc}</small>`;
+  grid.appendChild(d);const c=d.querySelector('canvas');cvs.push({c,x:c.getContext('2d'),s,dark});
+}));
+const P={
+  ready:{c:['rgb(14,138,85)','rgb(61,220,147)','rgb(185,245,212)'],rim:'#063f28',bar:'#b9ffd9',gl:'#5cf0a8'},
+  off:{c:['rgb(10,92,58)','rgb(36,150,100)','rgb(120,200,160)'],rim:'#042a1a',bar:'#9fe8c2',gl:'rgba(92,240,168,.5)'},
+  err:{c:['rgb(181,112,28)','rgb(240,169,74)','rgb(255,225,176)'],rim:'#5a3608',bar:'#ffe7c2',gl:'#f0a94a'}
+};
+const lvl=()=>Math.abs(Math.sin(t*5.1)*Math.sin(t*12.3))*.9+.1; /* simulated; app uses mic RMS */
+function orb(x,W,R,pal,spd,dark){
+  const cx=W/2,cy=W/2,C=pal.c,tt=t*spd;
+  x.save();x.beginPath();x.arc(cx,cy,R,0,Math.PI*2);x.clip();
+  const b=x.createRadialGradient(cx-R*.3,cy-R*.35,R*.1,cx,cy,R*1.05);
+  b.addColorStop(0,C[1]);b.addColorStop(.55,C[0]);b.addColorStop(1,dark?'#04261a':pal.rim);
+  x.fillStyle=b;x.fillRect(0,0,W,W);
+  x.globalCompositeOperation='screen';x.filter=`blur(${W*.045}px)`;
+  [[0,C[2],.42],[2.1,C[1],.5],[4.2,C[2],.36],[1,C[1],.3]].forEach(([ph,c2,r],i)=>{
+    const a=tt*(.6+i*.17)+ph,bb=tt*(.43+i*.11)+ph*1.3;
+    const lx=cx+Math.cos(a)*R*.45,ly=cy+Math.sin(bb)*R*.42;
+    const g=x.createRadialGradient(lx,ly,0,lx,ly,R*r);g.addColorStop(0,c2);g.addColorStop(1,'rgba(0,0,0,0)');
+    x.globalAlpha=.85;x.fillStyle=g;x.fillRect(0,0,W,W)});
+  x.filter='none';x.globalAlpha=1;x.globalCompositeOperation='source-over';
+  const sh=x.createRadialGradient(cx+R*.35,cy+R*.45,R*.2,cx,cy,R*1.05);
+  sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,20,10,.45)');x.fillStyle=sh;x.fillRect(0,0,W,W);x.restore();
+  x.lineWidth=W*.008;x.strokeStyle=`rgba(255,255,255,${dark?.35:.55})`;x.beginPath();x.arc(cx,cy,R,0,Math.PI*2);x.stroke();
+}
+function hl(x,W,R){const cx=W/2,cy=W/2;const g=x.createRadialGradient(cx-R*.38,cy-R*.45,0,cx-R*.38,cy-R*.45,R*.38);
+  g.addColorStop(0,'rgba(255,255,255,.85)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;
+  x.beginPath();x.ellipse(cx-R*.36,cy-R*.44,R*.3,R*.17,-.6,0,Math.PI*2);x.fill()}
+function bars(x,W,R,s,pal){
+  const cx=W/2,cy=W/2,n=5,gap=R*.2*B,bw=R*.11*B,base=[.35,.6,.9,.6,.35];
+  x.save();x.lineCap='round';x.lineWidth=bw;x.strokeStyle=pal.bar;x.shadowColor=pal.gl;x.shadowBlur=W*.06;
+  for(let i=0;i<n;i++){const k=i-2;let h;
+    if(s==='ready'){const tr=Math.sin(t*5-i*.9)*.5+.5;h=R*B*(base[i]*.55*(1-BW*.35)+BW*.55*base[i]*tr+.06)}
+    else if(s==='listen'){const v=lvl();h=R*B*(.08+base[i]*(.25+.6*v*(.5+.5*Math.abs(Math.sin(t*9+i*1.7)))))}
+    else if(s==='think'){const p=((t*1.6)%1)*7-1;const d=Math.max(0,1-Math.abs(i-p));h=R*B*(.08+.35*d)}
+    else if(s==='speak'){const p=Math.sin(t*7)*.5+.5;h=R*B*(.1+base[i]*.5*p)}
+    else h=R*B*.06;
+    x.beginPath();x.moveTo(cx+k*gap,cy-h);x.lineTo(cx+k*gap,cy+h);x.stroke()}
+  x.restore()}
+function waves(x,W,R){const cx=W/2,cy=W/2;for(let k=0;k<3;k++){const p=((t*.55+k/3)%1);
+  x.strokeStyle=`rgba(92,240,168,${(1-p)*.5})`;x.lineWidth=W*.008;x.beginPath();x.arc(cx,cy,R*(1.02+p*.16),0,Math.PI*2);x.stroke()}}
+function ribbons(x,W){const cy=W/2;x.save();x.beginPath();x.arc(W/2,cy,W*.42,0,Math.PI*2);x.clip();
+  for(let k=0;k<5;k++){x.beginPath();
+    for(let i=0;i<=40;i++){const px=i/40*W;const y=cy+Math.sin(i/40*Math.PI*2*1.2+t*(2+k*.3)+k)*W*(.1+k*.02)*Math.sin(i/40*Math.PI);i?x.lineTo(px,y):x.moveTo(px,y)}
+    for(let i=40;i>=0;i--){const px=i/40*W;const y=cy+Math.sin(i/40*Math.PI*2*1.2+t*(2+k*.3)+k+.5)*W*(.1+k*.02)*Math.sin(i/40*Math.PI)+W*.03*Math.sin(i/40*Math.PI);x.lineTo(px,y)}
+    x.closePath();x.fillStyle=`rgba(${k%2?'185,255,217':'92,240,168'},.35)`;x.fill()}
+  x.restore()}
+function frame({c,x,s,dark}){
+  const W=c.width;x.clearRect(0,0,W,W);
+  const pal=s==='off'?P.off:s==='err'?P.err:P.ready;
+  const w=Math.sin(t*2.2)*.6+Math.sin(t*3.7+1)*.4;let R;
+  if(s==='off')R=W*.42*(1+Math.sin(t*.9)*.02);
+  else if(s==='err')R=W*.42;
+  else{R=W*.42*(1-OW/2+OW/2*(w+1));if(s==='listen')R*=1+lvl()*.04}
+  orb(x,W,R,pal,s==='off'?.25:s==='err'?0:1,dark);
+  if(s==='speak')waves(x,W,R);
+  if(s==='think'&&c.id==='cc')ribbons(x,W);else bars(x,W,R,s,pal);
+  hl(x,W,R)}
+const cc={c:document.getElementById('cc'),x:document.getElementById('cc').getContext('2d'),s:'listen',dark:false};
+/* Status labels are ENGLISH ONLY. Second line = live words heard (Listening) or words being spoken (Speaking);
+   Understanding shows the label only. Transcript/answer text stays in the spoken language. */
+const CS={listen:['Listening…','','குரல் carbon எவ்வளவு?'],
+  think:['Understanding…','',''],
+  speak:['Speaking…','','H-1053: கார்பன் 3.46%, வரம்பு 3 முதல் 4%. WARN']};
+const btns=document.getElementById('btns');
+function setC(k){cc.s=k;cl.textContent=CS[k][0];cs.textContent=CS[k][1];chip.textContent=CS[k][2];chip.style.display=CS[k][2]?'inline-block':'none';
+  [...btns.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k))}
+Object.keys(CS).forEach(k=>{const b=document.createElement('button');b.dataset.k=k;
+  b.textContent='Card · '+{listen:'Listening',think:'Understanding',speak:'Speaking'}[k];b.onclick=()=>setC(k);btns.appendChild(b)});
+setC('listen');
+(function l(){requestAnimationFrame(l);t+=rm?0:.016;cvs.forEach(frame);frame(cc)})();
+</script>
+</body>
+</html>

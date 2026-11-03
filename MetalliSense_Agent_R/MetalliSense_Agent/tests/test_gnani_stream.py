@@ -151,26 +151,33 @@ def test_upstream_error_closes_client_cleanly(proxy, caplog):
 @pytest.mark.parametrize("kind", ["before_start", "audio_idle", "session"])
 def test_session_and_idle_timeouts(proxy, monkeypatch, kind):
     api, upstream, _ = proxy
-    monkeypatch.setattr(stream, "IDLE_SECONDS", .03 if kind != "session" else 1)
-    monkeypatch.setattr(stream, "SESSION_SECONDS", .08 if kind == "session" else 1)
-    waiting_for_audio = threading.Event()
-    if kind == "audio_idle":
-        original_client_message = stream._client_message
-        client_messages = 0
-
-        async def synchronized_client_message(client):
-            nonlocal client_messages
-            client_messages += 1
-            if client_messages == 2:
-                waiting_for_audio.set()
-            return await original_client_message(client)
-
-        monkeypatch.setattr(stream, "_client_message", synchronized_client_message)
+    # Fake deadlines expire when the intended receive starts, never after a
+    # scheduler-dependent 30 ms wall-clock race. Production limits are unchanged.
+    from contextlib import asynccontextmanager
+    active = {}
+    receives = 0
+    @asynccontextmanager
+    async def fake_timeout(seconds):
+        async with asyncio.timeout(None) as deadline:
+            active[seconds] = deadline
+            try:
+                yield
+            finally:
+                active.pop(seconds, None)
+    receive = stream.WebSocket.receive
+    async def timed_receive(client):
+        nonlocal receives
+        if stream.IDLE_SECONDS in active:
+            receives += 1
+            if kind == "before_start" or receives == 2:
+                seconds = stream.SESSION_SECONDS if kind == "session" else stream.IDLE_SECONDS
+                active[seconds].reschedule(asyncio.get_running_loop().time())
+        return await receive(client)
+    monkeypatch.setattr(stream, "timeout", fake_timeout)
+    monkeypatch.setattr(stream.WebSocket, "receive", timed_receive)
     with api.websocket_connect("/copilot/voice/stream", headers=ORIGIN) as socket:
         if kind != "before_start":
             start(socket)
-        if kind == "audio_idle":
-            assert waiting_for_audio.wait(1), "server did not enter the audio-idle receive"
         messages = finish(socket)
     assert messages[0]["code"] == ("session_limit" if kind == "session" else "idle_timeout")
     if kind != "before_start":

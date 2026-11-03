@@ -53,7 +53,7 @@ def test_tts_cache_key_includes_model_voice_style(client):
 @pytest.mark.parametrize("enabled,style,tagged", [(True, "alert", True), (False, "alert", False), (True, "normal", False)])
 def test_tags_only_for_v3_when_enabled(client, monkeypatch, enabled, style, tagged):
     post = Mock(return_value=response())
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     client.tts_tags = enabled
     plain = "Heat H-1053: Gate HOLD. reason"
     assert client.synthesize(plain, "ta", style=style)
@@ -71,7 +71,7 @@ def test_tags_only_for_v3_when_enabled(client, monkeypatch, enabled, style, tagg
 def test_no_tags_for_v25(client, monkeypatch):
     client.tts_model, client.tts_voice = "timbre-v2.5", "Kamakshi"
     post = Mock(return_value=response())
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     assert client.synthesize("<slow> Heat H-1053: <pauses> HOLD", "ta", style="alert")
     assert post.call_args.kwargs["json"]["text"] == "Heat H-1053:  HOLD"
     assert tts_text("Heat H-1053: HOLD", "timbre-v2.5", "alert", True) == "Heat H-1053: HOLD"
@@ -79,7 +79,7 @@ def test_no_tags_for_v25(client, monkeypatch):
 
 def test_fallback_to_v25_on_v3_error(client, monkeypatch):
     post = Mock(side_effect=[response(500), response()])
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     assert client.synthesize("Heat H-1053: HOLD", "ta", style="alert") == _silent_wav()
     primary, fallback = [call.kwargs["json"] for call in post.call_args_list]
     assert (primary["model"], primary["voice"]) == ("timbre-v3.0", "Shivani")
@@ -95,7 +95,7 @@ def test_fallback_to_v25_on_v3_error(client, monkeypatch):
 def test_invalid_voice_model_pair_skips_to_fallback(client, monkeypatch, model, voice):
     client.tts_model, client.tts_voice = model, voice
     post = Mock(return_value=response())
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     assert client.synthesize("Heat H-1053: HOLD", "ta", style="alert")
     post.assert_called_once()
     assert post.call_args.kwargs["json"]["model"] == "timbre-v2.5"
@@ -104,7 +104,7 @@ def test_invalid_voice_model_pair_skips_to_fallback(client, monkeypatch, model, 
 
 def test_identical_audition_uses_cache_and_zero_budget_still_allows_cache(client, monkeypatch):
     post = Mock(return_value=response())
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     audio = client.synthesize("Heat H-1053: HOLD", "ta", style="alert", allow_fallback=False, max_calls=1)
     assert client.synthesize("Heat H-1053: HOLD", "ta", style="alert", allow_fallback=False, max_calls=0) == audio
     post.assert_called_once()
@@ -114,7 +114,7 @@ def test_identical_audition_uses_cache_and_zero_budget_still_allows_cache(client
 
 def test_audition_budget_and_labels_cannot_be_bypassed_by_fallback(client, monkeypatch):
     post = Mock(return_value=response(500))
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     assert client.synthesize("HOLD", "ta", allow_fallback=False, max_calls=1) is None
     assert post.call_count == 1
     assert client.synthesize("other", "ta", max_calls=0) is None
@@ -129,7 +129,7 @@ def test_service_style_provider_and_gtts_fallback(client, monkeypatch):
     monkeypatch.setattr("app.copilot.voice_service.get_gnani_client", lambda: client)
     service = VoiceService()
     post = Mock(return_value=response())
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     assert service.text_to_speech("Heat H-1053: HOLD", "ta", style="alert")
     assert "<slow>" in post.call_args.kwargs["json"]["text"]
     assert service.status()["last_provider_used"] == "gnani:timbre-v3.0:Shivani"
@@ -164,7 +164,7 @@ def test_clarity_speed_09_passthrough_and_cache_identity(client,monkeypatch):
     baseline=client._cache_path('spoken','ta-IN','Shivani')
     monkeypatch.setenv('GNANI_TTS_CLARITY','on');monkeypatch.setenv('GNANI_TTS_SPEED','0.9')
     configured=GnaniClient()
-    post=Mock(return_value=response());monkeypatch.setattr('requests.post',post)
+    post=Mock(return_value=response());monkeypatch.setattr('app.copilot.provider_calls._state.session.post',post)
     assert configured.synthesize('Heat H-1053. Value 0.50.','ta')
     payload=post.call_args.kwargs['json']
     assert payload['speed']==.9 and '<pauses>' in payload['text'] and '<slow>' in payload['text']
@@ -176,7 +176,7 @@ def test_clarity_speed_09_passthrough_and_cache_identity(client,monkeypatch):
 
 def test_clarity_blank_speed_omits_provider_override(client,monkeypatch):
     monkeypatch.setenv('GNANI_TTS_CLARITY','on');monkeypatch.setenv('GNANI_TTS_SPEED','')
-    configured=GnaniClient();post=Mock(return_value=response());monkeypatch.setattr('requests.post',post)
+    configured=GnaniClient();post=Mock(return_value=response());monkeypatch.setattr('app.copilot.provider_calls._state.session.post',post)
     assert configured.synthesize('Hello.','ta')
     assert 'speed' not in post.call_args.kwargs['json']
 
@@ -195,7 +195,7 @@ def test_timbre_timeout_default_validation_and_hard_cap(client, monkeypatch, set
         monkeypatch.setenv('GNANI_TTS_TIMEOUT_S', setting)
     configured = GnaniClient()
     post = Mock(return_value=response())
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     assert configured.synthesize('timeout setting test', 'hi')
     assert post.call_args.kwargs['timeout'] == expected
     assert configured.status()['tts_timeout_s'] == expected
@@ -204,7 +204,7 @@ def test_timbre_timeout_default_validation_and_hard_cap(client, monkeypatch, set
 @pytest.mark.parametrize('error', [requests.exceptions.ReadTimeout('provider secret text'), requests.exceptions.ConnectionError(ConnectionResetError(10054, 'reset'))])
 def test_timeout_or_reset_immediately_uses_v25_without_retry_or_sleep(client, monkeypatch, caplog, error):
     post = Mock(side_effect=[error, response()])
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     sleep = Mock(side_effect=AssertionError('No sleep before fallback'))
     monkeypatch.setattr('time.sleep', sleep)
     with caplog.at_level('INFO'):
@@ -225,7 +225,7 @@ def test_timeout_then_reset_immediately_serves_gtts_after_v25(client, monkeypatc
     monkeypatch.setattr('app.copilot.voice_service.get_gnani_client', lambda: client)
     service = VoiceService()
     post = Mock(side_effect=[requests.exceptions.Timeout(), requests.exceptions.ConnectionError(ConnectionResetError(10054, 'reset'))])
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     monkeypatch.setattr('time.sleep', Mock(side_effect=AssertionError('No sleep before fallback')))
     gtts = Mock(return_value=b'mocked mp3')
     monkeypatch.setattr(service, '_gtts_tts', gtts)
@@ -242,7 +242,7 @@ def test_timeout_can_use_cached_v25_with_no_second_http_attempt(client, monkeypa
     fallback = client._cache_path('private transcript', 'hi-IN', 'Kamakshi', model='timbre-v2.5')
     fallback.write_bytes(_silent_wav())
     post = Mock(side_effect=requests.exceptions.ReadTimeout())
-    monkeypatch.setattr('requests.post', post)
+    monkeypatch.setattr('app.copilot.provider_calls._state.session.post', post)
     with caplog.at_level('INFO'):
         assert client.synthesize('private transcript', 'hi', max_calls=1)
     post.assert_called_once()
@@ -256,7 +256,7 @@ def test_streaming_wav_lengths_are_finalized_without_changing_pcm(client, monkey
     streamed = bytearray(original)
     streamed[4:8] = streamed[40:44] = b"\xff\xff\xff\xff"
     post = Mock(return_value=Mock(status_code=200, content=bytes(streamed)))
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     audio = client.synthesize("HOLD", "ta")
     assert audio == original
     assert _finalize_wav(audio) == audio
@@ -273,7 +273,7 @@ def test_audition_global_limit_and_free_cached_rerun(client, monkeypatch, tmp_pa
     monkeypatch.setattr(audition, "hold_sentence", lambda: "Heat H-1053: Gate HOLD. reason")
     monkeypatch.setattr(audition, "load_dotenv", lambda *args, **kwargs: None)
     post = Mock(return_value=response())
-    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("app.copilot.provider_calls._state.session.post", post)
     assert audition.main(["--voices", "Shivani", "--max-calls", "2"]) == 1  # Two v3 variants, baseline deferred.
     assert post.call_count == 2
     assert audition.main(["--voices", "Shivani", "--max-calls", "1"]) == 0  # Only the baseline needs a call.

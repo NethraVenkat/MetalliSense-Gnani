@@ -1,4 +1,4 @@
-import clips from '../assets/approvedTourTamil.json';
+import clips from '../assets/approvedTourTamil.json' with {type:'json'};
 export const approvedTourAssetsEnabled=()=>import.meta.env?.VITE_VOICE_TOUR_APPROVED_TAMIL==='true';
 export const approvedTamilClip=id=>clips.find(clip=>clip.id===id);
 export const approvedTourAsset=(id,lang)=>approvedTourAssetsEnabled()&&lang==='ta'

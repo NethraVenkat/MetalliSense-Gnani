@@ -24,7 +24,7 @@ def test_flag_off_or_toggle_off_one_call_response_unchanged(client,monkeypatch,f
  from app import main
  monkeypatch.setenv('GNANI_TRANSLITERATE',flag)
  post=Mock(return_value=Mock(status_code=200,json=lambda:{'transcript':MAIN['text'],'detected_language_code':'ta-IN'}))
- monkeypatch.setattr('requests.post',post);client.transliterate=AsyncMock()
+ monkeypatch.setattr('app.copilot.provider_calls._state.session.post',post);client.transliterate=AsyncMock()
  service=SimpleNamespace(stt_provider='gnani',gnani=client,transcribe_audio=lambda path,lang:client.transcribe(_silent_wav(),lang,max_attempts=1))
  monkeypatch.setattr(main,'voice_service',service)
  result=TestClient(main.app).post('/copilot/voice/transcribe',files={'audio':('audio.wav',_silent_wav(),'audio/wav')},data={'transliterate':str(requested).lower()})

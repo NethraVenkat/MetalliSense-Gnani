@@ -36,3 +36,11 @@ it('Shift summary demo chip appears only with its flag',()=>{
   vi.stubEnv('VITE_SHIFT_SUMMARY','false');expect(renderToStaticMarkup(React.createElement(PushToTalk))).not.toContain('Shift summary');
   vi.stubEnv('VITE_SHIFT_SUMMARY','true');expect(renderToStaticMarkup(React.createElement(PushToTalk))).toContain('Shift summary');
 });
+
+it('wake mode uses only the shared assistant; legacy local mounts remain flag-off only',()=>{
+ vi.stubEnv('VITE_WAKE_WORD','true');vi.stubEnv('VITE_VOICE_EVERYWHERE','false');
+ expect(renderToStaticMarkup(React.createElement(PushToTalk))).toBe('');
+ expect(useHandsFree).not.toHaveBeenCalled();
+ const markup=renderToStaticMarkup(React.createElement(PushToTalk,{shared:true}));
+ expect(markup).toContain('Shop floor voice');expect(markup).not.toContain('Hands-free');expect(markup).not.toContain('>K<');
+});
