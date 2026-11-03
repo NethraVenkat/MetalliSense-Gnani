@@ -1,3 +1,4 @@
+import {sessionHeaders,foundationEnabled} from './voiceActionApi';
 import axios from "axios";
 import {transliterateEnabled} from './transcriptDisplay';
 
@@ -50,9 +51,11 @@ export const clearChatHistory = () =>
  * @param {string|null} language - Optional override; null uses the backend STT language
  * @returns {Promise} Transcription response
  */
-export const transcribeAudio = (audioFile, language = null, options = {}) => {
+export const transcribeAudio = async (audioFile, language = null, options = {}) => {
   const formData = new FormData();
   formData.append("audio", audioFile);
+  if(options.no_store)formData.append("no_store","true");
+  if(options.purpose)formData.append("purpose",options.purpose);
   if (language != null && language.trim() !== "") {
     formData.append("language", language);
   }
@@ -61,10 +64,12 @@ export const transcribeAudio = (audioFile, language = null, options = {}) => {
     ...(options.signal?{signal:options.signal}:{}),
     headers: {
       "Content-Type": "multipart/form-data",
+      ...(foundationEnabled()?await sessionHeaders():{}),
+      ...(options.no_store?{"X-Voice-No-Store":"true"}:{}),
     },
   });
 };
-export const checkWake=(audio,options={})=>{const form=new FormData();form.append('audio',audio);return copilotApi.post('/copilot/voice/wake-check',form,{headers:{'Content-Type':'multipart/form-data'},timeout:18000,...(options.signal?{signal:options.signal}:{})});};
+export const checkWake=async(audio,options={})=>{const form=new FormData();form.append('audio',audio);return copilotApi.post('/copilot/voice/wake-check',form,{headers:{'Content-Type':'multipart/form-data',...(foundationEnabled()?await sessionHeaders():{})},timeout:8000,...(options.signal?{signal:options.signal}:{})});};
 
 export const transliterateAudio = (audioFile) => {
   if(!transliterateEnabled())return Promise.resolve({data:{unavailable:true}});

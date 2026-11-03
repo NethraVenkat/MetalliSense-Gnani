@@ -1,0 +1,4 @@
+.kural-controls-popup{max-height:calc(100dvh - 120px)!important;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:auto}
+.is-expanded .kural-controls-popup{max-height:calc(100dvh - 120px)!important}
+.kural-talk-button{touch-action:none;user-select:none}
+.kural-floating:has(.kural-controls-popup) .kural-card-body{display:none!important}

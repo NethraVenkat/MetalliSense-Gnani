@@ -1,0 +1,8 @@
+import React,{useEffect,useState} from 'react';
+import {voiceActionApi,audioPlayback} from '../../services/voiceActionApi';
+export function VoiceActionPanel({state,onCancel}){if(!state)return null;return <section className="voice-action-panel" aria-live="polite" aria-label="Voice action approval"><strong>{state.level||'Voice action'}</strong><p>{state.summary}</p><p>{state.masked||state.prompt||state.result}</p>{state.seconds&&<p>Executing in {state.seconds}s</p>}<button type="button" onClick={onCancel}>Cancel</button></section>;}
+export function VoiceLogViewer({onClose}){const [rows,setRows]=useState([]),[audio,setAudio]=useState([]),[status,setStatus]=useState('Loading'),[url,setUrl]=useState(null);
+ useEffect(()=>{let live=true;Promise.all([voiceActionApi.events().catch(()=>({events:[]})),voiceActionApi.audio().catch(()=>({audio:[]}))]).then(([e,a])=>{if(live){setRows(e.events);setAudio(a.audio);setStatus('Client-reported events; not independent plant verification');}}).catch(()=>setStatus('Log unavailable'));return()=>{live=false;};},[]);
+ useEffect(()=>()=>{if(url)URL.revokeObjectURL(url);},[url]);
+ return <section className="voice-log-viewer" role="dialog" aria-label="Voice log"><button onClick={onClose} aria-label="Close voice log">Close</button><p>{status}</p><button onClick={()=>voiceActionApi.verify().then(r=>setStatus(r.ok?'Chain verified':`Broken chain at ${r.first_broken_seq}`)).catch(()=>setStatus('Verification unavailable'))}>Verify chain</button>{rows.map(r=><p key={r.seq}>{r.ts} / {r.intent} / {r.decision}</p>)}{audio.map(r=><button key={r.event_id} onClick={()=>audioPlayback(r).then(setUrl).catch(()=>setStatus('Audio unavailable'))}>Play {r.purpose}</button>)}{url&&<audio controls autoPlay src={url}/>}</section>;
+}
