@@ -8,10 +8,11 @@ export const askKg=lang=>choose(lang,'kg','கிலோ','किलो');
 // FullAnalysis/TrainingData 3dp, MechanicalProperties 1dp; no data is rounded in storage.
 export function askDisplayNumber(value,options={}){
  const valid=askNumber(value);if(valid===null)return null;const number=Number(valid);
- if(options.money||options.grouped)return new Intl.NumberFormat('en-IN',{minimumFractionDigits:options.decimals??0,maximumFractionDigits:options.decimals??options.maxDecimals??3}).format(number);
- if(options.decimals!==undefined)return number.toFixed(options.decimals);
- if(options.maxDecimals!==undefined)return String(Number(number.toFixed(options.maxDecimals)));
- return valid;
+ if(options.money){const rounded=Number(number.toFixed(2)),decimals=Number.isInteger(rounded)?0:2;return new Intl.NumberFormat('en-IN',{minimumFractionDigits:decimals,maximumFractionDigits:decimals}).format(rounded);}
+ if(options.fixedDecimals)return options.decimals===undefined?valid:number.toFixed(options.decimals);
+ const decimals=options.decimals??options.maxDecimals??2;
+ if(options.grouped)return new Intl.NumberFormat('en-IN',{maximumFractionDigits:decimals}).format(number);
+ return String(Number(number.toFixed(decimals)));
 }
 export function askTime(value,now=new Date(),dateOnly=false,lang='en'){
  if(!(typeof value==='string'||typeof value==='number'||value instanceof Date)||value===''||value===null)return null;
@@ -33,13 +34,21 @@ export function askList(items,format,lang='en',limit=3){
 }
 const words={Cu:['copper','காப்பர்','कॉपर'],C:['carbon','கார்பன்','कार्बन'],Si:['silicon','சிலிக்கான்','सिलिकॉन'],Mn:['manganese','மாங்கனீஸ்','मैंगनीज'],P:['phosphorus','பாஸ்பரஸ்','फॉस्फोरस'],S:['sulfur','சல்பர்','सल्फर']};
 const elementName=(e,lang)=>words[e]?.[{en:0,ta:1,hi:2}[lang]??0]??askText(e);
+// Known element-limit fragments only; preserve other explanations and written IDs.
+export function elementLimitReason(text,lang='en'){
+ if(lang!=='en'||typeof text!=='string')return text;
+ const elements={cu:'copper',copper:'copper',sn:'tin',tin:'tin',mn:'manganese',manganese:'manganese',c:'carbon',carbon:'carbon',si:'silicon',silicon:'silicon',p:'phosphorus',phosphorus:'phosphorus',s:'sulfur',sulfur:'sulfur'};
+ const token='(?:copper|tin|manganese|carbon|silicon|phosphorus|sulfur|sulphur|Cu|Sn|Mn|Si|C|P|S)';
+ const pattern=new RegExp('\\b('+token+'(?:(?:,? and |, )'+token+')*)\\s+(?:(?:is|are)\\s+)?(above|below)\\s+(?:the )?(selected range|range|limit)\\b','gi');
+ return text.replace(pattern,(_,names,direction,limit)=>{const parts=names.split(/,? and |, /i).map(n=>elements[n.toLowerCase()]||n.toLowerCase());const subject=parts.length>1?parts.slice(0,-1).join(', ')+' and '+parts.at(-1):parts[0];return subject+' '+(parts.length>1?'are':'is')+' '+direction.toLowerCase()+' the '+limit.toLowerCase();});
+}
 const translatedReason={
  'Copper above limit':['Copper above limit','காப்பர் லிமிட்டுக்கு மேல','कॉपर सीमा से ज़्यादा है'],
  'Chemistry from certificate / parent heat':['chemistry from certificate or parent heat','சான்றிதழ் அல்லது முந்தைய heat கலவை இருக்கு','प्रमाणपत्र या पिछले हीट की संरचना उपलब्ध है'],
 };
 export function askStatus(value,lang){const status=askText(value);if(!status)return null;const labels={RELEASED:['released','ரிலீஸ் ஆனது','रिलीज़ हुआ'],QUARANTINED:['in quarantine','க்வாரண்டைன்ல இருக்கு','क्वारंटीन में है'],AWAITING_QA:['awaiting QA','QA-க்குக் காத்திருக்கு','QA का इंतज़ार है'],PROVISIONAL:['provisional','தற்காலிக நிலையில் இருக்கு','अस्थायी स्थिति में है'],CONSUMED:['used up','பயன்படுத்தியாச்சு','इस्तेमाल हो गया'],QUARANTINE:['in quarantine','க்வாரண்டைன்ல இருக்கு','क्वारंटीन में है'],REJECTED:['rejected','ரிஜெக்ட்','अस्वीकृत'],RESTRICTED:['restricted','கட்டுப்பாட்டுல இருக்கு','सीमित है']};return labels[status]?.[{en:0,ta:1,hi:2}[lang]??0]??status;}
 const decisionNoun=(value,lang)=>{const labels={QUARANTINED:['quarantined','க்வாரண்டைன்','क्वारंटीन'],QUARANTINE:['quarantined','க்வாரண்டைன்','क्वारंटीन'],RELEASED:['released','ரிலீஸ்','रिलीज़'],REJECTED:['rejected','ரிஜெக்ட்','अस्वीकृत'],RESTRICTED:['restricted','கட்டுப்பாடு','सीमित']};return labels[value]?.[{en:0,ta:1,hi:2}[lang]??0]??askText(value);};
-const reason=(value,owner,lang)=>askText(owner?.['reason_'+lang])??askText(owner?.['statusReason_'+lang])??translatedReason[value]?.[{en:0,ta:1,hi:2}[lang]??0]??askText(value);
+const reason=(value,owner,lang)=>elementLimitReason(askText(owner?.['reason_'+lang])??askText(owner?.['statusReason_'+lang])??translatedReason[value]?.[{en:0,ta:1,hi:2}[lang]??0]??askText(value),lang);
 const pairs=value=>Array.isArray(value)?value:typeof value==='object'&&value?Object.entries(value).map(([element,value])=>({element,value})):null;
 function charge(line,lang){const id=askText(line?.lotId),kg=askDisplayNumber(line?.kg,{grouped:true,maxDecimals:1});return id&&kg!==null?`${id} ${kg} ${askKg(lang)}`:null;}
 function addition(line,row){const element=askText(line?.element),value=askDisplayNumber(line?.value??line?.pct,row);return element&&value!==null?`${element} ${Number(value)>=0?'+':''}${value}%`:null;}
@@ -53,7 +62,7 @@ function blocking(value,s,lang){
  if(detail&&number(detail.value)!==null&&number(detail.max)!==null&&elementName(detail.element,lang)){
   const el=elementName(detail.element,lang),v=number(detail.value),limit=number(detail.max);
   text=choose(lang,`It can't start because ${el} ${v}% is above the ${limit}% limit.`,`${el} ${v}%, லிமிட் ${limit}%-க்கு மேல; அதனால ஸ்டார்ட் பண்ண முடியாது.`,`${el} ${v}% है, सीमा ${limit}% से ज़्यादा, इसलिए शुरू नहीं हो सकता।`);
- }else{const message=askText(value[0])??askText(value[0]?.text);if(!message)return null;text=choose(lang,`It can't start because ${message}.`,`${message}, அதனால ஸ்டார்ட் பண்ண முடியாது.`,`${message}, इसलिए शुरू नहीं हो सकता।`);}
+ }else{const message=elementLimitReason(askText(value[0])??askText(value[0]?.text),lang);if(!message)return null;text=choose(lang,`It can't start because ${message}.`,`${message}, அதனால ஸ்டார்ட் பண்ண முடியாது.`,`${message}, इसलिए शुरू नहीं हो सकता।`);}
  const extra=value.length-1;return text+(extra?choose(lang,` And ${extra} more on screen.`,` மீதி ${extra} ஸ்கிரீன்ல.`,` बाकी ${extra} स्क्रीन पर।`):'');
 }
 export function formatAskValue(row,value,s,lang='en',now=new Date()){
@@ -61,7 +70,7 @@ export function formatAskValue(row,value,s,lang='en',now=new Date()){
  case 'number':return askDisplayNumber(value,row);
  case 'severity':return askEnum(value,'severity',lang);
  case 'sampleType':return askEnum(value,'sampleType',lang);
- case 'text':return askText(value);
+ case 'text':{const original=askText(value),text=elementLimitReason(original,lang);return text&&lang==='en'&&text!==original&&row.en.includes('is {value}')&&!text.startsWith('that ')?'that '+text:text;}
  case 'price':return askDisplayNumber(value,row)??askDisplayNumber(value?.costPerKg,row)??askDisplayNumber(value?.pricePerKg,row);
  case 'time':return askTime(value,now,false,lang);
  case 'range':{if(!(Array.isArray(value)&&value.length===2||value&&typeof value==='object'&&!Array.isArray(value)&&'min' in value&&'max' in value))return null;const min=askNumber(value?.[0]??value?.min),max=askNumber(value?.[1]??value?.max);return min!==null&&max!==null?choose(lang,`${min} to ${max}`,`${min} முதல் ${max}`,`${min} से ${max}`):null;}
@@ -77,7 +86,7 @@ export function formatAskValue(row,value,s,lang='en',now=new Date()){
  case 'additions':return askList(pairs(value),v=>addition(v,row),lang);
  case 'chemistry':return askList(pairs(value),v=>chemistry(v,row),lang);
  case 'pillars':return askList(value,v=>{const label=askText(v?.label)??askText(v?.key),score=askNumber(v?.score);return label&&score!==null?`${label} ${score}`:null;},lang);
- case 'drivers':return askList(value,v=>{const label=askText(v?.label),kwh=askNumber(v?.kwh);return label&&kwh!==null?`${label} ${kwh} kWh`:null;},lang);
+ case 'drivers':return askList(value,v=>{const label=askText(v?.label),kwh=askDisplayNumber(v?.kwh);return label&&kwh!==null?`${label} ${kwh} kWh`:null;},lang);
  case 'alerts':return askList(value,v=>askText(v)??askText(v?.message)??askText(v?.text)??askText(v?.title),lang);
  case 'search':return askList(value,v=>askText(v?.title)??askText(v?.metadata?.title),lang);
  case 'movements':{
@@ -102,7 +111,7 @@ export function formatAskValue(row,value,s,lang='en',now=new Date()){
 }
 export function renderAskSentence(row,value,s,lang='en',now=new Date()){
  const formatted=formatAskValue(row,value,s,lang,now);if(formatted===null)return null;
- const values={value:formatted,heat:askText(s.heat?.heatId),item:askText(s.item?.label)??askText(s.item?.item),pr:askText(s.pr?.prId),lot:askText(s.lot?.lotId),grade:askText(s.grade?.grade),date:askTime(s.item?.stockOutAt,now,true,lang),planned:askNumber(s.live?.piecesPlanned),n:askNumber(s.live?.result?.evidence?.worst?.Cu?.pieceNo),sigma:askDisplayNumber(s.heat?.gateResult?.prediction?.sigma?.Cu,{decimals:row.sigmaDecimals}),status:(()=>{const text=askStatus(s.lot?.status,lang);return text&&lang==='en'?text[0].toUpperCase()+text.slice(1):text;})(),decision:decisionNoun(s.live?.result?.decision?.status??s.live?.result?.decision?.decision??s.live?.result?.decision,lang)};
+ const values={value:formatted,heat:askText(s.heat?.heatId),item:askText(s.item?.label)??askText(s.item?.item),pr:askText(s.pr?.prId),lot:askText(s.lot?.lotId),grade:askText(s.grade?.grade),date:askTime(s.item?.stockOutAt,now,true,lang),planned:askNumber(s.live?.piecesPlanned),n:askNumber(s.live?.result?.evidence?.worst?.Cu?.pieceNo),sigma:askDisplayNumber(s.heat?.gateResult?.prediction?.sigma?.Cu,{decimals:row.sigmaDecimals,fixedDecimals:true}),status:(()=>{const text=askStatus(s.lot?.status,lang);return text&&lang==='en'?text[0].toUpperCase()+text.slice(1):text;})(),decision:decisionNoun(s.live?.result?.decision?.status??s.live?.result?.decision?.decision??s.live?.result?.decision,lang)};
  let missing=false;const sentence=(row[lang]??row.en).replace(/\{(\w+)\}/g,(_,key)=>{if(values[key]===null||values[key]===undefined){missing=true;return '';}return values[key];});
  return missing||!askText(sentence)?null:sentence;
 }

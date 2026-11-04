@@ -49,3 +49,6 @@ debug.log
 **/voice_audit/
 **/voice_audio/
 **/voice_auth/
+
+# Reversible local overnight snapshots and test evidence.
+.overnight_backup/

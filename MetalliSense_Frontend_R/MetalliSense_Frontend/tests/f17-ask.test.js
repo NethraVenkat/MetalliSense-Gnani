@@ -2,7 +2,7 @@ import {it,expect,vi,afterEach} from 'vitest';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {voiceAskDrafts,voiceAskUnavailable} from '../src/services/voiceAskContent';
 import {voiceAskReply,askSnapshot,matchVoiceAsk} from '../src/services/voiceAskAnswers';
-import {askGet,askList,askTime,askNumber,askDisplayNumber,askEnum,askStatus,renderAskSentence} from '../src/services/voiceAskFormatters';
+import {askGet,askList,askTime,askNumber,askDisplayNumber,elementLimitReason,askEnum,askStatus,renderAskSentence} from '../src/services/voiceAskFormatters';
 import {toSpokenText} from '../src/services/spokenText';
 import {createTranscriptHandler} from '../src/services/voiceTranscript';
 import fixtures from './fixtures/f17-ask-v2.json';
@@ -66,3 +66,11 @@ it.each([['en','no deviation','a normal sample','a sample with deviation'],['ta'
 it('every reviewed row is approved and every routed page has explicit collision coverage',()=>{expect(voiceAskDrafts.every(r=>r.approved)).toBe(true);expect(voiceAskDrafts.filter(r=>r.intent==='co2')).toHaveLength(1);});
 it.each([['/spectrometer','Carbon for heat H-1053?','carbon'],['/anomaly','Carbon deviation severity?','severity'],['/mechanical-properties','What are the recorded tap details?','tap'],['/grades','What standard is shown?','standard']])('specific attribute is not swallowed by its context: %s %s',(page,text,intent)=>expect(matchVoiceAsk(text,page)?.intent).toBe(intent));
 it.each(['RELEASED','RESTRICTED','AWAITING_QA','PROVISIONAL','QUARANTINED','REJECTED','CONSUMED'])('known lot status %s is rendered as words in each language',status=>{for(const lang of ['en','ta','hi'])expect(askStatus(status,lang)).not.toBe(status);});
+
+it.each([['Copper above limit','copper is above the limit'],['Cu below limit','copper is below the limit'],['Cu and Sn above limit','copper and tin are above the limit'],['Copper, tin and manganese below the limit','copper, tin and manganese are below the limit']])('v2.1 element reason %s', (before,after)=>expect(elementLimitReason(before,'en')).toBe(after));
+it('v2.1 reasons preserve native grammar and unrelated IDs',()=>{expect(elementLimitReason('H-1053 needs review','en')).toBe('H-1053 needs review');expect(elementLimitReason('காப்பர் லிமிட்டுக்கு மேல','ta')).toBe('காப்பர் லிமிட்டுக்கு மேல');expect(elementLimitReason('कॉपर सीमा से ज़्यादा है','hi')).toBe('कॉपर सीमा से ज़्यादा है');});
+it.each([[2400,'2,400'],[2400.5,'2,400.50'],[-2400.5,'-2,400.50'],[0,'0']])('v2.1 money %s',(value,expected)=>expect(askDisplayNumber(value,{money:true,decimals:2})).toBe(expected));
+it.each([['0.720','0.72'],[450.0,'450'],['7.50','7.5'],[-7.5,'-7.5'],[0,'0'],[7.567,'7.57']])('v2.1 plain number %s',(value,expected)=>expect(askDisplayNumber(value)).toBe(expected));
+it('v2.1 fixed chemistry keeps the page precision',()=>{expect(askDisplayNumber(3.7,{decimals:2,fixedDecimals:true})).toBe('3.70');expect(voiceAskReply('carbon',{route:'/spectrometer',loaded:{latestReading:{C:3.7}}},'en').displayText).toBe('Carbon is 3.70%.');});
+
+it('v2.1 full sentences do not double the copula in root/explanation templates',()=>{for(const [page,text] of [['/full-analysis','root'],['/agent','explain']]){const reply=voiceAskReply(text,{route:page,loaded:fixtures.pages[page]},'en');expect(reply.displayText).toContain('is that carbon is above');expect(reply.displayText).not.toContain('is carbon is');}expect(elementLimitReason('ABC above limit')).toBe('ABC above limit');});

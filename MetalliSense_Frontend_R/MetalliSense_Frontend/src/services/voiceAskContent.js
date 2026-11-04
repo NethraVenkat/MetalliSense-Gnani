@@ -25,7 +25,8 @@ export const voiceAskDrafts=[
     "format": "number",
     "approved": true,
     "priority": 90,
-    "decimals": 2
+    "decimals": 2,
+    "fixedDecimals": true
   },
   {
     "page": "/spectrometer",
@@ -39,7 +40,8 @@ export const voiceAskDrafts=[
     "format": "number",
     "approved": true,
     "priority": 90,
-    "decimals": 2
+    "decimals": 2,
+    "fixedDecimals": true
   },
   {
     "page": "/spectrometer",
@@ -254,7 +256,8 @@ export const voiceAskDrafts=[
     "en": "Lab phosphorus is {value}%.",
     "format": "number",
     "approved": true,
-    "priority": 80
+    "priority": 80,
+    "fixedDecimals": true
   },
   {
     "page": "/raw-material-stock",
@@ -306,7 +309,8 @@ export const voiceAskDrafts=[
     "en": "Highest copper: {value}%, piece {n}.",
     "format": "number",
     "approved": true,
-    "priority": 80
+    "priority": 80,
+    "fixedDecimals": true
   },
   {
     "page": "/yard-inspection",
@@ -360,7 +364,8 @@ export const voiceAskDrafts=[
     "approved": true,
     "priority": 80,
     "decimals": 3,
-    "sigmaDecimals": 3
+    "sigmaDecimals": 3,
+    "fixedDecimals": true
   },
   {
     "page": "/premelt-gate",
@@ -493,7 +498,8 @@ export const voiceAskDrafts=[
     "format": "number",
     "approved": true,
     "priority": 80,
-    "decimals": 2
+    "decimals": 2,
+    "fixedDecimals": true
   },
   {
     "page": "/recommendation",
@@ -507,7 +513,8 @@ export const voiceAskDrafts=[
     "format": "additions",
     "approved": true,
     "priority": 70,
-    "decimals": 2
+    "decimals": 2,
+    "fixedDecimals": true
   },
   {
     "page": "/recommendation",
@@ -547,7 +554,8 @@ export const voiceAskDrafts=[
     "format": "chemistry",
     "approved": true,
     "priority": 80,
-    "decimals": 2
+    "decimals": 2,
+    "fixedDecimals": true
   },
   {
     "page": "/rl-optimizer",
@@ -561,7 +569,8 @@ export const voiceAskDrafts=[
     "format": "additions",
     "approved": true,
     "priority": 70,
-    "decimals": 3
+    "decimals": 3,
+    "fixedDecimals": true
   },
   {
     "page": "/rl-optimizer",
@@ -629,7 +638,8 @@ export const voiceAskDrafts=[
     "format": "additions",
     "approved": true,
     "priority": 70,
-    "decimals": 3
+    "decimals": 3,
+    "fixedDecimals": true
   },
   {
     "page": "/full-analysis",
@@ -643,7 +653,8 @@ export const voiceAskDrafts=[
     "format": "number",
     "approved": true,
     "priority": 60,
-    "decimals": 3
+    "decimals": 3,
+    "fixedDecimals": true
   },
   {
     "page": "/full-analysis",
@@ -709,7 +720,8 @@ export const voiceAskDrafts=[
     "format": "additions",
     "approved": true,
     "priority": 80,
-    "decimals": 2
+    "decimals": 2,
+    "fixedDecimals": true
   },
   {
     "page": "/agent",
@@ -856,7 +868,8 @@ export const voiceAskDrafts=[
     "format": "number",
     "approved": true,
     "priority": 80,
-    "decimals": 2
+    "decimals": 2,
+    "fixedDecimals": true
   },
   {
     "page": "/synthetic",
@@ -910,7 +923,8 @@ export const voiceAskDrafts=[
     "format": "number",
     "approved": true,
     "priority": 90,
-    "decimals": 3
+    "decimals": 3,
+    "fixedDecimals": true
   },
   {
     "page": "/training-data",
