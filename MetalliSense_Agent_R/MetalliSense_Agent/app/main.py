@@ -929,6 +929,9 @@ async def evon_phrase(request: EvonPhraseRequest):
     return await phrase_gate_facts(request.facts, request.kind, request.lang, request.english_source, request.mode)
 
 
+from copilot.live_words import router as live_words_router
+app.include_router(live_words_router)
+
 @app.websocket("/copilot/voice/stream")
 async def stream_voice(websocket: WebSocket):
     await proxy_stream(websocket)

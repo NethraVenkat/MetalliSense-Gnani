@@ -67,3 +67,6 @@
 .kural-controls-popup small[aria-label="Logging on"]::before{content:'\1f534';margin-right:4px}
 
 .voice-action-summary{max-height:110px;overflow:auto;overflow-wrap:anywhere;overscroll-behavior:contain;scrollbar-gutter:stable}
+
+.kural-live-words {max-width:100%;overflow-wrap:anywhere;text-align:center;}
+.kural-live-words small {display:block;font-size:10px;color:var(--kural-muted,#46745d);}

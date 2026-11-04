@@ -1,3 +1,4 @@
+import LiveWordsSlot from './LiveWordsSlot';
 import {VoiceActionPanel} from './VoiceActionPanel';
 import './KuralMenuLayout.css';
 import React,{useEffect,useId,useLayoutEffect,useRef,useState} from 'react';
@@ -57,7 +58,7 @@ export function KuralAnswer({text,progress,muted,reduced,mode='speaking'}){
   {clipped&&<button type="button" className="kural-show-more" aria-expanded={showMore} aria-controls={id} onClick={()=>setShowMore(value=>!value)}>{showMore?'Show less':'Show more'}</button>}
  </div>;
 }
-export default function KuralWakePanel({wake,lang='en',muted=false,panelState='idle',statusNote=wake.note,requestPending=false,level=wake.level,heard='',answer='',playingAnswer='',playbackProgress,debugLine='',actionState=null,onActionCancel,menuControls={},onToggle,onRetry,onPopupDismiss,onClose,children,hidden=false}){
+export default function KuralWakePanel({wake,lang='en',muted=false,panelState='idle',statusNote=wake.note,requestPending=false,level=wake.level,heard='',answer='',playingAnswer='',playbackProgress,liveWords=null,debugLine='',actionState=null,onActionCancel,menuControls={},onToggle,onRetry,onPopupDismiss,onClose,children,hidden=false}){
  const presentation=useSpeechPresentation(),reduced=useKuralReducedMotion();
  const hasAnswer=Boolean(typeof answer==='string'?answer:answer?.displayText);
  const baseState=wakeVisualState({...wake,note:statusNote},{panelState,muted,requestPending}),state=actionState?.phase==='confirm'||actionState?.capturing?'listening':actionState?.phase==='confirm-starting'?'permission':muted&&hasAnswer&&baseState==='waiting'?'muted':baseState,key=orbPaletteKey(state);const [open,setOpen]=useState(false),[expanded,setExpanded]=useState(false),[lift,setLift]=useState(0);const previous=useRef(state),wasSpeaking=useRef(false),expectPermission=useRef(false);const root=useRef(null),orb=useRef(null),popup=useRef(null);
@@ -101,6 +102,7 @@ export default function KuralWakePanel({wake,lang='en',muted=false,panelState='i
   <div className="kural-interaction-card kural-card-body" role={expanded?'region':undefined} aria-label={expanded?'Kural interaction':undefined}>
    <header className="kural-card-header" aria-hidden={!expanded}><strong>Kural</strong><button type="button" tabIndex={expanded?0:-1} aria-label="Kural microphone controls" title="Kural microphone controls" onClick={toggle}><MoreHorizontal size={18}/></button><button type="button" tabIndex={expanded?0:-1} aria-label="Close Kural interaction and stop" title="Close Kural interaction and stop" onClick={collapse}><X size={18}/></button></header>
    <div className="kural-orb-label" aria-hidden={!expanded} aria-live={expanded?'polite':'off'}>{copy?<><small>{copy[0]}</small><p>{copy[1]}</p></>:<p>{primary}</p>}</div>
+   {!actionState&&['listening','processing'].includes(state)&&<LiveWordsSlot value={liveWords} reduced={reduced}/>}
    {!actionState&&words&&<KuralAnswer text={words} mode={state==='processing'?'transcript':'speaking'} progress={progress} muted={muted} reduced={reduced}/>}
    {(actionState?.phase==='confirm'||actionState?.capturing||!actionState&&state==='listening')&&<svg className="kural-live-wave" viewBox="0 0 240 28" aria-label="Microphone level">{Array.from({length:40},(_,i)=>{const h=2+Math.min(1,Number(level)||0)*22*(.4+.6*Math.abs(Math.sin(i*1.7)));return <rect key={i} x={i*6} y={(28-h)/2} width="2" height={h} rx="1"/>;})}</svg>}
    {actionState&&<VoiceActionPanel state={actionState} onCancel={onActionCancel}/>}
