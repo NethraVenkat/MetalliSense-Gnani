@@ -1,90 +1,86 @@
-﻿# MetalliSense Kural — README draft
+﻿# MetalliSense Kural — README review draft
 
-2026-11-03. Review draft only; README.md is unchanged. Branch: f15-overnight. No publishing, training or live provider calls in this work.
+2026-11-04. This is DOCS/README_DRAFT.md, not the root README. Local draft; nothing published or committed.
 
-## What works and who built it
+## What Kural is
 
-The base foundry platform is joint work by Manish and Nethra (root README). Feature attribution below follows the existing feature documents and the overnight assignment, not an inference of sole authorship.
+Kural is the foundry application's opt-in Tamil/Hindi/English voice interface. ASK reads loaded page facts and explanations. RUN and APPROVE use the same existing service functions as screen buttons, with explicit confirmation, role checks, target freshness and audit evidence. Spoken predictions are estimates, not measurements. Voice never turns H-1053 HOLD into GO or bypasses safety by recognizing a phrase.
 
-| Feature | Opt-in flags (default off unless noted) | Builder / evidence |
+## Features and flags
+
+All optional feature flags below are off by default; existing flags/defaults were not changed. The hands-free switch requires explicit opt-in. Restart the relevant process after changing its temporary shell configuration. Never put credentials into VITE_*.
+
+| Feature | Frontend flags | Agent flags / notes |
 |---|---|---|
-| Read-only PTT: status, gate reasons, chemistry and stock | Voice panel shown by default; VITE_LANG_BRIDGE for language bridge | Nethra: F2; root README records contributions from both members |
-| Shared page help/navigation and new-result HOLD announcements | VITE_VOICE_EVERYWHERE; VITE_BILINGUAL_ALERT optional | Nethra: F13 plan; saved HOLD is silent on refresh |
-| Loaded Stock, Spectrometer and Grade answers | VITE_VOICE_PAGE_ANSWERS + VITE_VOICE_EVERYWHERE | Nethra-owned F13b overnight extension; reads page snapshots, no question-triggered fetch |
-| Short explicit Dashboard morning briefing | VITE_MORNING_BRIEFING + VITE_VOICE_EVERYWHERE | Nethra-owned F13c overnight extension; existing shift-summary data; no load-time speech |
-| Navbar onboarding, selected language and approved Tamil assets | VITE_VOICE_TOUR + VITE_VOICE_EVERYWHERE; VITE_VOICE_TOUR_APPROVED_TAMIL for assets | Nethra: F14; 22 approved WAVs preserved; optional handover changes visible length |
-| Prefixed microphone tour commands | VITE_VOICE_TOUR_COMMANDS | Existing F14; per-change builder attribution unverified |
-| Experimental pause-v3 activation, followed by one bounded command | VITE_WAKE_WORD + backend WAKE_WORD_ENABLED | Manish, overnight; toggle OFF on load; PTT fallback |
-| Read-only shift handover | VITE_HANDOVER | Manish: F7 |
-| Shift summary | VITE_SHIFT_SUMMARY | Nethra: F9 |
-| Latin transcript display | VITE_TRANSLITERATE + backend GNANI_TRANSLITERATE | F10; builder unverified |
-| Delivery speed/clarity/number processing | VITE_TTS_STREAM, VITE_VOICE_CLARITY, VITE_SPOKEN_NORMALIZE; corresponding backend flags | Manish: F11/F11b/F11c; Nethra: F11d pronunciation |
+| Page voice context, read-only help | VITE_VOICE_EVERYWHERE | Existing page snapshots; no invented data |
+| Approved loaded-page wording / briefing | VITE_VOICE_PAGE_ANSWERS / VITE_MORNING_BRIEFING | Selected/current data and read-only answers |
+| Navbar tour / approved Tamil playback | VITE_VOICE_TOUR / VITE_VOICE_TOUR_APPROVED_TAMIL, with VITE_VOICE_EVERYWHERE | 22 packaged WAVs; no synthesis for approved-asset path |
+| Experimental pause-v3 hands-free | VITE_WAKE_WORD | WAKE_WORD_ENABLED; command-only activation is an experiment, not qualified local detection |
+| Voice actions | VITE_VOICE_ACTIONS | VOICE_ACTIONS_ENABLED plus VOICE_AUDIT_ENABLED; configured identities required |
+| Grouped audit viewer | VITE_VOICE_AUDIT | VOICE_AUDIT_ENABLED |
+| Optional local wake/command audio evidence | VITE_VOICE_AUDIO_LOG | VOICE_AUDIO_LOG_ENABLED; excludes secret captures |
+| Timing diagnostics | VITE_VOICE_TIMING | Development timing, not a guaranteed latency |
+| New live-word plumbing | VITE_LIVE_WORDS | LIVE_WORDS_ENABLED; currently returns unavailable, no provider stream |
+| Explicit final-transcript mock replay | VITE_LIVE_WORDS_MOCK, with VITE_LIVE_WORDS | Clearly labelled MOCK; no extra mic/socket/provider calls in mock replay |
+| New pronunciation input pass | VITE_PRONOUNCE_PASS | TTS text only; reviewed pronunciationOnly payloads/approved assets bypass it |
 
-Existing VITE_VOICE_DATA_READS and VITE_VOICE_DASHBOARD_BRIEFING retain their earlier service-backed behavior. For reviewing the new loaded-page/short-briefing variants, leave those older opt-ins false. No feature defaults or local environment files were enabled overnight.
+See [LIVE_WORDS.md](LIVE_WORDS.md), [PRONUNCIATION_TABLE.md](PRONUNCIATION_TABLE.md), [F17_VOICE_ACTIONS.md](F17_VOICE_ACTIONS.md) and [F14_VOICE_TOUR.md](F14_VOICE_TOUR.md). No active tour WAV, narration order or global language mapping was changed.
 
-## Models, results and rejected experiments
+## Run locally
 
-| Candidate | Saved evidence / outcome | Limit |
-|---|---|---|
-| Prisma v3.0 general STT | Existing codemix/keyterm integration and synthetic-noise comparison in root README | Synthetic noise is not foundry validation |
-| Timbre | Existing configurable TTS and cache; approved Tamil tour: Kalpana / timbre-v3.0, generated with hi-IN, default speed | Generation locale is provenance; UI Tamil routing is unchanged |
-| Evon v3.3 | Root README describes mock operation; live self-hosted endpoint not configured | No live quality claim |
-| English Sherpa keyword candidate | 0/6 Kural positives; official English positive controls passed | English acoustic/pronunciation mismatch remains a limitation |
-| Multilingual Whisper Tiny Q5_1 | 0/6; separate cropped P02_take02 also missed | Rejected configuration; not a reliable local wake detector |
-| Custom CNN v1 / v2 paired | Failed frozen qualification; paired devval strict-overlap result 0/10 | Models remain offline experimental evidence; no deployment |
-| Prisma pause-v1 | FAIL: snippet truncation and conversation false wake | Old evidence preserved |
-| Prisma pause-v2, with keyterm | FAIL: 20/20 paired wakes but 6/10 confusable false wakes; 0/10 no-Kural questions | Keyterm bias was a hypothesis, not proven causal isolation |
-| Prisma pause-v3, no keyterms | Small-screen PASS: 10/10 wakes (8 குரல், 2 குறள்), 0/10 confusables, 0/5 conversation snippets; 4.48 calls/min | One speaker, quiet/headphones, one roughly 65 s conversation; network required; approximately 1 s latency is unverified as end-to-end latency |
-| F8 bias comparison | 5/6 versus 6/6 requested for this draft; supporting artifact not located in current repository/DOCS search: **unverified** | No conclusion or builder inferred |
-| F12 voice clone | Mentioned in requested experiment trail; supporting outcome/license artifact not located: **unverified** | Not enabled or represented as a working feature |
-
-Pause-v3 evidence: Agent tools/local_wake_data/kural-prisma-pause-v3/evaluation/2c520de30585837d26bb/{plan,journal,results}.json. Failed runs remain preserved. None of these small development screens establishes long-term false-activation rates, factory noise performance or playback-says-Kural resistance.
-
-## Local review setup
-
-Use the existing installed dependencies. Commands below start services; they do not train or synthesize a batch. From the repository root, start the Agent in one PowerShell terminal:
+Agent terminal, from MetalliSense_Agent_R/MetalliSense_Agent:
 
 ```powershell
-Set-Location .\MetalliSense_Agent_R\MetalliSense_Agent
+$env:GNANI_MOCK='true'
+$env:EVON_MOCK='true'
 .\.venv\Scripts\python.exe .\app\main.py
 ```
 
-Keep credentials only in the existing backend .env. For live review, its speech provider configuration must already be valid. Add the opt-in below there and restart the Agent:
-
-```dotenv
-WAKE_WORD_ENABLED=true
-```
-
-In the frontend's ignored .env.local, add only the features being reviewed:
-
-```dotenv
-VITE_SHOW_VOICE_PANEL=true
-VITE_COPILOT_BASE_URL=http://localhost:8001
-VITE_VOICE_EVERYWHERE=true
-VITE_WAKE_WORD=true
-VITE_VOICE_PAGE_ANSWERS=true
-VITE_MORNING_BRIEFING=true
-```
-
-Restart Vite after editing. In a second terminal, from the repository root:
+Frontend terminal, from MetalliSense_Frontend_R/MetalliSense_Frontend:
 
 ```powershell
-Set-Location .\MetalliSense_Frontend_R\MetalliSense_Frontend
 npm.cmd run dev:mock -- --configLoader runner
 ```
 
-Open the printed local URL; choose a language, unmute and allow the mic. The new **Hands-free (Kural)** toggle remains OFF until clicked. Say Kural after at least half a second of silence. Only pause-triggered 1.5 s snippets are sent to Gnani for the wake check; wake-only recognition then captures one command (maximum 30 s). This is cloud-assisted activation, not an always-local wake detector. Activation pauses for TTS, PTT, tours and hidden tabs. Three consecutive errors switch it off; use Hold to talk.
+Agent: http://localhost:8001. UI: http://localhost:5173. Mock mode is for disposable local data. Existing provisioned backend-only credentials/identities remain owner-managed; this draft contains no key or passcode and no setup that overwrites local configuration. For actions enable the temporary flags and follow [LIVE_TEST_CHECKLIST.md](LIVE_TEST_CHECKLIST.md). With no selected/loaded target, missing identity or disabled audit, expect refusal rather than guessed execution. No live provider access was exercised overnight.
 
-For offline mocked review use GNANI_MOCK=true in the existing backend configuration; it makes no live speech calls and does not demonstrate recognition. Empty credentials also select existing mock speech. No key belongs in VITE_* variables.
+## R5 and spoken approvals
 
-To disable new features, remove the added lines or set all four new flags false and restart both services. Existing PTT, tour and page behavior remain available.
+The earlier read-only voice scope now has explicit tiers. ASK remains read-only. RUN reads back then captures yes/no once after playback; eight seconds without words is timeout, with no execution. APPROVE reads all relevant facts, requests a private spoken passcode, checks the server-owned role and a one-use target-bound approval token, then allows five seconds to Cancel. Destructive DELETE/RESET/CLEAR and HOLD OVERRIDE require their exact additional word. The server and page service remain final authority. Unit Controller is the only HOLD override role; normal start still refuses HOLD. CSV/file ingestion stays screen-only.
 
-## Serialization and safety
+This is not voice biometrics, unrestricted authorization or production access control certification. Local approval/session state is single-Agent-process scope; stale targets, insufficient role, backend failures and cancellation must never display success. See F16_VOICE_FOUNDATION.md, F17_VOICE_ACTIONS.md and app/copilot/voice_auth.py / voice_policy.py.
 
-Run a **single Agent worker**. All application Gnani STT/TTS, transliteration, handover, wake-check and live-stream transports share one process-wide provider lease. It is not a distributed lock across OS workers. An open legacy STT WebSocket holds the lease until it closes (up to the existing session limit); other provider work may wait or time out. Do not run that legacy continuous stream alongside this wake-mode review. Wake-check also enforces one in flight, spacing of at least 1.1 s after completion, and no more than 15 attempts per minute, conservatively counted from completion. Offline audition tools are not activated by this application and must not be launched concurrently with live review.
+## Security and local evidence
 
-Voice is read-only (R5): approvals, overrides, furnace starts, stock/data writes and checks stay manual. Wake remainders and captured commands use the existing safety-first PTT handler and unchanged neutral refusal. H-1053 becomes HOLD after the manual pre-melt check; saved HOLD never speaks merely on refresh. Numbers are from loaded/saved data; unavailable data is stated plainly. Synthetic fixtures alone were used in overnight tests. No approved tour script or WAV was changed.
+Gnani credentials remain server-side. Approval records use salted PBKDF2-HMAC-SHA256 (300,000 iterations in voice_auth.py), with server role policy and lockout. Audit events form a hash chain for tamper evidence, not a claim that local files cannot be deleted. APPROVE text is masked. AudioLog accepts only wake/command purposes and refuses no_store/sensitive captures, so passcodes/secret confirmations are not retained by that path. Optional audio has a default seven-day retention and startup/periodic purge (voice_audio_log.py, voice_foundation.py). This is audio retention, not a promise that all audit/configuration files expire in seven days. Keys and raw passcodes must not appear in transcripts, logs, browser storage, Git or screenshots.
 
-## Verification and manual limits
+## Wake-word journey — development evidence
 
-Use the exact per-task and final results in [OVERNIGHT_REPORT.md](OVERNIGHT_REPORT.md). The automated provider boundaries are mocked. Live mic ownership, browser permissions, headphones/echo, real Gnani availability, latency and spoken quality require owner review. No overnight live calls were made. The original README and its historical results remain unchanged.
+| Candidate / screen | Actual recorded result | Source |
+|---|---|---|
+| English Sherpa-ONNX 2.0.1 / GigaSpeech 3.3M | KURAL 0/6 positives; both official English controls passed; false activations unmeasured. Unchanged keyword threshold .25, score 1 | F14_LIVE_KURAL_DIAGNOSTIC.md, “Existing Sherpa benchmark”; F14_LOCAL_KURAL_PROTOTYPE.md |
+| Original CNN baseline | All 20 S02 wakes missed; best checkpoint also predicts the majority nonwake class on training windows | F14_KURAL_BASELINE_DIAGNOSIS.md |
+| Binary/negative-context v1 checkpoint | At .50: 12/20 S02 wake misses, 109 ordinary false events, 52 echo events; no qualified threshold | F14_KURAL_CONTEXT_VALIDITY.md, “Single negative-context v2 experiment completed” |
+| Paired CNN v2 vs v1 | Both 0/10 strict-overlap devval matches at every fixed threshold. At .50, v1 conversation/confusable events 69/0; v2 71/3. S02 fails for both at all four thresholds; rejected | F14_LIVE_KURAL_DIAGNOSTIC.md, “Single authorized paired-v2 experiment completed — FAIL”; F14_KURAL_PAIRED_V2_EXPERIMENT.md |
+| Prisma pause-v1 | FAIL: 14 successful calls before interruption; truncated wake snippets and a conversation false wake; incomplete negatives | F14_LIVE_KURAL_DIAGNOSTIC.md, pause-v1 result |
+| Prisma pause-v2 with keyterm | FAIL: 20/20 wake clips, but 6/10 confusables transcribed as Kural; keyterm bias was a hypothesis, not isolated causal proof | F14_LIVE_KURAL_DIAGNOSTIC.md, pause-v2 paired result |
+| Prisma pause-v3, no keyterm | Small predeclared screen PASS: 25 successful calls, 10/10 wakes, 0/10 confusables, 0/5 conversation snippets; 4.48 onsets/min on that conversation | F14_LIVE_KURAL_DIAGNOSTIC.md, user-run plan 2c520de30585837d26bb |
+
+These are short, inspected development/validation screens, not a reliable long-term false-activation bound or unseen-speaker generalization. Pause-v3 requires network STT and the existing local pause gate; it does not run a qualified local keyword model. CNN experiments remain rejected, original evidence is preserved, S03 remains reserved; its last recorded status is “S03 not available, not evaluated.” No S03 recording was accessed for this work.
+
+## Known limits
+
+Repository integration treats Evon as an optional self-hosted/open-weights path behind an OpenAI-compatible chat endpoint, rather than inventing a public Gnani Evon API. See app/copilot/evon_explainer.py (default model gnani/gnani-evon-v3.3-30B-A3B, locally configured base) and existing deployment notes. This is the repository's integration choice, not a new external availability claim. Empty base defaults to mock; no weights were downloaded and no endpoint probed.
+
+Streaming STT uses one locale per session (ta-IN, hi-IN or en-IN). Existing gnani_stream.py documents final utterance transcripts and processing acknowledgements, not verified interim-word emission. The new /ws/live-words therefore honestly reports unavailable and does not forward ambient audio or hold the shared lease. Final REST speech/answer behavior stays unchanged. The mock replay starts only from a real final transcript and is labelled MOCK. Missing interim message semantics and lease-compatible provider behavior must be verified before real live words can be enabled.
+
+Pronunciation spelling changes are input corrections only; human listening is still required. No new requests, SSML or language tags are added. Approved tour playback bypasses the pass. Other languages/unknown grade IDs/slash-date ambiguity are not guessed.
+
+## Who built what
+
+- Application and foundry workflow: TODO
+- ASK wording and page answers: TODO
+- Voice interaction, actions and approvals: TODO
+- Tour and approved narration: TODO
+- Experimental wake research and evidence: TODO
+- Review and testing: TODO
