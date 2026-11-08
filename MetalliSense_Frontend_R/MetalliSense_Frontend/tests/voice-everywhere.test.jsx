@@ -66,7 +66,8 @@ it('navigation/help are read-only and use localized confirmations',async()=>{
  vi.stubEnv('VITE_VOICE_EVERYWHERE','true');
  const say=vi.fn(),navigate=vi.fn(),resolveHeat=vi.fn();
  const handler=createTranscriptHandler({lang:'en',say,navigate,resolveHeat,setHeard:vi.fn(),pageContext:{route:'/energy'}});
- await handler('energy dikhao');expect(say.mock.lastCall).toEqual(['एनर्जी पेज खोला गया','एनर्जी पेज खोला गया','hi',{navigation:'/energy'}]);expect(navigate).toHaveBeenCalledWith('/energy');
+ await handler('energy dikhao');expect(say.mock.lastCall).toEqual(['आप पहले से इसी पेज पर हैं।','आप पहले से इसी पेज पर हैं।','hi']);expect(navigate).not.toHaveBeenCalled();
+ await handler('go to spectrometer');expect(navigate).toHaveBeenCalledExactlyOnceWith('/spectrometer');
  await handler('what can I ask here?');expect(say.mock.lastCall[0]).toBe(pageHelp({route:'/energy'},'en'));expect(resolveHeat).not.toHaveBeenCalled();
  expect(navigationAnswer('/raw-material-stock','ta')).toBe('ஸ்டாக் பேஜ் ஓப்பன் செய்யப்பட்டது');
 });

@@ -1,0 +1,3 @@
+import {defineConfig} from 'vite';
+import react from '@vitejs/plugin-react';
+export default defineConfig({envDir:false,plugins:[react()],server:{host:'127.0.0.1'},define:Object.fromEntries(Object.entries({VITE_MOCK_MODE:'true',VITE_VOICE_ACTIONS:'true',VITE_VOICE_AUDIT:'true',VITE_VOICE_EVERYWHERE:'true',VITE_VOICE_PAGE_ANSWERS:'true',VITE_SHOW_VOICE_PANEL:'true',VITE_WAKE_WORD:'true',VITE_VOICE_TOUR:'false',VITE_TTS_STREAM:'false',VITE_VOICE_TIMING:'true',VITE_COPILOT_BASE_URL:process.env.ROUND2_AGENT_URL||'http://127.0.0.1:8001'}).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)]))});

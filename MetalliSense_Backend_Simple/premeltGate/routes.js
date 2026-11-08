@@ -147,6 +147,8 @@ router.post('/lots/:lotId/adjust', wrap((req) => {
   return store.view(lot);
 }));
 
+router.post('/heats/:heatId/accept-strategy',wrap(req=>require('./strategyAcceptance').accept(req.params.heatId,req.body)));
+
 router.get('/movements', wrap((req) => store.listMovements(req.query.lotId).slice(0, Number(req.query.limit) || 200)));
 router.get('/additives', wrap(() => additives.inventory()));
 

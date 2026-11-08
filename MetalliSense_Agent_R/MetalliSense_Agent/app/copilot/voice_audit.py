@@ -4,7 +4,7 @@ import hashlib,json,os,re,threading
 from pathlib import Path
 from .voice_numbers import NUMBERS
 LOCK=threading.RLock()
-MASK='\u2022'*6
+MASK='[passcode masked]'
 # Dictated digit aliases are shared with the browser grammar by a generated fixture.
 DIGIT_GROUPS=[["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"], ["\u0baa\u0bc2\u0b9c\u0bcd\u0b9c\u0bbf\u0baf\u0bae\u0bcd|\u0b9c\u0bc0\u0bb0\u0bcb", "\u0b92\u0ba9\u0bcd\u0bb1\u0bc1|\u0b92\u0ba3\u0bcd\u0ba3\u0bc1|\u0b92\u0ba9\u0bcd\u0ba9\u0bc1", "\u0b87\u0bb0\u0ba3\u0bcd\u0b9f\u0bc1|\u0bb0\u0bc6\u0ba3\u0bcd\u0b9f\u0bc1", "\u0bae\u0bc2\u0ba9\u0bcd\u0bb1\u0bc1|\u0bae\u0bc2\u0ba3\u0bc1", "\u0ba8\u0bbe\u0ba9\u0bcd\u0b95\u0bc1|\u0ba8\u0bbe\u0bb2\u0bc1", "\u0b90\u0ba8\u0bcd\u0ba4\u0bc1|\u0b85\u0b9e\u0bcd\u0b9a\u0bc1", "\u0b86\u0bb1\u0bc1", "\u0b8f\u0bb4\u0bc1", "\u0b8e\u0b9f\u0bcd\u0b9f\u0bc1", "\u0b92\u0ba9\u0bcd\u0baa\u0ba4\u0bc1"], ["\u0936\u0942\u0928\u094d\u092f|\u091c\u0940\u0930\u094b|\u091c\u093c\u0940\u0930\u094b", "\u090f\u0915", "\u0926\u094b", "\u0924\u0940\u0928", "\u091a\u093e\u0930", "\u092a\u093e\u0902\u091a|\u092a\u093e\u0901\u091a", "\u091b\u0939|\u091b\u0903|\u091b\u0947", "\u0938\u093e\u0924", "\u0906\u0920", "\u0928\u094c"]]
 DIGITS={a:str(i) for group in DIGIT_GROUPS for i,word in enumerate(group) for a in word.split('|')}
@@ -22,7 +22,9 @@ def mask(text):
 def safe(value):
     if isinstance(value,dict):return {k:safe(v) for k,v in value.items() if not re.search('code|token|secret|password|audio',k,re.I)}
     if isinstance(value,list):return [safe(v) for v in value[:50]]
-    if isinstance(value,str):return re.sub(r'(?<![A-Za-z0-9])\d{6}(?![A-Za-z0-9])',MASK,value)[:1000]
+    if isinstance(value,str):
+        value=re.sub(r'(?i)\b(?:passcode|password|secret|api[-_ ]?key|gnani[-_ ]?key|token)\s*(?:[:=]|is)\s*\S+|\bBearer\s+\S+',MASK,value)
+        return re.sub(r'(?<![A-Za-z0-9])\d{6}(?![A-Za-z0-9])',MASK,value)[:1000]
     return value if value is None or isinstance(value,(int,float,bool)) else None
 class AuditDamage(ValueError):
     def __init__(self,seq):self.seq=seq
@@ -57,8 +59,10 @@ class Audit:
         date=today()
         with LOCK:
             if not self.verify(date)['ok']:raise ValueError('Audit chain damaged; append refused')
-            rows=self.rows(date);row={k:safe(event.get(k)) for k in ['page','user','level','intent','summary','confirmation','decision','backend_result','error','event_id']}
+            rows=self.rows(date);row={k:safe(event.get(k)) for k in ['page','user','level','intent','summary','spoken_reply','confirmation','decision','backend_result','error','event_id','confirmation_word','confirmation_word_verified','winner','target','reason_code','candidates','turn_id']}
             row.update(ts=dt.datetime.now(dt.timezone.utc).isoformat(),seq=len(rows)+1,session_id=session,transcript=MASK if event.get('confirmation')=='passcode' else mask(event.get('transcript')),prev_hash=rows[-1]['hash'] if rows else '0'*64)
+            private=event.get('confirmation')=='passcode'
+            row.update(heard='[passcode masked]' if private else safe(event.get('heard',mask(event.get('transcript')))),normalized_text='[passcode masked]' if private else safe(event.get('normalized_text','')))
             row['hash']=hashlib.sha256(canonical(row)).hexdigest();p=self.path(date);p.parent.mkdir(parents=True,exist_ok=True)
             with p.open('a',encoding='utf-8',newline='\n') as stream:stream.write(json.dumps(row,ensure_ascii=False)+'\n');stream.flush();os.fsync(stream.fileno())
             return row

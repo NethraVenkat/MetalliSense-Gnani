@@ -21,7 +21,7 @@ it('APPROVE consumes exactly once only after countdown; HOLD is refused',async()
 
 it('readback must finish before confirmation starts; only timeout/no cancels, unknown fails honestly',async()=>{
  let finishReadback;const capture=vi.fn(async options=>{options.onState?.('listening');return {text:'ok!',reason:'utterance'};});const x=setup(capture);const states=[];
- const flow=createActionFlow({api:x.api,say:()=>new Promise(r=>finishReadback=r),capture,onChange:s=>states.push(s)});const run=flow.run(registry[0]);await Promise.resolve();await Promise.resolve();expect(capture).not.toHaveBeenCalled();finishReadback();expect(await run).toBe(true);expect(states.some(s=>s?.phase==='confirm'&&s.prompt.includes('Listening'))).toBe(true);expect(states.at(-1).result).toBe('Completed');
+ const flow=createActionFlow({api:x.api,say:vi.fn().mockImplementationOnce(()=>new Promise(r=>finishReadback=r)).mockResolvedValue(undefined),capture,onChange:s=>states.push(s)});const run=flow.run(registry[0]);await Promise.resolve();await Promise.resolve();expect(capture).not.toHaveBeenCalled();finishReadback();expect(await run).toBe(true);expect(states.some(s=>s?.phase==='confirm'&&s.prompt.includes('Listening'))).toBe(true);expect(states.at(-1).result).toBe('Completed');
  const unknown=setup(async()=>({text:'unrelated',reason:'utterance'}));expect(await unknown.flow.run(registry[0])).toBe(false);expect(unknown.api.audit).toHaveBeenCalledWith(expect.objectContaining({decision:'failed',error:'confirmation_unrecognized'}));
 });
 it('completed/cancelled results have one status and no Cancel; countdown alone can cancel',()=>{

@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 // Semantic Search over training data / grade specs, powered by Actian
 // VectorAI DB (PEC Hacks 4.0 x Actian VectorAI DB submission).
 export default function SemanticSearch() {
-  useRegisterVoicePage({}, 'SemanticSearch');
+
   const [query, setQuery] = useState("");
   const [collection, setCollection] = useState("training_data");
   const [results, setResults] = useState([]);
@@ -39,6 +39,8 @@ export default function SemanticSearch() {
       setLoading(false);
     }
   };
+
+  useRegisterVoicePage({}, 'SemanticSearch',{query,collection,results,loading,searched},({data})=>{setResults(data.results||[]);setSearched(true);});
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

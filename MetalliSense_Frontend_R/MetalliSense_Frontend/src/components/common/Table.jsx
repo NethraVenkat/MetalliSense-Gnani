@@ -67,7 +67,7 @@ const Table = ({
         </thead>
         <tbody className="bg-white divide-y divide-metal-100">
           {data.map((row, rowIndex) => (
-            <tr key={rowIndex} className="hover:bg-primary-50/50 transition-all">
+            <tr key={rowIndex} data-voice-record-id={row._id} data-voice-row-id={import.meta.env.VITE_VOICE_EVERYWHERE==='true'?(row.heatId||row.prId||row.lotId||row.invoiceId||row._id||row.grade):undefined} data-voice-row-key={row.heatId?'heatId':row.prId?'prId':row.lotId?'lotId':row.invoiceId?'invoiceId':'readingId'} className="hover:bg-primary-50/50 transition-all">
               {columns.map((column, colIndex) => (
                 <td
                   key={colIndex}

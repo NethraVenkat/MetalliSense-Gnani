@@ -1,3 +1,4 @@
+import {acceptHeatStrategy} from '../services/premeltService';
 import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useEffect, useMemo } from "react";
 import Card from "../components/common/Card";
@@ -108,7 +109,7 @@ const strategyColor = {
 const RLOptimizer = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunRL, rlDone, acceptStrategy, rejectAll } = useMeltFlow();
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'RLOptimizer');
+
   // Restore the last RL run for this heat when navigating back to the page
   const [reading, setReading] = useState(() => (isUnlocked ? flow.rlResult?._reading || null : null));
   const [result, setResult] = useState(() => (isUnlocked ? flow.rlResult : null));
@@ -188,13 +189,11 @@ const RLOptimizer = () => {
     }
     setSubmitting(candidate.strategy);
     try {
-      if (import.meta.env.VITE_MOCK_MODE === 'true' && outcome === 'accepted' && isUnlocked && flow.heatId) {
-        const r = await fetch('/__mock/accept-strategy', {method:'POST',body:JSON.stringify({heatId:flow.heatId,candidate,composition:reading.composition})});
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.message);
-        acceptStrategy(j.data);
-        toast.success('Strategy accepted — selected quantities deducted. Policy updated.');
-        await loadPolicyStatus();
+      if(outcome==='accepted'){
+        if(!isUnlocked||!flow.heatId)throw Error('A MELTING heat is required to accept and deduct stock');
+        const response=await acceptHeatStrategy(flow.heatId,candidate,reading.composition,'operator');
+        acceptStrategy(response.data.data);
+        if(response.data.data.feedbackWarning)toast.error(response.data.data.feedbackWarning);else toast.success('Strategy accepted: candidate quantities deducted. Policy feedback recorded.');
         return;
       }
       await rlSubmitFeedback({
@@ -206,41 +205,8 @@ const RLOptimizer = () => {
         operatorNote: `Operator ${outcome} the "${candidate.strategy}" strategy from the UI`,
       });
 
-      if (outcome === "accepted") {
-        if (isUnlocked && flow.heatId) {
-          // Deduct additive lots from inventory when operator accepts a strategy.
-          // The gate already computed which lot and how many kg for each element.
-          try {
-            // Build deduction lines from the gate's suggested additions (which have lotId + kg)
-            const gateAdditions = flow.suggestedAdditions || [];
-            const lines = gateAdditions
-              .filter(a => a.lotId && a.kg > 0)
-              .map(a => ({
-                lotId: a.lotId,
-                kg: a.kg,
-                heatId: flow.heatId,
-                by: 'operator',
-                alloyName: a.alloyName,
-              }));
-
-            if (lines.length > 0) {
-              await deductAdditives(lines);
-            }
-            acceptStrategy({ ...candidate, deductedLines: lines });
-            toast.success(`✅ Strategy "${candidate.strategy}" accepted — stock deducted. Policy updated.`);
-          } catch (deductErr) {
-            console.error("Deduction error:", deductErr);
-            acceptStrategy(candidate);
-            toast.success(`Strategy accepted and policy updated. (Stock deduction failed: ${deductErr.response?.data?.message || deductErr.message})`);
-          }
-        } else {
-          toast.success(`Feedback recorded — policy updated (accepted)`);
-        }
-      } else {
-        toast.success(`Feedback recorded — policy updated (rejected)`);
-        // If all candidates are rejected and in gate flow, prompt to re-plan
-        if (isUnlocked) rejectAll();
-      }
+      toast.success('Feedback recorded (rejected)');
+      if(isUnlocked)rejectAll();
       await loadPolicyStatus();
     } catch (err) {
       console.error("RL feedback failed:", err);
@@ -268,6 +234,8 @@ const RLOptimizer = () => {
 
   const trendData =
     policyStatus?.reward_trend?.map((r, i) => ({ i, reward: r })) || [];
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'RLOptimizer',{reading,result,policyStatus,flow},({id,data})=>{if(id==='accept_strategy')acceptStrategy(data);});
 
   return (
     <div className="space-y-6">

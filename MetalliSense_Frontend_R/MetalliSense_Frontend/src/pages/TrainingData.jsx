@@ -45,7 +45,7 @@ const TrainingData = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingSample, setEditingSample] = useState(null);
   const [selectedSample, setSelectedSample] = useState(null);
-  useRegisterVoicePage({grade:selectedSample?.grade||gradeFilter}, 'TrainingData');
+
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -244,6 +244,8 @@ const TrainingData = () => {
       <Badge variant={type === "normal" ? "success" : "error"}>{type}</Badge>
     );
   };
+
+  useRegisterVoicePage({grade:selectedSample?.grade||gradeFilter,sampleId:selectedSample?._id}, 'TrainingData',{trainingData,pagination,selectedSample,loading},()=>fetchTrainingData());
 
   return (
     <div className="space-y-6">
@@ -449,6 +451,8 @@ const TrainingData = () => {
                 trainingData.map((sample) => (
                   <tr
                     key={sample._id}
+                    data-voice-row-id={import.meta.env.VITE_VOICE_ACTIONS === 'true' ? sample._id : undefined}
+                    data-voice-row-key={import.meta.env.VITE_VOICE_ACTIONS === 'true' ? 'sampleId' : undefined}
                     className="hover:bg-metal-50 transition-colors"
                   >
                     <td className="px-4 py-3 text-metal-900 font-semibold">

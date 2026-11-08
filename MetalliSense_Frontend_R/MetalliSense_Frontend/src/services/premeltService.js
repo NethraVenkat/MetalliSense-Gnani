@@ -1,3 +1,4 @@
+import {rlSubmitFeedback} from './rlService';
 import api from "./api";
 
 // Raw material stock, alloy additives, DRI QA, handheld gun (XRF/LIBS)
@@ -48,3 +49,11 @@ export const deductAdditives = (lines) => api.post(`${P}/additives/deduct`, { li
 export const receiveFerroalloy = (data) => api.post(`${P}/additives/receive`, data);
 export const getAudit = (limit = 50) => api.get(`${P}/audit`, { params: { limit } });
 export const resetDemo = () => api.post(`${P}/demo/reset`);
+
+export const acceptHeatStrategy=async(heatId,candidate,composition,by)=>{
+ const response=await api.post(`${P}/heats/${heatId}/accept-strategy`,{candidate,composition,by});
+ // Stock is already transactionally accepted. Ancillary learning failure must
+ // never pretend the stock rollback happened or claim a policy update.
+ try{await rlSubmitFeedback({grade:response.data.data.grade,composition,additions:candidate.recommended_additions,aggressiveness:candidate.aggressiveness,outcome:'accepted',heatId,operatorNote:'Accepted candidate stock transaction'});}catch{response.data.data={...response.data.data,feedbackWarning:'Policy feedback unavailable; stock transaction succeeded.'};}
+ return response;
+};

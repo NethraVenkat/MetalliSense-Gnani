@@ -21,7 +21,7 @@ const AnomalyDetection = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunAnomaly, anomalyDone } = useMeltFlow();
   const [generatedReading, setGeneratedReading] = useState(null);
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:generatedReading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'AnomalyDetection');
+
   const [analysisResult, setAnalysisResult] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiExplanation, setAiExplanation] = useState(null);
@@ -154,6 +154,8 @@ const AnomalyDetection = () => {
     if (compliance >= 70) return "text-yellow-600";
     return "text-red-600";
   };
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:generatedReading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'AnomalyDetection',{reading:generatedReading,result:analysisResult,busy:analyzing},({id,data})=>{if(id==='deviation_analyze'){setAnalysisResult(data);anomalyDone({...data,_reading:generatedReading});}else setCopilotExplanation(data);});
 
   return (
     <div className="space-y-6">

@@ -42,8 +42,7 @@ export const sendChatMessage = (message, includeContext = true) =>
  * Clear conversation history
  * @returns {Promise} Success response
  */
-export const clearChatHistory = () =>
-  copilotApi.delete("/copilot/chat/history");
+export const clearChatHistory = async () => {const response=await copilotApi.delete("/copilot/chat/history");globalThis.window?.dispatchEvent?.(new Event("kural-chat-cleared"));return response;};
 
 /**
  * Transcribe audio to text (Speech-to-Text)
@@ -56,6 +55,7 @@ export const transcribeAudio = async (audioFile, language = null, options = {}) 
   formData.append("audio", audioFile);
   if(options.no_store)formData.append("no_store","true");
   if(options.purpose)formData.append("purpose",options.purpose);
+  if(foundationEnabled())formData.append("page",options.page||globalThis.location?.pathname||'/');
   if (language != null && language.trim() !== "") {
     formData.append("language", language);
   }
@@ -69,7 +69,7 @@ export const transcribeAudio = async (audioFile, language = null, options = {}) 
     },
   });
 };
-export const checkWake=async(audio,options={})=>{const form=new FormData();form.append('audio',audio);return copilotApi.post('/copilot/voice/wake-check',form,{headers:{'Content-Type':'multipart/form-data',...(foundationEnabled()?await sessionHeaders():{})},timeout:8000,...(options.signal?{signal:options.signal}:{})});};
+export const checkWake=async(audio,options={})=>{const form=new FormData();form.append('audio',audio);if(foundationEnabled())form.append('page',options.page||globalThis.location?.pathname||'/');return copilotApi.post('/copilot/voice/wake-check',form,{headers:{'Content-Type':'multipart/form-data',...(foundationEnabled()?await sessionHeaders():{})},timeout:8000,...(options.signal?{signal:options.signal}:{})});};
 
 export const transliterateAudio = (audioFile) => {
   if(!transliterateEnabled())return Promise.resolve({data:{unavailable:true}});

@@ -1,3 +1,4 @@
+import {speakableText,pronunciationPassEnabled} from '../services/voicePronounce';
 import {observeSpeechPresentation,readElementProgress} from '../services/speechPresentation';
 import { useCallback, useSyncExternalStore } from 'react';
 import { synthesizeSpeechWithMeta } from '../services/copilotService';
@@ -38,7 +39,8 @@ export function speakText(text, lang = 'ta', style = 'normal', timing = {}) {
   // Reviewed tour narration has already had digit-ID pronunciation applied.
   // Its wording and punctuation must survive every enabled speech flag.
   if (!timing?.pronunciationOnly) {
-    if (voiceClarityEnabled()) text = clarityText(text,lang);
+    if (timing.approvedAsset===undefined && pronunciationPassEnabled()) text = speakableText(text,lang);
+    else if (voiceClarityEnabled()) text = clarityText(text,lang);
     else if (import.meta.env.VITE_SPOKEN_NORMALIZE === 'true') text = toSpokenText(text,lang);
   }
   const ticket = generation;

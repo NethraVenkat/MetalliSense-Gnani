@@ -1,3 +1,4 @@
+import {predictMechanical} from '../services/mechanicalService';
 import {useRegisterVoicePage} from '../context/VoicePageContext';
 /**
  * MechanicalProperties Page
@@ -25,7 +26,6 @@ import { formatPercentage } from "../utils/formatters";
 import { MeltSpinner } from "../components/common/FurnaceLoader";
 import { completeHeat, getFinishedHeats } from "../services/salesService";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 // ── Mechanical property standards for all 5 grades ──────────────────────
 const STANDARDS = {
@@ -162,7 +162,7 @@ export default function MechanicalProperties() {
   const { flow, isUnlocked, mechDone, approveTap } = useMeltFlow();
 
   const [reading, setReading] = useState(null);
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'MechanicalProperties');
+
   const [engineer, setEngineer] = useState("");
   const [approving, setApproving] = useState(false);
   const [finished, setFinished] = useState(null); // server view of the finished heat
@@ -217,16 +217,8 @@ export default function MechanicalProperties() {
     setLoading(true);
     try {
       // Try API first
-      const res = await fetch(`${API_BASE}/api/v2/mechanical/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          grade,
-          composition: { C: comp.C || 0, Si: comp.Si || 0, Mn: comp.Mn || 0, P: comp.P || 0, S: comp.S || 0 },
-          mode: "formula",
-        }),
-      });
-      const json = await res.json();
+      const response = await predictMechanical(grade, comp);
+      const json = response.data;
       if (json.status === "success" && json.data) {
         setResult(json.data);
         if (isUnlocked) mechDone(json.data);
@@ -259,7 +251,6 @@ export default function MechanicalProperties() {
         standard: std,
         acceptedStrategy: flow.acceptedStrategy,
         gateDecision: flow.gateDecision,
-        resume: true, // if the server was restarted during the melt, close the heat from this saved flow
       });
       setFinished(res.data.data);
       setServerMissing(false);
@@ -276,6 +267,8 @@ export default function MechanicalProperties() {
   const std = STANDARDS[grade] || {};
   const isCastIron = grade?.includes("IRON");
   const comp = reading?.composition || flow.predictedComposition;
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'MechanicalProperties',{reading,result,finished,busy:loading,flow,comp,standard:std},({id,data})=>{if(id==='approve_tap'){setFinished(data);setServerMissing(false);approveTap();}else{setResult(data);if(isUnlocked)mechDone(data);}});
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

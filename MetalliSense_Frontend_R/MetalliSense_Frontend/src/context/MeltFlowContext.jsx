@@ -23,7 +23,7 @@ const STORAGE_KEY = 'metallisense.meltFlow.v1';
 function loadInitial(initial) {
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    return raw ? { ...initial, ...JSON.parse(raw) } : initial;
+    const saved=raw?{...initial,...JSON.parse(raw)}:initial;return saved.stockStatus==='deducted'&&!saved.acceptedStrategy?.deductionVerified?{...saved,stockStatus:'pending',acceptedStrategy:null}:saved;
   } catch {
     return initial;
   }
@@ -99,7 +99,7 @@ function reducer(state, action) {
     case 'RL_DONE':
       return { ...state, rlResult: action.result };
     case 'STRATEGY_ACCEPTED':
-      return { ...state, acceptedStrategy: action.strategy, stockStatus: 'deducted' };
+      return action.strategy?.deductionVerified&&Array.isArray(action.strategy.deductedLines)?{...state,acceptedStrategy:action.strategy,stockStatus:'deducted'}:state;
     case 'MECH_DONE':
       return { ...state, mechResult: action.result };
     case 'TAP_APPROVED':

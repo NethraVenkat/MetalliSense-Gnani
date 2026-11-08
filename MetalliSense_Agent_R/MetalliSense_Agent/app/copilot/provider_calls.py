@@ -34,3 +34,8 @@ def post(*args, **kwargs):
         if requests.post is not _state.default_post:
             return requests.post(*args, **kwargs)
         return _state.session.post(*args, **kwargs)
+
+
+def provider_busy():
+    """Read-only availability for optional features; never waits for the lease."""
+    return _state.lock.locked()

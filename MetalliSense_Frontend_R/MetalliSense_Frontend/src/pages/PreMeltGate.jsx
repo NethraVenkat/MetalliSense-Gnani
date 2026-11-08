@@ -296,7 +296,7 @@ export default function PreMeltGate() {
   const [heats, setHeats] = useState([]);
   const [heatId, setHeatId] = useState("");
   const [heat, setHeat] = useState(null);
-  useRegisterVoicePage({heatId,grade:heat?.heatId===heatId?heat.grade:undefined}, 'PreMeltGate');
+
   const [lots, setLots] = useState([]);
   const [grades, setGrades] = useState([]);
   const [charge, setCharge] = useState([]);
@@ -411,6 +411,8 @@ export default function PreMeltGate() {
   const residualDetail = gate?.checks.find((c) => c.id === "residuals")?.details || [];
   const statusOf = (list, el) => list.find((d) => d.element === el)?.status;
 
+  useRegisterVoicePage({heatId,grade:heat?.heatId===heatId?heat.grade:undefined}, 'PreMeltGate',{heats,heat,lots,charge,dirty,loading:booting,busy:checking,voiceForms:{plan_heat:newHeat,edit_charge:{heatId,charge}}},({id,data})=>{if(['start_melting','override_start'].includes(id)&&heat?.gateResult&&data?.heatId===heat.heatId)gatePassed(data,heat.gateResult);if(id==='reset_demo'){holdAnnouncer.reset();setHeatId('');}loadHeat(heatId);loadHeats(heatId);loadAudit();});
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <VoiceErrorBoundary><PushToTalk heatId={heatId} /></VoiceErrorBoundary>
@@ -456,6 +458,8 @@ export default function PreMeltGate() {
             <div className="space-y-1 -mx-2">
               {heats.map((h) => (
                 <button key={h.heatId} onClick={() => setHeatId(h.heatId)}
+                  data-voice-row-id={import.meta.env.VITE_VOICE_ACTIONS === 'true' ? h.heatId : undefined}
+                  data-voice-row-key={import.meta.env.VITE_VOICE_ACTIONS === 'true' ? 'heatId' : undefined}
                   className={clsx("w-full text-left rounded-xl px-3 py-2.5 border transition-all focus:outline-none focus:ring-2 focus:ring-primary-500", h.heatId === heatId ? "bg-gradient-to-r from-primary-50 to-white border-primary-300 shadow-sm" : "border-transparent hover:bg-metal-50 hover:border-metal-200")}>
                   <span className="flex items-center justify-between">
                     <span className="flex items-center gap-2 font-mono font-bold text-sm">

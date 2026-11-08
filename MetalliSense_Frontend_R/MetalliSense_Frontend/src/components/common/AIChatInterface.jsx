@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 
 const AIChatInterface = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState(() => import.meta.env.VITE_MOCK_MODE === 'true' ? JSON.parse(localStorage.getItem('metallisense.demo.chat') || '[]') : []);
+  useEffect(()=>{const clear=()=>setMessages([]);window.addEventListener('kural-chat-cleared',clear);return()=>window.removeEventListener('kural-chat-cleared',clear);},[]);
   useEffect(() => { if (import.meta.env.VITE_MOCK_MODE === 'true') localStorage.setItem('metallisense.demo.chat', JSON.stringify(messages)); }, [messages]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);

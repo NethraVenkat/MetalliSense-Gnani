@@ -70,7 +70,7 @@ const GradeSpecs = () => {
       grade.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  useRegisterVoicePage({grade:selectedGrade?.grade}, 'GradeSpecs',{grades:filteredGrades,loading});
+  useRegisterVoicePage({grade:selectedGrade?.grade}, 'GradeSpecs',{grades:filteredGrades,loading,voiceForms:modalOpen?{create_grade:!editingGrade?formData:undefined}:{}},()=>fetchGradeSpecs());
 
   const handleOpenModal = (grade = null) => {
     if (grade) {

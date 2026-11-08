@@ -18,7 +18,7 @@ import { formatPercentage, formatConfidence } from "../utils/formatters";
 const Recommendation = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunAlloy, alloyDone } = useMeltFlow();
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'Recommendation');
+
   const [syntheticReading, setSyntheticReading] = useState(() => (isUnlocked ? flow.alloyResult?._reading || null : null));
   const [result, setResult] = useState(() => (isUnlocked ? flow.alloyResult : null));
   const [aiAvailable, setAIAvailable] = useState(true);
@@ -155,6 +155,8 @@ const Recommendation = () => {
       setIsPlaying(true);
     }
   };
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:isUnlocked?flow.grade:undefined}, 'Recommendation',{reading:syntheticReading,result},({id,data})=>{if(id==='correction_plan'){setResult(data);if(isUnlocked)alloyDone({...data,_reading:syntheticReading});}else setCopilotExplanation(data);});
 
   return (
     <div className="space-y-6">

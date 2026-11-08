@@ -1,3 +1,4 @@
+import {acceptHeatStrategy} from '../services/premeltService';
 import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -69,7 +70,7 @@ export default function FullAnalysis() {
   const navigate = useNavigate();
   const { flow, isUnlocked, acceptStrategy } = useMeltFlow();
   const [reading, setReading] = useState(null);
-  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'FullAnalysis');
+
   const [batchWeightKg, setBatchWeightKg] = useState(1000);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -136,13 +137,12 @@ export default function FullAnalysis() {
     if (!reading || chosenStrategy) return;
     setSubmitting(candidate.strategy);
     try {
-      if (import.meta.env.VITE_MOCK_MODE === 'true' && outcome === 'accepted' && isUnlocked && flow.heatId) {
-        const r = await fetch('/__mock/accept-strategy', {method:'POST',body:JSON.stringify({heatId:flow.heatId,candidate,composition:reading.composition})});
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.message);
-        acceptStrategy(j.data);
-        toast.success('Strategy accepted — selected quantities deducted. Policy updated.');
+      if(outcome==='accepted'){
+        if(!isUnlocked||!flow.heatId)throw Error('A MELTING heat is required to accept and deduct stock');
+        const response=await acceptHeatStrategy(flow.heatId,candidate,reading.composition,'operator');
+        acceptStrategy(response.data.data);
         setChosenStrategy(candidate.strategy);
+        if(response.data.data.feedbackWarning)toast.error(response.data.data.feedbackWarning);else toast.success('Strategy accepted: candidate quantities deducted. Policy feedback recorded.');
         return;
       }
       await rlSubmitFeedback({
@@ -153,13 +153,7 @@ export default function FullAnalysis() {
         outcome,
         operatorNote: `Operator ${outcome} the "${candidate.strategy}" strategy from Full Analysis`,
       });
-      if (outcome === "accepted") setChosenStrategy(candidate.strategy);
-      if (outcome === "accepted" && isUnlocked) {
-        acceptStrategy(candidate);
-        toast.success(`✅ Strategy accepted — stock deducted. Proceed to Mechanical Properties.`);
-      } else {
-        toast.success(`Feedback recorded (${outcome})`);
-      }
+      toast.success('Feedback recorded (rejected)');
     } catch (err) {
       console.error("Feedback failed:", err);
       toast.error(err.response?.data?.message || "Failed to record feedback");
@@ -169,6 +163,8 @@ export default function FullAnalysis() {
   };
 
   const steps = result?.steps;
+
+  useRegisterVoicePage({heatId:isUnlocked?flow.heatId:undefined,grade:reading?.metalGrade||(isUnlocked?flow.grade:undefined)}, 'FullAnalysis',{reading,result,batchWeightKg,busy:loading,flow},({id,data})=>{if(id==='accept_strategy'){acceptStrategy(data);setChosenStrategy(data.strategy);}else{setResult(data);setChosenStrategy(null);}});
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
