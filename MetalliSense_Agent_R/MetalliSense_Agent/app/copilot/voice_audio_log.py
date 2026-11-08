@@ -3,7 +3,7 @@ import datetime as dt,io,json,os,re,shutil,threading,wave,zipfile
 from .voice_audit import data_root,day,today,LOCK
 class AudioLog:
     def folder(self,date):return data_root()/'voice_audio'/day(date)
-    def store(self,audio,event_id,session,purpose='command',no_store=False,sensitive=False):
+    def store(self,audio,event_id,session,purpose='command',no_store=False,sensitive=False,page='/'):
         if no_store or sensitive or purpose not in ('wake','command'):return {'stored':False}
         if not re.fullmatch(r'[a-zA-Z0-9_-]{8,100}',event_id):raise ValueError('Invalid event ID')
         with wave.open(io.BytesIO(audio)) as w:
@@ -13,7 +13,7 @@ class AudioLog:
         with LOCK:
             folder=self.folder(today());folder.mkdir(parents=True,exist_ok=True);p=folder/(event_id+'.wav');meta=folder/(event_id+'.json')
             if p.exists() or meta.exists():raise ValueError('Audio event exists')
-            record={'event_id':event_id,'session_id':session,'date':today(),'purpose':purpose,'duration':frames/16000,'sha256':hashlib.sha256(audio).hexdigest()}
+            record={'event_id':event_id,'session_id':session,'date':today(),'purpose':purpose,'page':page if isinstance(page,str) and re.fullmatch(r'/[a-z/-]{0,100}',page) else '/','duration':frames/16000,'sha256':hashlib.sha256(audio).hexdigest()}
             with p.open('xb') as out:out.write(audio)
             with meta.open('x',encoding='utf-8') as out:json.dump(record,out)
             return {'stored':True,**record}

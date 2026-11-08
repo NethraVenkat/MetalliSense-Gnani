@@ -1,5 +1,6 @@
 import React from 'react';
 import {it,expect} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {renderToStaticMarkup} from 'react-dom/server';
 import VoiceLogViewer from '../src/components/voice/VoiceLogViewer';
 import {groupVoiceLog,localLogDate,localLogTime,auditDays,transcriptSnippet} from '../src/services/voiceLogView';
@@ -28,6 +29,7 @@ it('Chromium groups audio inline, verifies chains, changes date and fits narrow 
   server=await createServer({configLoader:'runner',server:{host:'127.0.0.1',port:0},mode:'mock'});await server.listen();const base=server.resolvedUrls.local[0];browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:360,height:800}});
   await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());await page.goto(base+'tests/fixtures/voice-log.html');await page.locator('.voice-log-turn').waitFor();expect(await page.locator('.voice-log-turn').count()).toBe(1);expect(await page.locator('.voice-log-turn').innerText()).toContain('15:30:08');expect(await page.getByText('audio-capture',{exact:true}).count()).toBe(0);expect(await page.getByRole('button',{name:'▶ passcode'}).count()).toBe(0);
   await page.getByRole('button',{name:'▶ wake',exact:true}).click();expect(await page.evaluate(()=>window.playedClip.purpose)).toBe('wake');await page.getByRole('button',{name:'Verify chain'}).click();await page.getByText('Chain OK · 3 events',{exact:true}).waitFor();await page.evaluate(()=>window.logBroken=true);await page.getByRole('button',{name:'Verify chain'}).click();await page.getByText('Broken at #2',{exact:true}).waitFor();const bounds=await page.getByRole('dialog').boundingBox();expect(bounds.x+bounds.width).toBeLessThanOrEqual(360);
+  const downloadReady=page.waitForEvent('download');await page.getByRole('button',{name:'Export test log'}).click();const download=await downloadReady;expect(download.suggestedFilename()).toMatch(/^LIVE_TEST_\d{4}-\d{2}-\d{2}\.md$/);expect(readFileSync(await download.path(),'utf8')).toContain('| Spoken reply | Result |');
   await page.getByLabel('Voice log date').fill('2026-10-30');await page.getByText('No interactions for this date.',{exact:true}).waitFor();expect(await page.evaluate(()=>window.logCalls.some(c=>c[0]==='events'&&c[1]==='2026-10-29'))).toBe(true);expect(await page.getByRole('status').textContent()).toBe('');await page.getByRole('button',{name:'Close voice log'}).click();expect(await page.evaluate(()=>window.closedLog)).toBe(true);
  }finally{await browser?.close();if(server){server.httpServer?.closeAllConnections();await server.close();}}
 },90000);

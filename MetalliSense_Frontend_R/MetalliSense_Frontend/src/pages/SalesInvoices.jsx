@@ -237,8 +237,8 @@ function DocViewer({ heatId, invoice, initialTab, onClose }) {
           <div className="max-w-5xl mx-auto px-6 py-3 flex flex-wrap items-center gap-3">
             <p className="font-bold mr-auto">Heat {heatId}</p>
             <div className="inline-flex rounded-lg bg-white/10 p-1">
-              {invoice && <button onClick={() => setTab("invoice")} className={clsx("rounded-md px-3 py-1 text-xs font-semibold", tab === "invoice" ? "bg-white text-metal-900" : "text-white/70")}>Tax invoice</button>}
-              <button onClick={() => setTab("certificate")} className={clsx("rounded-md px-3 py-1 text-xs font-semibold", tab === "certificate" ? "bg-white text-metal-900" : "text-white/70")}>Test certificate</button>
+              {invoice && <button role="tab" data-voice-tab="invoice" aria-selected={tab === "invoice"} onClick={() => setTab("invoice")} className={clsx("rounded-md px-3 py-1 text-xs font-semibold", tab === "invoice" ? "bg-white text-metal-900" : "text-white/70")}>Tax invoice</button>}
+              <button role="tab" data-voice-tab="certificate" aria-selected={tab === "certificate"} onClick={() => setTab("certificate")} className={clsx("rounded-md px-3 py-1 text-xs font-semibold", tab === "certificate" ? "bg-white text-metal-900" : "text-white/70")}>Test certificate</button>
             </div>
             <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold hover:bg-primary-500"><Printer size={14} />Print / Save as PDF</button>
             <button onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white/80 ring-1 ring-white/20 hover:bg-white/10"><X size={14} />Close</button>
@@ -409,7 +409,7 @@ export default function SalesInvoices() {
                   </tr></thead>
                   <tbody>
                     {heats.map((h) => (
-                      <tr key={h.heatId} className="border-b border-metal-100">
+                      <tr key={h.heatId} data-voice-row-id={h.heatId} data-voice-row-key="heatId" className="border-b border-metal-100">
                         <td className="px-2 py-3 font-mono font-bold">{h.heatId}</td>
                         <td className="px-2">{h.gradeLabel}{h.tap.result === "DOWNGRADED" && <span className="block text-[11px] text-amber-700">sold as {gl(h.tap.soldGrade)}</span>}</td>
                         <td className="px-2">{h.tap.result === "PASS" ? <Chip ok><CheckCircle2 size={11} className="mr-1" />Pass</Chip> : <Chip><AlertTriangle size={11} className="mr-1" />Downgraded</Chip>}</td>
@@ -423,9 +423,9 @@ export default function SalesInvoices() {
                         <td className="px-2 text-xs text-metal-600">{h.tap.approvedBy}<span className="block text-metal-400">{dt(h.tap.at)}</span></td>
                         <td className="px-2 text-right whitespace-nowrap">
                           <span className="inline-flex gap-1.5">
-                            <Button size="sm" variant="ghost" onClick={() => setView({ heatId: h.heatId, invoice: invoices.find((i) => i.heatId === h.heatId) || null, tab: "certificate" })}><FileCheck2 size={13} className="mr-1" />Certificate</Button>
+                            <Button size="sm" variant="ghost" data-voice-open="true" onClick={() => setView({ heatId: h.heatId, invoice: invoices.find((i) => i.heatId === h.heatId) || null, tab: "certificate" })}><FileCheck2 size={13} className="mr-1" />Certificate</Button>
                             {h.invoiceId
-                              ? <Button size="sm" variant="outline" onClick={() => setView({ heatId: h.heatId, invoice: invoices.find((i) => i.invoiceId === h.invoiceId), tab: "invoice" })}><Receipt size={13} className="mr-1" />View invoice</Button>
+                              ? <Button size="sm" variant="outline" data-voice-open="true" onClick={() => setView({ heatId: h.heatId, invoice: invoices.find((i) => i.invoiceId === h.invoiceId), tab: "invoice" })}><Receipt size={13} className="mr-1" />View invoice</Button>
                               : <Button size="sm" onClick={() => setInvFor(h)}><Receipt size={13} className="mr-1" />Create invoice</Button>}
                           </span>
                         </td>
@@ -446,14 +446,14 @@ export default function SalesInvoices() {
                   </tr></thead>
                   <tbody>
                     {invoices.map((i) => (
-                      <tr key={i.invoiceId} className="border-b border-metal-100">
+                      <tr key={i.invoiceId} data-voice-row-id={i.invoiceId} data-voice-row-key="invoiceId" className="border-b border-metal-100">
                         <td className="px-2 py-3 font-mono font-bold">{i.invoiceId}</td>
                         <td className="px-2">{dt(i.issuedAt)}</td>
                         <td className="px-2">{i.customer.name}<span className="block text-[11px] text-metal-400">{i.intraState ? "CGST + SGST" : "IGST"} · {i.customer.state}</span></td>
                         <td className="px-2 font-mono">{i.heatId}</td>
                         <td className="px-2 text-right tabular-nums">{n(i.lines[0].qtyKg)} kg</td>
                         <td className="px-2 text-right tabular-nums font-bold">{rs(i.total)}</td>
-                        <td className="px-2 text-right"><Button size="sm" variant="outline" onClick={() => setView({ heatId: i.heatId, invoice: i, tab: "invoice" })}><Printer size={13} className="mr-1" />View / print</Button></td>
+                        <td className="px-2 text-right"><Button size="sm" variant="outline" data-voice-open="true" onClick={() => setView({ heatId: i.heatId, invoice: i, tab: "invoice" })}><Printer size={13} className="mr-1" />View / print</Button></td>
                       </tr>
                     ))}
                   </tbody>

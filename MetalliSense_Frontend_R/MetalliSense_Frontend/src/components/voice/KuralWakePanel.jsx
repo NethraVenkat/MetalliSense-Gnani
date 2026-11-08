@@ -61,11 +61,11 @@ export function KuralAnswer({text,progress,muted,reduced,mode='speaking'}){
 export default function KuralWakePanel({wake,lang='en',muted=false,panelState='idle',statusNote=wake.note,requestPending=false,level=wake.level,heard='',answer='',playingAnswer='',playbackProgress,liveWords=null,debugLine='',actionState=null,onActionCancel,menuControls={},onToggle,onRetry,onPopupDismiss,onClose,children,hidden=false}){
  const presentation=useSpeechPresentation(),reduced=useKuralReducedMotion();
  const hasAnswer=Boolean(typeof answer==='string'?answer:answer?.displayText);
- const baseState=wakeVisualState({...wake,note:statusNote},{panelState,muted,requestPending}),state=actionState?.phase==='confirm'||actionState?.capturing?'listening':actionState?.phase==='confirm-starting'?'permission':muted&&hasAnswer&&baseState==='waiting'?'muted':baseState,key=orbPaletteKey(state);const [open,setOpen]=useState(false),[expanded,setExpanded]=useState(false),[lift,setLift]=useState(0);const previous=useRef(state),wasSpeaking=useRef(false),expectPermission=useRef(false);const root=useRef(null),orb=useRef(null),popup=useRef(null);
+ const baseState=wakeVisualState({...wake,note:statusNote},{panelState,muted,requestPending}),state=actionState?.phase==='confirm'||actionState?.capturing?'listening':['confirm-starting','passcode'].includes(actionState?.phase)?'permission':actionState?.speaking?'speaking':muted&&hasAnswer&&baseState==='waiting'?'muted':baseState,key=orbPaletteKey(state);const [open,setOpen]=useState(false),[expanded,setExpanded]=useState(false),[lift,setLift]=useState(0);const previous=useRef(state),wasSpeaking=useRef(false),expectPermission=useRef(false);const root=useRef(null),orb=useRef(null),popup=useRef(null);
  useEffect(()=>{let timer;const before=previous.current;previous.current=state;
   if(hidden){setExpanded(false);setOpen(false);wasSpeaking.current=false;return;}
   if(['listening','processing','speaking','error','unavailable'].includes(state))setOpen(false);
-  if(actionState){setOpen(false);setExpanded(true);if(['result','error','cancelled','timeout'].includes(actionState.phase))timer=setTimeout(()=>setExpanded(false),3000);return()=>clearTimeout(timer);}
+  if(actionState){setOpen(false);setExpanded(true);if(['result','error','cancelled','timeout'].includes(actionState.phase)&&!actionState.speaking)timer=setTimeout(()=>setExpanded(false),3000);return()=>clearTimeout(timer);}
   if(state==='speaking'){wasSpeaking.current=true;setExpanded(true);return;}
   if(state==='permission'){setExpanded(false);return;}
   if(state==='waiting')expectPermission.current=false;

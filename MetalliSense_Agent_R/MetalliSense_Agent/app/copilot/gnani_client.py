@@ -230,7 +230,7 @@ class GnaniClient:
             raise RuntimeError(f"ffmpeg conversion failed: {proc.stderr.decode(errors='ignore')[:300]}")
         return proc.stdout
 
-    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None, *, max_attempts: int = 2) -> Dict:
+    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None, *, max_attempts: int = 2, output_format: Optional[str] = None) -> Dict:
         """Retry 429/504 once; callers with a strict credit budget may allow one attempt."""
         if max_attempts not in (1, 2):
             raise ValueError("max_attempts must be 1 or 2")
@@ -243,7 +243,7 @@ class GnaniClient:
             return {"text": MOCK_TRANSCRIPT, "language": lang, "detected_language_code": None, "success": True}
         try:
             wav = self._to_wav_16k(audio_bytes)
-            data = {"language_code": lang, "format": 'codemix' if bridge else self.stt_format}
+            data = {"language_code": lang, "format": 'codemix' if bridge or output_format=='codemix' else self.stt_format}
             if self.stt_model:
                 data["model"] = self.stt_model
             if self.stt_keyterms:

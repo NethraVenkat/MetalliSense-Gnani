@@ -52,3 +52,6 @@ debug.log
 
 # Reversible local overnight snapshots and test evidence.
 .overnight_backup/
+
+# test run logs
+*.log

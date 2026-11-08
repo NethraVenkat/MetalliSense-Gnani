@@ -1,8 +1,10 @@
-import {prepareFormAction} from './voiceFormActions';
+import {prepareFormAction,formDefinitions} from './voiceFormActions';
+import {normalizeCommandText} from './voiceCommandText';
+import {holdStartMessage} from './voiceWording';
 import * as grades from './gradeSpecService';
 import * as training from './trainingDataService';
 import * as cost from './costService';
-import {prepareDecisionAction} from './voiceDecisionActions';
+import {prepareDecisionAction,decisionDefinitions} from './voiceDecisionActions';
 import * as sales from './salesService';
 import {nativeActionText,nativeReadback} from './voiceActionLanguages';
 // F17 · Builder: Manish. Same page services, no alternate plant endpoints.
@@ -17,17 +19,19 @@ import {semanticSearch} from './semanticSearchService';
 import {predictMechanical} from './mechanicalService';
 import {normalizeSpokenNumbers} from './spokenNumbers';
 export const actionDefinitions=[
- ['request_reading','/spectrometer','RUN',[],'request reading','requestOPCReading'],
- ['gate_check','/premelt-gate','RUN',[],'run gate check','runGateCheck'],
- ['deviation_analyze','/anomaly','RUN',[],'run analysis','predictAnomaly'],
- ['deviation_explain','/anomaly','RUN',[],'explain','getExplanation'],
- ['correction_plan','/recommendation','RUN',[],'generate plan','analyzeIndividual'],
- ['correction_explain','/recommendation','RUN',[],'explain','getExplanation'],
- ['full_analysis','/full-analysis','RUN',[],'run full analysis','runFullAnalysis'],
- ['agent_analyze','/agent','RUN',[],'run analysis','analyzeAgent'],
- ['agent_explain','/agent','RUN',[],'explain','explainResult'],
- ['mechanical_predict','/mechanical-properties','RUN',[],'predict','predictMechanical'],
- ['supplier_plan','/supplier-scorecard','RUN',[],'plan','getOrderPlan'],
+ ['request_reading','/spectrometer','ASK',[],'request reading','requestOPCReading'],
+ ['opc_connect','/spectrometer','APPROVE',['Supervisor','Unit Controller'],'connect spectrometer','connectSpectrometerOPC'],
+ ['opc_disconnect','/spectrometer','APPROVE',['Supervisor','Unit Controller'],'disconnect spectrometer','disconnectSpectrometerOPC'],
+ ['gate_check','/premelt-gate','ASK',[],'run gate check','runGateCheck'],
+ ['deviation_analyze','/anomaly','ASK',[],'run analysis','predictAnomaly'],
+ ['deviation_explain','/anomaly','ASK',[],'explain','getExplanation'],
+ ['correction_plan','/recommendation','ASK',[],'generate plan','analyzeIndividual'],
+ ['correction_explain','/recommendation','ASK',[],'explain','getExplanation'],
+ ['full_analysis','/full-analysis','ASK',[],'run full analysis','runFullAnalysis'],
+ ['agent_analyze','/agent','ASK',[],'run analysis','analyzeAgent'],
+ ['agent_explain','/agent','ASK',[],'explain','explainResult'],
+ ['mechanical_predict','/mechanical-properties','ASK',[],'predict','predictMechanical'],
+ ['supplier_plan','/supplier-scorecard','ASK',[],'plan','getOrderPlan'],
  ['gun_connect','/yard-inspection','RUN',[],'connect gun','connectGun'],
  ['gun_disconnect','/yard-inspection','RUN',[],'disconnect gun','disconnectGun'],
  ['energy_meter','/energy','RUN',[],'read meter','simulateHeatEnergy'],
@@ -39,12 +43,21 @@ export const actionDefinitions=[
  ['reject_dri_qa','/raw-material-stock','APPROVE',['Supervisor','Manager'],'reject dri qa','rejectDriQa'],
  ['inspect_lot','/yard-inspection','APPROVE',['Supervisor'],'inspect lot','startInspection'],
 ].map(([id,page,level,requiredRoles,phrase,service])=>({id,page,level,requiredRoles,phrase,service}));
+export const safeActionIds=new Set(['request_reading','gate_check','deviation_analyze','deviation_explain','correction_plan','correction_explain','full_analysis','agent_analyze','agent_explain','mechanical_predict','supplier_plan','semantic_search']);
+for(const definition of actionDefinitions)if(safeActionIds.has(definition.id)){definition.level='ASK';definition.cancelWindow=true;}
 const defaults={...grades,...training,...cost,...sales,...plant,...inventory,...insights,...ai,...spectrometer,...copilot,runFullAnalysis,semanticSearch,predictMechanical};
+export function registeredVoiceAction(text,route){
+ const definitions=[...formDefinitions,...decisionDefinitions,...actionDefinitions].filter(d=>!route||d.page===route);
+ const normalized=normalizeCommandText(nativeActionText(normalizeCommandText(text),definitions));
+ return definitions.flatMap(d=>(d.phrases||[d.phrase]).map(phrase=>({d,phrase})))
+  .filter(({phrase})=>normalized===phrase||normalized.startsWith(phrase+' '))
+  .sort((a,b)=>b.phrase.length-a.phrase.length)[0]?.d||null;
+}
 export const unwrapAction=r=>r?.data?.data??r?.data;
 const canonical=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[\s_-]+/g,'');
 function requireValue(ok,message){if(!ok){const error=Error(message);error.refused=true;throw error;}}
 export function resolveVoiceTarget(text,rows,key,selected,label){
- const normalized=normalizeSpokenNumbers(text).replace(/\b(?:h|pr|qa)\s*[- ]\s*/gi,'$&');
+ const normalized=normalizeCommandText(text);
  const ids=[...normalized.matchAll(/\b(H|heat|PR|QA)\s*-?\s*(\d+)\b/gi)].map(m=>canonical((m[1].toLowerCase()==='heat'?'H':m[1])+m[2]));
  if(ids.length){const found=rows.filter(r=>ids.includes(canonical(r[key]))||ids.some(id=>id.match(/^[a-z]+/)?.[0]===canonical(r[key]).match(/^[a-z]+/)?.[0]&&Number(id.replace(/^\D+/,''))===Number(String(r[key]).replace(/^\D+/,''))));requireValue(new Set(ids).size===1&&found.length===1,`Which ${label}? The target is missing or ambiguous.`);return found[0];}
  // Non-numeric lot IDs are matched exactly against the loaded list, not guessed.
@@ -54,6 +67,7 @@ export function resolveVoiceTarget(text,rows,key,selected,label){
  const selectedRows=rows.filter(r=>selected&&canonical(r[key])===canonical(selected));requireValue(selectedRows.length===1,`Which ${label}? Select one on this page or say its ID.`);return selectedRows[0];
 }
 export function prepareVoiceAction(text,pageContext,services=defaults){
+ text=normalizeCommandText(text);
  const form=prepareFormAction(text,pageContext,services);if(form)return form;
  const decision=prepareDecisionAction(text,pageContext,services);if(decision)return decision;
  const canonicalText=nativeActionText(text,actionDefinitions.filter(d=>d.page===pageContext?.route));
@@ -62,15 +76,19 @@ export function prepareVoiceAction(text,pageContext,services=defaults){
  if(!definition)return null;
  text=canonicalText;const loaded=pageContext.loaded||{},selected=pageContext.selected||{};let target,payload,summary,prepared=false;
  const fail=message=>requireValue(false,message);
- const prepare=async()=>{
-  requireValue(!loaded.loading&&!loaded.busy,'Wait for this page to finish loading.');
+ const prepare=async(ctx={})=>{
   const id=definition.id,reading=loaded.reading;
+  // Reading-list polling does not disable the screen's OPC controls. These
+  // actions validate their separate connection snapshot below; a busy operation
+  // still blocks every action.
+  const opcControl=['opc_connect','opc_disconnect','request_reading'].includes(id);
+  requireValue(!loaded.busy&&(!loaded.loading||opcControl),'Wait for this page to finish loading.');
   if(['gate_check','start_melting','energy_meter'].includes(id)){
    target=resolveVoiceTarget(text,loaded.heats||[], 'heatId',selected.heatId,'heat');
    if(id==='gate_check')requireValue(target.status==='PLANNED'&&!loaded.dirty,'Only a saved PLANNED charge can be checked. Save changes on screen first.');
    if(id==='start_melting'){
     const current=unwrapAction(await services.getHeat(target.heatId));requireValue(current?.heatId===target.heatId,'Heat unavailable.');target=current;
-    const gate=current.gateResult;requireValue(gate?.decision!=='HOLD',`${target.heatId} is on HOLD — only an engineer can override, on screen.`);
+    const gate=current.gateResult;requireValue(gate?.decision!=='HOLD',holdStartMessage(target.heatId,ctx.lang));
     requireValue(current.status==='PLANNED'&&['GO','WARN'].includes(gate?.decision),'Run a valid gate check first.');
     requireValue(!loaded.dirty&&!current.gate?.stale&&Date.parse(gate.validUntil)>Date.now(),'Gate check is stale or expired. Run it again.');
     requireValue(gate.decision!=='WARN'||/\backnowledge\b/i.test(text),'Say acknowledge for this WARN heat.');payload={acknowledgeWarnings:gate.decision==='WARN'};
@@ -90,6 +108,10 @@ export function prepareVoiceAction(text,pageContext,services=defaults){
    const m=normalized.match(/^plan (\d+(?:\.\d+)?) (?:tonnes?|tons?) of (.+)$/);requireValue(m&&Number(m[1])>0,'Say plan, quantity in tonnes, and the material.');const types=loaded.materialTypes||[];const matches=types.filter(t=>canonical(t)===canonical(m[2]));requireValue(matches.length===1,'Which material? Use a material shown on this page.');payload={tonnes:Number(m[1]),materialType:matches[0]};summary=`Plan ${payload.tonnes} tonnes of ${payload.materialType}; calculation only, no purchase order.`;
   }else if(id==='semantic_search'){
    payload={query:text.replace(/^search\s+/i,''),collection:loaded.collection};requireValue(payload.query.trim()&&payload.collection,'Search words or collection missing.');summary=`Search ${payload.collection}: ${payload.query}.`;
+  }else if(id==='opc_connect'||id==='opc_disconnect'){
+   requireValue(typeof loaded.opcConnected==='boolean','Spectrometer OPC connection status is not loaded.');
+   requireValue(id==='opc_connect'?!loaded.opcConnected:loaded.opcConnected,'Spectrometer OPC is already in that connection state.');
+   summary=`${id==='opc_connect'?'Connect':'Disconnect'} the Spectrometer OPC instrument.`;
   }else if(id==='request_reading'){
    requireValue(loaded.opcConnected===true,'Spectrometer OPC is not connected.');summary='Request one Spectrometer reading from the connected OPC instrument.';
   }else if(id.startsWith('gun_')){
@@ -104,10 +126,10 @@ export function prepareVoiceAction(text,pageContext,services=defaults){
   }
   prepared=true;return {ok:true};
  };
- return {...definition,needsReason:definition.id.startsWith('reject_'),precheck:prepare,buildSummary:(ctx={})=>({displayText:summary,spokenText:nativeReadback(definition.id,summary,ctx.lang)}),async execute(ctx){
+ return {...definition,normalizedText:normalized,needsReason:definition.id.startsWith('reject_'),precheck:prepare,buildSummary:(ctx={})=>({displayText:summary,spokenText:nativeReadback(definition.id,summary,ctx.lang)}),async execute(ctx){
   requireValue(prepared,'Read-back was not prepared.');requireValue(pageContext.isCurrent?.(pageContext.scope)!==false,'Page changed; action cancelled.');let response;const id=definition.id;
   if(id==='start_melting'){
-   const fresh=unwrapAction(await services.getHeat(target.heatId));requireValue(fresh?.gateResult?.decision!=='HOLD',`${target.heatId} is on HOLD — only an engineer can override, on screen.`);requireValue(fresh?.gateResult?.gateId===target.gateResult?.gateId&&fresh.status==='PLANNED'&&Date.parse(fresh.gateResult.validUntil)>Date.now()&&!fresh.gate?.stale,'Gate changed or expired; run the check again.');
+   const fresh=unwrapAction(await services.getHeat(target.heatId));requireValue(fresh?.gateResult?.decision!=='HOLD',holdStartMessage(target.heatId,ctx.lang));requireValue(fresh?.gateResult?.gateId===target.gateResult?.gateId&&fresh.status==='PLANNED'&&Date.parse(fresh.gateResult.validUntil)>Date.now()&&!fresh.gate?.stale,'Gate changed or expired; run the check again.');
    requireValue(ctx.user?.name,'Verified operator unavailable.');response=await services.startMelting(target.heatId,{...payload,operator:ctx.user.name});
   }else if(id==='gate_check')response=await services.runGateCheck(target.heatId,'Melt shop');
   else if(id==='energy_meter')response=await services.simulateHeatEnergy(target.heatId);
@@ -120,7 +142,7 @@ export function prepareVoiceAction(text,pageContext,services=defaults){
   else if(id==='deviation_analyze')response=await services.predictAnomaly({grade:payload.metalGrade,composition:payload.composition});
   else if(['deviation_explain','correction_explain'].includes(id))response=await services.getExplanation({grade:payload.metalGrade,composition:payload.composition,analysisResult:loaded.result});
   else if(id==='agent_explain')response=await services.explainResult({...payload,anomalyResult:loaded.result.aiAnalysis?.anomalyDetection||{},alloyResult:loaded.result.aiAnalysis?.alloyRecommendation||{}});
-  else response=await services[definition.service](...(['request_reading','gun_connect','gun_disconnect'].includes(id)?[]:[payload]));
+  else response=await services[definition.service](...(['request_reading','opc_connect','opc_disconnect','gun_connect','gun_disconnect'].includes(id)?[]:[payload]));
   const data=unwrapAction(response);requireValue(response?.status>=200&&response.status<300,'Backend returned no successful response.');
   if(response.data?.success===false||['error','failed'].includes(response.data?.status)){const e=Error(response.data.message||'Backend refused the action.');e.response=response;throw e;}
   const ids=[data?.qa?.qaId,data?.lot?.lotId,target?.heatId,target?.prId,target?.qaId,target?.lotId,data?.heatId,data?.prId,data?.qaId,data?.lotId,data?.gateId,data?.sessionId,data?._id].filter(Boolean);

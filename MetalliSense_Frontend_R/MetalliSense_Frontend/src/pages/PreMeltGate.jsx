@@ -458,6 +458,8 @@ export default function PreMeltGate() {
             <div className="space-y-1 -mx-2">
               {heats.map((h) => (
                 <button key={h.heatId} onClick={() => setHeatId(h.heatId)}
+                  data-voice-row-id={import.meta.env.VITE_VOICE_ACTIONS === 'true' ? h.heatId : undefined}
+                  data-voice-row-key={import.meta.env.VITE_VOICE_ACTIONS === 'true' ? 'heatId' : undefined}
                   className={clsx("w-full text-left rounded-xl px-3 py-2.5 border transition-all focus:outline-none focus:ring-2 focus:ring-primary-500", h.heatId === heatId ? "bg-gradient-to-r from-primary-50 to-white border-primary-300 shadow-sm" : "border-transparent hover:bg-metal-50 hover:border-metal-200")}>
                   <span className="flex items-center justify-between">
                     <span className="flex items-center gap-2 font-mono font-bold text-sm">

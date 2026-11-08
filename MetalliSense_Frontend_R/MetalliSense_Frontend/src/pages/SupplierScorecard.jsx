@@ -802,7 +802,7 @@ export default function SupplierScorecard() {
                   {list.map((s, i) => {
                     const r = view === "overall" ? s.rank : i + 1;
                     return (
-                      <tr key={s.supplier} onClick={() => setSelected(s)} className="border-b border-metal-100 cursor-pointer hover:bg-primary-50/50 transition-colors">
+                      <tr key={s.supplier} data-voice-row-id={s.supplier} data-voice-row-key="supplier" onClick={() => setSelected(s)} className="border-b border-metal-100 cursor-pointer hover:bg-primary-50/50 transition-colors">
                         <td className="px-2 py-3"><span className={clsx("grid place-items-center w-7 h-7 rounded-full text-xs font-black", r === 1 ? "bg-amber-400 text-metal-950" : "bg-metal-100 text-metal-600")}>{r}</span></td>
                         <td className="px-2"><p className="font-semibold text-metal-900">{s.supplier}</p><p className="text-[11px] text-metal-500">{s.gradeLabel} · {s.lots} lots</p></td>
                         <td className="px-2"><GradeBadge grade={s.grade} /></td>

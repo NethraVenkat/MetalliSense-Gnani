@@ -733,20 +733,20 @@ async def transcribe_handover(audio: UploadFile = File(...)):
 
 
 @app.post('/copilot/voice/wake-check',tags=['Voice'])
-async def wake_check_audio(audio: UploadFile = File(...), x_voice_session: str = Header('')):
+async def wake_check_audio(audio: UploadFile = File(...), page: str = Form('/'), x_voice_session: str = Header('')):
     from copilot.wake_check import checker,enabled
     try:
         if not enabled():raise HTTPException(404,detail={'code':'wake_disabled'})
         content=await audio.read(50001)
         if len(content)>50000:raise HTTPException(413,detail={'code':'wake_audio_size'})
         from copilot.voice_foundation import log_interaction
-        await asyncio.to_thread(log_interaction,content,x_voice_session,'wake')
+        await asyncio.to_thread(log_interaction,content,x_voice_session,'wake',False,page)
         return await checker.check(content)
     finally:await audio.close()
 
 
 @app.post("/copilot/voice/transcribe", response_model=TranscriptionResponse, tags=["Voice"])
-async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = None, no_store: bool = Form(False), purpose: str = Form('command'), x_voice_session: str = Header(''), x_voice_no_store: str = Header('')):
+async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str] = Form(None), no_store: bool = Form(False), purpose: str = Form('command'), page: str = Form('/'), x_voice_session: str = Header(''), x_voice_no_store: str = Header('')):
     """
     🎤 SPEECH-TO-TEXT - Convert voice input to text
     
@@ -794,7 +794,7 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
             tmp.write(content)
             tmp_path = tmp.name
         from copilot.voice_foundation import log_interaction
-        await asyncio.to_thread(log_interaction,content,x_voice_session,purpose,no_store or x_voice_no_store.lower()=='true')
+        await asyncio.to_thread(log_interaction,content,x_voice_session,purpose,no_store or x_voice_no_store.lower()=='true',page)
         
         try:
             # Transcribe

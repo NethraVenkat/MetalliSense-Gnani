@@ -83,7 +83,11 @@ export function prepareFormAction(text,context,services){
    if(!draft.charge){await requireFields([field('lineCount','number',1)],ask);if(!Number.isInteger(draft.lineCount)||draft.lineCount>20)fail('Charge needs 1 to 20 lines.');for(let i=0;i<draft.lineCount;i++)await requireFields([field('charge.'+i+'.lotId'),field('charge.'+i+'.kg','number',.001)],ask);delete draft.lineCount;}
    if(!Array.isArray(draft.charge)||!draft.charge.length||new Set(draft.charge.map(l=>l.lotId)).size!==draft.charge.length||draft.charge.some(l=>!l.lotId||!Number.isFinite(l.kg)||l.kg<=0))fail('Charge lines must be unique and positive.');
   }else if(id==='create_pr')await requireFields([field('item'),field('qtyKg','number',.001)],ask);
-  else if(id==='issue_invoice')await requireFields([field('heatId'),field('customerId'),field('qtyKg','number',.001),field('ratePerKg','number',.001)],ask);
+  else if(id==='issue_invoice'){
+   await requireFields([field('heatId'),field('customerId'),field('qtyKg','number',.001),field('ratePerKg','number',.001)],ask);
+   // Speech normalization changes case; retain the actual screen customer ID.
+   if(loaded.customers)draft.customerId=resolveRow(loaded.customers,'id',draft.customerId).id;
+  }
   else if(id==='create_grade'){for(const range of Object.values(draft.composition_ranges||{}))if(Array.isArray(range)&&range[0]>=range[1])range[1]=undefined;await requireFields(gradeFields,ask);if((loaded.grades||[]).some(g=>g.grade?.toLowerCase()===draft.grade.toLowerCase()))fail('Grade already exists; use edit grade spec.');}
   else if(id==='create_training'){await requireFields(trainingFields,ask);}
   else if(id==='edit_grade'||id==='edit_training'){

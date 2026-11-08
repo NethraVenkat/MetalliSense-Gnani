@@ -11,6 +11,16 @@ def normalize_code(text):
     normalized=''.join(' ' if unicodedata.category(c).startswith('P') else c for c in normalized)
     normalized=''.join(str(unicodedata.digit(c)) if c.isdecimal() else c for c in normalized)
     tokens=[t for t in re.split(r'[\s-]+',normalized.strip()) if t and t!='and']
+    expanded=[];index=0
+    while index<len(tokens):
+        token=tokens[index];repeat={'double':2,'triple':3,'டபுள்':2,'ட்ரிபிள்':3,'डबल':2,'ट्रिपल':3}.get(token)
+        if repeat:
+            index+=1
+            if index>=len(tokens) or not ((tokens[index].isascii() and tokens[index].isdigit() and len(tokens[index])==1) or NUMBERS.get(tokens[index],99)<10):return None
+            expanded.extend([tokens[index]]*repeat)
+        else:expanded.append(token)
+        index+=1
+    tokens=expanded
     values=[int(t) if t.isascii() and t.isdigit() else NUMBERS.get(t) for t in tokens]
     if not values or any(v is None for v in values):return None
     if all(v<10 for v in values):result=''.join(str(v) for v in values)
@@ -58,6 +68,16 @@ class VoiceAuth:
         path=data_root()/'voice_auth'/'lock.json';path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp')
         with temp.open('wb') as stream:stream.write(canonical({'locked_until':self.locked_until,'failures':list(self.failures)}));stream.flush();os.fsync(stream.fileno())
         os.replace(temp,path)
+    def debug_state(self):
+        with self.lock:
+            self.load_lock();now=self.clock()
+            while self.failures and now-self.failures[0]>=600:self.failures.popleft()
+            remaining=max(0,int(self.locked_until-now+0.999))
+            return {'failure_count':len(self.failures),'locked':remaining>0,'remaining_seconds':remaining}
+    def reset_lock(self):
+        with self.lock:
+            self.load_lock();self.failures.clear();self.locked_until=0;self.save_lock()
+            return self.debug_state()
     def session(self):
         with self.lock:
             now=self.clock();self.sessions={s:v for s,v in self.sessions.items() if now-v<86400};key=secrets.token_urlsafe(32);self.sessions[key]=now;return key
@@ -72,26 +92,33 @@ class VoiceAuth:
     def authorize(self,session,action,roles,text):
         with self.lock:
             self.load_lock();now=self.clock();rb=self.readbacks.get(session);policy=ACTIONS.get(action)
-            if now<self.locked_until:return {'ok':False,'locked':True,'retry_after':int(self.locked_until-now)+1}
-            if not self.valid_session(session) or not rb or rb['action']!=action or now-rb['ts']>15 or not policy or policy['level']!='APPROVE' or (forbidden(action,rb['summary']) and action not in SCOPE_ACTIONS):return {'ok':False}
+            def refusal(reason,**extra):
+                result={'ok':False,'reason_code':reason,**extra}
+                if self.valid_session(session):AUDIT.append(dict(page=(rb or {}).get('page','/'),level='APPROVE',intent=action,winner=action,candidates=[{'intent':action,'score':1}],confirmation='passcode',decision='locked' if result.get('locked') else 'refused',reason_code=reason,transcript=MASK,heard=MASK,normalized_text=MASK),session)
+                return result
+            if now<self.locked_until:return refusal('locked',locked=True,retry_after=int(self.locked_until-now)+1,tries_remaining=0)
+            if not self.valid_session(session) or not rb or rb['action']!=action or now-rb['ts']>15 or not policy or policy['level']!='APPROVE' or (forbidden(action,rb['summary']) and action not in SCOPE_ACTIONS):return {'ok':False,'reason_code':'stale_target'}
             # The caller cannot lower the registered server-side role requirement.
             required=set(policy['roles'])
-            if not required or set(roles)!=required:return {'ok':False}
-            code=normalize_code(text);match=None
+            if not required or set(roles)!=required:return {'ok':False,'reason_code':'wrong_role'}
+            code=normalize_code(text);match=None;known_role=False
+            while self.failures and now-self.failures[0]>=600:self.failures.popleft()
+            if code is None:return refusal('code_not_digits',tries_remaining=max(0,3-len(self.failures)))
             for u in users():
                 derived=hashlib.pbkdf2_hmac('sha256',(code or 'invalid').encode(),bytes.fromhex(u['salt']),u.get('iterations',ITERATIONS))
                 equal=secrets.compare_digest(derived,bytes.fromhex(u['hash']))
+                if equal:known_role=True
                 if equal and u['role'] in required:match={k:u[k] for k in ['id','name','role']}
             if not match:
+                if known_role:return refusal('wrong_role',tries_remaining=max(0,3-len(self.failures)))
                 while self.failures and now-self.failures[0]>=600:self.failures.popleft()
                 self.failures.append(now);locked=len(self.failures)>=3
                 if locked:self.locked_until=now+600
                 self.save_lock()
-                AUDIT.append(dict(level='APPROVE',intent=action,confirmation='passcode',decision='locked' if locked else 'refused',transcript=MASK),session)
-                return {'ok':False,**({'locked':True,'retry_after':600} if locked else {})}
+                return refusal('locked' if locked else 'wrong_code',tries_remaining=max(0,3-len(self.failures)),**({'locked':True,'retry_after':600} if locked else {}))
             del self.readbacks[session];self.failures.clear();self.save_lock();token=secrets.token_urlsafe(32);self.tokens[hashlib.sha256(token.encode()).hexdigest()]={'session':session,'action':action,'expires':now+60,'user':match}
-            AUDIT.append(dict(level='APPROVE',intent=action,user=match,confirmation='passcode',decision='executed',summary='Approval credential verified; no plant execution'),session)
-            return {'ok':True,'user':match,'token':token}
+            AUDIT.append(dict(page=rb['page'],level='APPROVE',intent=action,winner=action,candidates=[{'intent':action,'score':1}],reason_code='executed',user=match,confirmation='passcode',decision='executed',summary='Approval credential verified; no plant execution'),session)
+            return {'ok':True,'user':match,'token':token,'reason_code':'executed'}
     def confirm_word(self,session,token,action,text):
         with self.lock:
             key=hashlib.sha256(str(token).encode()).hexdigest();value=self.tokens.get(key);expected=ACTIONS.get(action,{}).get('confirm_word')

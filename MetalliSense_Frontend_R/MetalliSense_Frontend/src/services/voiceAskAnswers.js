@@ -47,6 +47,10 @@ export function isHistoricalVoiceAsk(text){
  const normalized=String(text||'').normalize('NFKC').trim();
  return /^(?:who approved (?:(?:this|the) (?:purchase )?request|PR[- ]?\d+|(?:this|the) tap)|who changed (?:this|the) lot(?:'s stock)?|அனுமதிச்சது யார்|மாற்றியது யார்|किसने मंजूर किया|किसने बदला)[?.!।]*$/iu.test(normalized);
 }
+// Exact invoice reads only; appended commands remain blocked.
+export function isInvoiceVoiceAsk(text,route){
+ return route==='/sales'&&/^(?:what is the invoice|what weight is ready for invoice)[?.!]*$/iu.test(String(text||'').normalize('NFKC').trim());
+}
 export function voiceAskReply(text,context,lang='en',options={}){
  lang=['ta','hi','en'].includes(lang)?lang:'en';
  const unavailable=voiceAskUnavailable[lang]||voiceAskUnavailable.en;

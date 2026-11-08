@@ -27,6 +27,8 @@ function normalizeIntentTranscript(transcript) {
 // Mn spellings observed in cached Prisma en-IN transcripts of the benchmark phrases.
 const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு', 'magnus', 'magnes', 'magnis'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
 const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
+export const heatStatusQuestion=text=>/\b(?:status|gate status|is (?:it|the heat) on hold)\b|நிலை|ஸ்டேட்டஸ்|स्थिति|स्टेटस/iu.test(text);
+const symbolToken=(text,symbol)=>new RegExp('(?<![\\p{L}\\p{M}\\p{N}\u0027\u2019])'+symbol+'(?![\\p{L}\\p{M}\\p{N}\u0027\u2019])','iu').test(text);
 export const voicePageDataReadsEnabled = () => import.meta.env?.VITE_VOICE_DATA_READS === 'true';
 export const voiceDashboardBriefingEnabled = () => import.meta.env?.VITE_VOICE_DASHBOARD_BRIEFING === 'true';
 function isDashboardBriefingRequest(transcript) {
@@ -121,7 +123,7 @@ export function mapIntent(transcript, { langBridge = false, shiftSummary = impor
   }
   if (langBridge && /\bhold\b/.test(text) && /\b(?:kaun|kon|list)\b|कौन|कौनसे/u.test(text)) return { intent: 'ask_copilot', params: { bridgeAction: 'list_holds' } };
   if (langBridge && /\b(?:help|madad)\b|मदद/u.test(text)) return { intent: 'ask_copilot', params: { bridgeAction: 'help' } };
-  const hasStatusWord = /\b(?:status|epdi|enna|in\s+a|nilai)\b/u.test(text) || has(text, 'நிலை');
+  const hasStatusWord = heatStatusQuestion(text)||/\b(?:epdi|enna|in\s+a|nilai)\b/u.test(text);
   const heat = text.match(/\b(?:heat|heath|sheet|hit|hate|eat|heet|he\s+t|h)[\s-]*(\d+)\b/i)
     || text.match(/^\s*(\d+)\b/)
     || (hasStatusWord ? text.match(/\b(\d{3,4})\b/) : null);
@@ -134,8 +136,10 @@ export function mapIntent(transcript, { langBridge = false, shiftSummary = impor
     return { intent: 'stock_check', params };
   }
   if (/\b(?:hold|warn|warning|warnings)\b|தடை|எச்சரிக்கை/u.test(text) && /\b(?:why|yen|reason)\b|ஏன்|காரண/u.test(text)) return { intent: 'gate_reason', params };
+  if(import.meta.env?.VITE_VOICE_PAGE_ANSWERS==='true'&&heat&&heatStatusQuestion(transcript))return {intent:'heat_status',params};
   const bridgeElements = langBridge ? { ...elements, Cu: ['copper'], Cr: ['chromium'], Ni: ['nickel'], Mo: ['molybdenum'] } : elements;
-  for (const [element, aliases] of Object.entries(bridgeElements)) if (aliases.some(alias => has(text, alias))) return { intent: 'element_value', params: { ...params, element } };
+  // Apostrophe-s in "what's" is not an element, even after normalization.
+  for (const [element, aliases] of Object.entries(bridgeElements)) if (aliases.some(alias => alias.length===1?symbolToken(String(transcript),alias):has(text, alias))) return { intent: 'element_value', params: { ...params, element } };
   for (const [pattern, route] of [[/dashboard|டாஷ்போர்டு/u, '/dashboard'], [/pre[\s-]*melt|premelt/u, '/premelt-gate'], [/spectrometer|ஸ்பெக்ட்ரோமீட்டர்/u, '/spectrometer'], [/stock|இருப்பு/u, '/raw-material-stock']]) {
     if (pattern.test(text)) return { intent: 'open_screen', params: { ...params, route } };
   }

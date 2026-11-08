@@ -1,5 +1,7 @@
+import {voiceDiagnostics} from '../../services/voiceDiagnostics';
+import {redactVoiceText} from '../../services/voiceAuditText';
 import useLiveWords from '../../hooks/useLiveWords';
-import {createActionFlow,matchAction,voiceActionsEnabled} from '../../services/voiceActions';
+import {createActionFlow,matchAction,voiceActionsEnabled,screenOnly} from '../../services/voiceActions';
 import {voiceActionApi} from '../../services/voiceActionApi';
 import {captureActionReply} from '../../services/voiceActionCapture';
 import {attachMicLevel} from '../../services/micLevel';
@@ -15,7 +17,7 @@ import useSpeak, { useVoiceLanguage } from '../../hooks/useSpeak';
 import {useVoicePage} from '../../context/VoicePageContext';
 import {voiceEverywhereEnabled,scopeVoiceCallbacks} from '../../services/voicePages';
 import useHandsFree from '../../hooks/useHandsFree';
-import { langBridgeEnabled } from '../../services/languageBridge';
+import { langBridgeEnabled, questionReplyLanguage } from '../../services/languageBridge';
 import { shiftSummaryEnabled } from '../../services/shiftSummary';
 import {transliterateEnabled,readTransliteratePreference,saveTransliteratePreference,createLatinDisplay} from '../../services/transcriptDisplay';
 import {createPttRecordingLifecycle} from '../../services/pttRecording';
@@ -78,7 +80,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const alive = useRef(true);
   const answerSpeech=useRef(Promise.resolve());
   const wakeTurn=useRef(null);
-  const [actionState,setActionState]=useState(null);const actionFlow=useRef(null);const actionDeps=useRef(null);
+  const [demoCommand,setDemoCommand]=useState('');const [actionState,setActionState]=useState(null);const actionFlow=useRef(null);const actionDeps=useRef(null);
   const latinDisplay=useRef(null);
   if(!latinDisplay.current)latinDisplay.current=createLatinDisplay({request:transliterateAudio,afterSpeech:()=>answerSpeech.current,onText:text=>{if(alive.current)setHeardLatin(text);}});
   const choose = (ta, en) => lang === 'ta' ? ta : en;
@@ -106,7 +108,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   }
   actionDeps.current={say:async text=>{say(text);await answerSpeech.current;},capture:options=>captureActionReply(options,value=>{if(alive.current)setMicLevel(value);})};
   if(!actionFlow.current)actionFlow.current=createActionFlow({api:voiceActionApi,say:text=>actionDeps.current.say(text),capture:options=>actionDeps.current.capture(options),onChange:value=>{if(alive.current)setActionState(value);}});
-  async function actionControl(text,context,options={}){if(options.refused){await voiceActionApi.audit({page:context?.route,transcript:text,level:'ASK',intent:'screen-only',decision:'refused',summary:'Not permitted by voice.'});return true;}const action=matchAction(text,context);if(!action)return false;wake.suspend();setHeard('');setHeardLatin('');await actionFlow.current.run(action,{page:context?.route,originalText:text,lang});return true;}
+  async function actionControl(text,context,options={}){if(options.refused){await voiceActionApi.audit({...voiceDiagnostics(text,{winner:'screen-only',context,reason:'legacy_readonly_guard'}),page:context?.route,transcript:redactVoiceText(text,{transcript:true}),level:'ASK',intent:'screen-only',decision:'refused',spoken_reply:screenOnly[questionReplyLanguage(text,null,lang)],summary:'Not permitted by voice.'});return true;}const action=matchAction(text,context);if(!action)return false;wake.suspend();setHeard('');setHeardLatin('');await actionFlow.current.run(action,{page:context?.route,originalText:text,lang,context});return true;}
   const recordHeard=text=>{if(isCurrent()){setHeard(wakeTurn.current?.heard||text);setHeardLatin('');}};
   const callbacks=sharedContext?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
   const dashboardBriefingLifecycle={
@@ -117,7 +119,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   // REST bridge only: hands-free retains the current single-locale Tamil path.
   const handlePushToTalk = createTranscriptHandler({ lang, setHeard:recordHeard, ...callbacks, resolveHeat, pageContext, getPageContext:()=>pageContextRef.current, actionControl, langBridge: langBridgeEnabled(), dashboardBriefingLifecycle });
   const handsFree = useHandsFree({ onTranscript: handleTranscript, lang, paused: () => busy.current || held.current, suspended:hidden||floating });
-  const wake=useWakeWord({onQuery:(text,turn)=>run(text,turn),muted,paused:()=>busy.current||held.current||hiddenRef.current||tour.isActive()||handsFree.enabled});
+  const wake=useWakeWord({page:pageContext?.route,onQuery:(text,turn)=>run(text,turn),muted,paused:()=>busy.current||held.current||hiddenRef.current||tour.isActive()||handsFree.enabled});
   const liveWords=useLiveWords({lang,active:state==='listening'||wake.state==='Listening…',transcript:heard,blocked:Boolean(actionState)||hidden||tour.isActive()});
   useEffect(()=>{if(wake.state==='Listening\u2026'){setHeard('');setHeardLatin('');clearAnswer();}},[wake.state]);
   async function run(text,turn=null) {
@@ -179,7 +181,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
           if(transliterateEnabled())await latinDisplay.current.beforeMain();
           if(!isCurrent())return;
           const sttStarted = performance.now();
-          const response = await (floating?transcribeAudio(file,null,{signal:speechAbort.current.signal}):transcribeAudio(file,null));
+          const response = await (floating?transcribeAudio(file,null,{signal:speechAbort.current.signal,page:pageContext?.route}):transcribeAudio(file,null,{page:pageContext?.route}));
           if(!isCurrent())return;
           const stt_ms = performance.now() - sttStarted;
           if (response.data.success === false) throw new Error('STT failed');
@@ -259,6 +261,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     {handsFree.note && <p role="status" className="text-sm text-amber-800">{handsFree.note}</p>}
     {(floating?import.meta.env.DEV:import.meta.env.VITE_MOCK_MODE === 'true') && <details className="text-sm">
       <summary className="cursor-pointer">Demo transcripts</summary>
+      {import.meta.env.DEV&&import.meta.env.VITE_VOICE_ACTIONS==='true'&&<form onSubmit={event=>{event.preventDefault();void run(demoCommand);}}><label>Demo voice command<input aria-label="Demo voice command" value={demoCommand} onChange={event=>setDemoCommand(event.target.value)}/></label><button type="submit">Run demo command</button></form>}
       <p className="my-2 text-xs text-slate-600">Try the voice flow without recording audio. Replies use the selected voice language.</p>
       <div className="flex flex-wrap gap-2">{[`Heat ${String(heatId || flow.heatId || 'H-1053').replace(/^H-/, '')} status என்ன`, 'ஏன் HOLD', 'why hold heat 1053', 'approve', 'start melting', ...(shiftSummaryEnabled()?['Shift summary']:[])].map(text =>
         <button type="button" key={text} disabled={state === 'processing' || state === 'listening'} onClick={() => run(text)} className="rounded-full bg-emerald-50 px-3 py-2 text-sm text-emerald-900 disabled:opacity-50">{text}</button>
@@ -267,6 +270,6 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     {state === 'error' && <div className="flex flex-wrap gap-2">{['Heat status', 'carbon evvalavu', 'why hold', 'stock evvalavu', 'spectrometer kaattu'].map(text => <button type="button" key={text} onClick={() => run(text)} className="rounded-full bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{text}</button>)}</div>}
   </>;
   return <section ref={panel} hidden={hidden} aria-hidden={hidden||undefined} onFocusCapture={() => { owner = panel.current; }} onPointerDownCapture={() => { owner = panel.current; }} aria-label="Shop floor voice" style={hidden?{display:'none'}:floating?{display:'contents'}:undefined} className={`${tour.visible?'relative ':''}rounded-xl border border-emerald-200 bg-white p-3 text-slate-800 shadow-sm space-y-2`}>
-    {floating?<KuralWakePanel liveWords={liveWords} actionState={voiceActionsEnabled()?actionState:null} onActionCancel={()=>actionFlow.current.cancel()} debugLine={import.meta.env.DEV&&import.meta.env.VITE_VOICE_TIMING==='true'?voiceDebug:''} menuControls={menuControls} hidden={hidden} wake={wake} lang={lang} muted={muted} panelState={handsFree.enabled&&state==='idle'?(handsFree.state==='listening'?'listening':handsFree.state==='processing'?'processing':'connecting'):state} statusNote={state==='error'?answer.displayText:wake.note} requestPending={state==='processing'} level={state==='listening'||['confirm','passcode'].includes(actionState?.phase)?micLevel:wake.level} heard={showLatin&&heardLatin?heardLatin:heard} answer={answer} playingAnswer={playingAnswer} onToggle={()=>{if(wake.enabled)wake.disable();else{handsFree.stop();wake.start();}}} onRetry={()=>{handsFree.stop();wake.stop();wake.start();}} onPopupDismiss={()=>{if(held.current)stop();}} onClose={closeAssistant} onStopCapture={()=>{wake.stop();handsFree.stop();resetInteraction();}}>{controls}</KuralWakePanel>:controls}
+    {floating?<KuralWakePanel liveWords={liveWords} actionState={voiceActionsEnabled()?actionState:null} onActionCancel={()=>actionFlow.current.cancel()} debugLine={import.meta.env.DEV&&import.meta.env.VITE_VOICE_TIMING==='true'?voiceDebug:''} menuControls={menuControls} hidden={hidden} wake={wake} lang={lang} muted={muted} panelState={handsFree.enabled&&state==='idle'?(handsFree.state==='listening'?'listening':handsFree.state==='processing'?'processing':'connecting'):state} statusNote={state==='error'?answer.displayText:wake.note} requestPending={state==='processing'} level={state==='listening'||actionState?.capturing||['confirm','passcode'].includes(actionState?.phase)?micLevel:wake.level} heard={showLatin&&heardLatin?heardLatin:heard} answer={answer} playingAnswer={playingAnswer} onToggle={()=>{if(wake.enabled)wake.disable();else{handsFree.stop();wake.start();}}} onRetry={()=>{handsFree.stop();wake.stop();wake.start();}} onPopupDismiss={()=>{if(held.current)stop();}} onClose={closeAssistant} onStopCapture={()=>{wake.stop();handsFree.stop();resetInteraction();}}>{controls}</KuralWakePanel>:controls}
   </section>;
 }

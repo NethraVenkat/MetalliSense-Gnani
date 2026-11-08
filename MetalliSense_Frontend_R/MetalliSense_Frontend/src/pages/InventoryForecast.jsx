@@ -652,7 +652,7 @@ export default function InventoryForecast() {
                   </tr></thead>
                   <tbody>
                     {prs.map((p) => (
-                      <tr key={p.prId} className="border-b border-metal-100 align-top">
+                      <tr key={p.prId} data-voice-row-id={p.prId} data-voice-row-key="prId" className="border-b border-metal-100 align-top">
                         <td className="px-2 py-2.5 font-mono font-bold">{p.prId}<span className="block text-[10.5px] font-sans font-normal text-metal-400">{new Date(p.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></td>
                         <td className="px-2">{p.label}<span className="block text-[11px] text-metal-400 max-w-[16rem] truncate" title={p.reason}>{p.reason}</span></td>
                         <td className="px-2 text-right tabular-nums font-semibold">{kgs(p.qtyKg)}</td>
