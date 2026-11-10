@@ -27,4 +27,4 @@ Prisma v3 hears the wake word, commands, replies and passcodes (ta-IN / hi-IN / 
 ## Status (v22)
 Working end to end on synthetic foundry data: **2,630** frontend tests, **470** agent tests, a **597-case** page sweep and **435** real-app checks on all 21 pages. Wake word chosen after five approaches (pause-v3: 10/10 wakes, 0 false wakes in our test). Evon isn't on Gnani's API yet, so the LLM path uses open weights per Gnani's guidance.
 
-**Repo:** https://github.com/NethraVenkat/MetalliSense-Gnani · **Demo:** https://youtu.be/H5LXI3kne8Y?si=fl90HqAnqw3JpU81
+**Repo:** https://github.com/NethraVenkat/MetalliSense-Gnani · **Demo:** https://youtu.be/KxPlBhWzNms
