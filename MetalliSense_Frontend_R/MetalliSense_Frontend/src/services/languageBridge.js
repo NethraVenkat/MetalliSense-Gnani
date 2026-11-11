@@ -5,7 +5,7 @@ export function pickReplyLanguage(text, detected, current = 'ta', enabled = fals
   if (/^hi/i.test(detected || '') || /[\u0900-\u097f]/u.test(text)
     || (!/[\u0b80-\u0bff]/u.test(text) && /\b(?:kya|kyun|kyu|kitna|hai|batao|karo|kro|kaun|madad)\b/i.test(text))) return 'hi';
   if (/^ta/i.test(detected || '') || /[\u0b80-\u0bff]/u.test(text)
-    || /\b(?:enna|yen|evvalavu|kaattu|epdi|enna|en\s+hold)\b/i.test(text)) return 'ta';
+    || /\b(?:enna|yen|evvalavu|kaattu|epdi|nilai|kudu|edu|en\s+hold)\b/i.test(text)) return 'ta';
   return current;
 }
 

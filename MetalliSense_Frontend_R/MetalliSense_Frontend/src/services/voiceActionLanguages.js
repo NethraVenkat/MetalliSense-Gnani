@@ -6,7 +6,7 @@ export const nativeActions={
       "ரீடிங் எடு"
     ],
     "tanglish": [
-      "reading edu"
+      "reading edu", "oru reading edu", "reading kudu", "oru reading ediu"
     ],
     "hi": [
       "रीडिंग लो"
@@ -18,7 +18,7 @@ export const nativeActions={
       "கேட் செக் பண்ணு"
     ],
     "tanglish": [
-      "gate check pannu"
+      "gate check pannu", "gate check பண்ணு"
     ],
     "hi": [
       "गेट चेक करो"
@@ -254,7 +254,7 @@ export const nativeActions={
   }
 };
 export function nativeActionText(text,definitions){
- const normalized=String(text||'').normalize('NFKC').replace(/(?<!\d)\.|\.(?!\d)|[!?]/g,'').replace(/\s+/g,' ').trim();
+ const normalized=String(text||'').normalize('NFKC').replace(/(?<!\d)\.|\.(?!\d)|[!?]/g,'').replace(/,(?!\d)/g,' ').replace(/\s+/g,' ').trim();
  for(const d of definitions){const entry=nativeActions[d.id];if(!entry)continue;
   for(const phrase of [...(entry.en||[]),...entry.ta,...entry.tanglish,...entry.hi]){
    if(normalized.toLowerCase()===phrase.toLowerCase())return entry.canonical;

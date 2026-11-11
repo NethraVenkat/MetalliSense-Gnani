@@ -6,7 +6,7 @@ import {transcribeAudio} from './copilotService';
 export function captureRunReply({signal,timeout=8000,no_store=false,purpose='confirmation',page,language=null,runConfirmation=true,onState=()=>{},onCountdown=()=>{}},onLevel=()=>{},dependencies={}) {
  const capture=dependencies.capture||createMicCapture,transcribe=dependencies.transcribe||transcribeAudio;
  const setTimer=dependencies.setTimer||setTimeout,clearTimer=dependencies.clearTimer||clearTimeout;
- const now=dependencies.now||Date.now,minimumSpeech=runConfirmation?1600:1,silenceSamples=runConfirmation?11200:12800;
+ const now=dependencies.now||Date.now,minimumSpeech=runConfirmation?1600:1,silenceSamples=runConfirmation?11200:purpose==='passcode'?24000:12800;
  const log=(stage,details={})=>{if(import.meta.env.VITE_VOICE_TIMING==='true')console.info('voice_action_capture',{stage,...details});};
  return new Promise((resolve,reject)=>{
   let mic,finished=false,opened=false,ready=false,speech=0,quiet=0,total=0,started=false,peak=0,elapsed=0;

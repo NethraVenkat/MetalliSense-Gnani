@@ -11,6 +11,7 @@ def normalize_code(text):
     normalized=''.join(' ' if unicodedata.category(c).startswith('P') else c for c in normalized)
     normalized=''.join(str(unicodedata.digit(c)) if c.isdecimal() else c for c in normalized)
     tokens=[t for t in re.split(r'[\s-]+',normalized.strip()) if t and t!='and']
+    tokens=['zero' if t=='oh' else t for t in tokens]
     expanded=[];index=0
     while index<len(tokens):
         token=tokens[index];repeat={'double':2,'triple':3,'டபுள்':2,'ட்ரிபிள்':3,'डबल':2,'ट्रिपल':3}.get(token)
@@ -20,7 +21,17 @@ def normalize_code(text):
             expanded.extend([tokens[index]]*repeat)
         else:expanded.append(token)
         index+=1
-    tokens=expanded
+    # Preserve sequential groups (e.g. a two-word cardinal followed by
+    # individual digits), never silently add an entire spoken digit sequence.
+    tokens=[];index=0
+    while index<len(expanded):
+        first=NUMBERS.get(expanded[index]);second=NUMBERS.get(expanded[index+1]) if index+1<len(expanded) else None
+        if first in range(20,100,10) and second is not None and 0<second<10:
+            tokens.append(str(first+second));index+=2
+        else:tokens.append(expanded[index]);index+=1
+    if all((t.isascii() and t.isdigit()) or NUMBERS.get(t,1000)<100 for t in tokens):
+        sequence=''.join(t if t.isascii() and t.isdigit() else str(NUMBERS[t]) for t in tokens)
+        if re.fullmatch(r'\d{6}',sequence):return sequence
     values=[int(t) if t.isascii() and t.isdigit() else NUMBERS.get(t) for t in tokens]
     if not values or any(v is None for v in values):return None
     if all(v<10 for v in values):result=''.join(str(v) for v in values)

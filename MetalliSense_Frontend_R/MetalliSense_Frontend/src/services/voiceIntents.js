@@ -17,6 +17,8 @@ export function normalizeTranscript(transcript) {
 }
 function normalizeIntentTranscript(transcript) {
   return normalizeTranscript(transcript)
+    .replace(/\bnilai\b/g, 'status')
+    .replace(/^(\d{4,})(?=\s+status\b)/, 'H $1')
     .replace(/\b(?:in a|inna|ena|yenna|anna)(?=\s*(?:[.!?,;:]|$))/g, 'enna')
     .replace(/\b(?:evalavu|evolve|evalu|how much)\b/g, 'evvalavu')
     .replace(/\b(?:kattu|cut too|show)\b/g, 'kaattu')

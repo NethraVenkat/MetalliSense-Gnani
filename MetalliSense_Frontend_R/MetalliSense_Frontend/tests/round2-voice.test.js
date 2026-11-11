@@ -1,3 +1,6 @@
+import {mapIntent as stage1Map} from '../src/services/voiceIntents';
+import {questionReplyLanguage as stage1Language} from '../src/services/languageBridge';
+import {pageVoiceIntent as stage1Page} from '../src/services/voicePages';
 import {it,expect,vi,afterEach} from 'vitest';
 import {voiceDiagnostics,approvalReason} from '../src/services/voiceDiagnostics';
 import {createTranscriptHandler} from '../src/services/voiceTranscript';
@@ -114,3 +117,34 @@ it('screen-only directions are removed only from speech',async()=>{
  const states=[],say=vi.fn();const flow=createActionFlow({api:{audit:vi.fn()},say,capture:vi.fn(),onChange:s=>states.push(s)});
  await flow.run({...registry[0],level:'ASK',execute:async()=>({status:200,message:'Completed (see details).'})});expect(states.at(-1).result).toBe('Completed (see details).');expect(say).toHaveBeenLastCalledWith('Completed.');
 });
+
+it.each(['H-1053 status enna?','H-1053 nilai enna'])('Tanglish status ASK: %s',text=>{
+ vi.stubEnv('VITE_VOICE_PAGE_ANSWERS','true');expect(stage1Map(text).intent).toBe('heat_status');expect(stage1Language(text,null,'en')).toBe('ta');
+});
+it('Tanglish latest reading uses loaded-reading ASK',()=>{
+ vi.stubEnv('VITE_VOICE_PAGE_ANSWERS','true');vi.stubEnv('VITE_VOICE_EVERYWHERE','true');vi.stubEnv('VITE_VOICE_DATA_READS','true');expect(stage1Map('latest reading enna').intent).toBe('spectrometer_heat_reading');expect(stage1Language('latest reading enna',null,'en')).toBe('ta');
+});
+it.each(['reading kudu','oru reading edu'])('Tanglish request reading action: %s',text=>{
+ const action=prepareVoiceAction(text,{route:'/spectrometer',loaded:{opcConnected:true}});expect(action.id).toBe('request_reading');expect(stage1Language(text,null,'en')).toBe('ta');
+});
+it('Tanglish gate action preserves the specified heat',async()=>{
+ const action=prepareVoiceAction('gate check pannu H-1051',{route:'/premelt-gate',loaded:{heats:[{heatId:'H-1051',status:'PLANNED',targetKg:1000}]}});expect(action.id).toBe('gate_check');await action.precheck();expect(action.buildSummary().displayText).toContain('H-1051');
+});
+it('Tanglish HOLD start is recognized but still refused',async()=>{
+ const getHeat=vi.fn(async()=>({data:{data:{heatId:'H-1053',status:'PLANNED',gateResult:{decision:'HOLD'}}}}));
+ const action=prepareVoiceAction('H-1053 melting start pannu',{route:'/premelt-gate',loaded:{heats:[{heatId:'H-1053'}]}},{getHeat});expect(action.id).toBe('start_melting');await expect(action.precheck()).rejects.toThrow('HOLD');
+});
+it('Tanglish spectrometer navigation is not a device action',()=>{
+ expect(stage1Page('spectrometer ku po')).toMatchObject({intent:'open_screen',params:{route:'/spectrometer'}});expect(stage1Language('spectrometer ku po',null,'en')).toBe('ta');
+});
+it.each([
+ ['ஆயிரத்தி ஐம்பத்து மூன்று status என்ன?','heat_status'],
+ ['latest reading என்ன?','spectrometer_heat_reading'],
+])('saved real Prisma ASK variation: %s',(text,intent)=>{
+ for(const key of ['VITE_VOICE_PAGE_ANSWERS','VITE_VOICE_EVERYWHERE','VITE_VOICE_DATA_READS'])vi.stubEnv(key,'true');
+ expect(stage1Map(text).intent).toBe(intent);expect(stage1Language(text,null,'en')).toBe('ta');
+});
+it.each([['Oru reading ediu.','request_reading','/spectrometer'],['gate check பண்ணு, ஆயிரத்தி ஐம்பத்தொன்று.','gate_check','/premelt-gate']])('saved real Prisma action variation: %s',(text,id,route)=>{
+ expect(prepareVoiceAction(text,{route,selected:{heatId:'H-1051'},loaded:{opcConnected:true,heats:[{heatId:'H-1051',status:'PLANNED'}]}})?.id).toBe(id);
+});
+it('does not invent a navigation alias for the observed coupon misrecognition',()=>expect(stage1Page('Spectrometer coupon.')).toBeNull());

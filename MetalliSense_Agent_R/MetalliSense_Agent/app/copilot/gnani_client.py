@@ -234,6 +234,7 @@ class GnaniClient:
         """Retry 429/504 once; callers with a strict credit budget may allow one attempt."""
         if max_attempts not in (1, 2):
             raise ValueError("max_attempts must be 1 or 2")
+        if output_format is not None and output_format not in {'verbatim','transcribe','codemix','transliterate'}:raise ValueError('Unsupported STT format')
         bridge = _env_bool('LANG_BRIDGE')
         lang = stt_language(os.getenv('GNANI_STT_LANGUAGE_BRIDGE', 'ta-IN,hi-IN,en-IN') if bridge
                             else language.strip() if language and language.strip() else self.stt_language)
@@ -243,7 +244,7 @@ class GnaniClient:
             return {"text": MOCK_TRANSCRIPT, "language": lang, "detected_language_code": None, "success": True}
         try:
             wav = self._to_wav_16k(audio_bytes)
-            data = {"language_code": lang, "format": 'codemix' if bridge or output_format=='codemix' else self.stt_format}
+            data = {"language_code": lang, "format": 'codemix' if bridge or output_format=='codemix' else output_format or self.stt_format}
             if self.stt_model:
                 data["model"] = self.stt_model
             if self.stt_keyterms:
