@@ -1,0 +1,4 @@
+﻿import React,{useState}from'react';import{createRoot}from'react-dom/client';import KuralWakePanel from '../../src/components/voice/KuralWakePanel';
+function App(){const [settings,setSettings]=useState({lang:'en',phase:'confirm'});window.stage2Review=setSettings;const {lang,phase}=settings;const state=phase==='confirm'?{phase,level:'RUN',question:'Say yes or no.',prompt:'Listening...',capturing:true,remaining:8,onReply:()=>{}}:phase==='countdown'?{phase,level:'APPROVE',seconds:5,summary:'H-1053: HOLD'}:{phase:phase==='completed'?'result':'cancelled',level:'APPROVE',result:phase==='completed'?'Completed':'Cancelled'};
+return <><h1 style={{fontFamily:'system-ui',fontSize:18,padding:24}}>MOCKED · {lang} · {phase} · no microphone/provider</h1><KuralWakePanel wake={{enabled:true,state:'Waiting'}} lang={lang} level={.5} actionState={state} onActionCancel={()=>{}} answer=""/></>;}
+createRoot(document.getElementById('root')).render(<App/>);

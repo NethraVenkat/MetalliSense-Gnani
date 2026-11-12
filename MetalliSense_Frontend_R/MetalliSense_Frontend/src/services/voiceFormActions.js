@@ -31,12 +31,20 @@ export const formDefinitions=[
  ['clear_chat','/recommendation',['clear chat history'],SM,'clearChatHistory','CLEAR'],
 ].map(([id,page,phrases,requiredRoles,service,confirmWord])=>({id,page,phrases,phrase:phrases[0],requiredRoles,service,confirmWord,level:'APPROVE',scopeChange:true}));
 const normal=s=>String(s??'').normalize('NFKC').trim();
-export function scopeFormMatch(text,route){const defs=formDefinitions.filter(d=>d.page===route),t=nativeActionText(text,defs).toLowerCase().replace(/^override hold and start/,'hold override start');if(/\bingest\b|\bcsv\b|;|\bthen\b|\band\b/i.test(t))return null;return defs.find(d=>d.phrases.some(p=>t===p||t.startsWith(p+' ')))||null;}
+export function scopeFormMatch(text,route){if(/^(?:what|which)\s+(?:is|was|are|were)\b/iu.test(normal(text)))return null;const defs=formDefinitions.filter(d=>d.page===route),t=nativeActionText(text,defs).toLowerCase().replace(/^override hold and start/,'hold override start');if(/\bingest\b|\bcsv\b|;|\bthen\b|\band\b/i.test(t))return null;return defs.find(d=>d.phrases.some(p=>t===p||t.startsWith(p+' ')))||null;}
 const fail=message=>{throw Object.assign(Error(message),{refused:true});};
 const get=(obj,path)=>path.split('.').reduce((v,k)=>v?.[k],obj);
 function put(obj,path,value){const parts=path.split('.');if(parts.some(k=>['__proto__','constructor','prototype'].includes(k)))fail('Invalid field');let node=obj;for(let i=0;i<parts.length-1;i++)node=node[parts[i]]??(node[parts[i]]=/^\d+$/.test(parts[i+1])?[]:{});node[parts.at(-1)]=value;}
 const missing=v=>v===undefined||v===null||v==='';
-export function parseFormNumber(value){const text=normalizeSpokenNumbers(normal(value)).replace(/\s*(?:kg|kilograms?|percent|%)$/i,'').trim();if(!/^-?\d+(?:\.\d+)?$/.test(text)||!Number.isFinite(Number(text)))fail('Say one numeric value.');return Number(text);}
+export function parseFormNumber(value,{mass=false}={}){
+ let text=normalizeSpokenNumbers(normal(value)).replace(/[.!?।]$/u,'').trim();
+ const tonnes=text.match(/\s*(ton(?:ne)?s?|metric tons?|டன்|टन)$/iu);
+ if(tonnes&&!mass)fail('Tonnes require a mass field.');
+ text=text.replace(/\s*(?:ton(?:ne)?s?|metric tons?|kg|kilograms?|கிலோ|கிலோகிராம்|किलो|किलोग्राम|percent|%)$/iu,'').trim();
+ if(/^-?\d{1,3}(?:,\d{2})*,\d{3}(?:\.\d+)?$/.test(text))text=text.replaceAll(',','');
+ if(!/^-?\d+(?:\.\d+)?$/.test(text)||!Number.isFinite(Number(text)))fail('Say one numeric value.');
+ const result=Number(text)*(tonnes?1000:1);if(!Number.isFinite(result))fail('Say one finite numeric value.');return result;
+}
 const field=(path,type='text',min,options)=>({path,type,min,options});
 const textFields=(...paths)=>paths.map(p=>field(p));
 const elements=['Fe','C','Si','Mn','P','S'];
@@ -44,7 +52,7 @@ const gradeFields=[field('grade'),...elements.flatMap(e=>[field('composition_ran
 const trainingFields=[field('grade'),...elements.map(e=>field(e,'number',0)),field('severity','text',null,['none','mild','moderate','severe']),field('sample_type','text',null,['normal','deviated']),field('deviated','number',0,[0,1])];
 function validateField(value,spec){let v=value;
  if(spec.path==='field'&&spec.options){let name=normal(value).toLowerCase();for(const [element,aliases] of Object.entries({C:['carbon','கார்பன்','कार्बन'],Si:['silicon','சிலிக்கான்','सिलिकॉन'],Mn:['manganese','மாங்கனீஸ்','मैंगनीज'],P:['phosphorus','பாஸ்பரஸ்','फॉस्फोरस'],S:['sulphur','sulfur','சல்பர்','सल्फर'],Fe:['iron','இரும்பு','लोहा']})){if(aliases.some(a=>name.includes(a))||new RegExp('^'+element+'(?: |$)','i').test(name)){const bound=/max|maximum|அதிக|अधिकतम/.test(name)?1:/min|minimum|குறைந்த|न्यूनतम/.test(name)?0:null;const candidate=bound===null?element:'composition_ranges.'+element+'.'+bound;if(spec.options.includes(candidate)){value=candidate;break;}}}}
-if(spec.type==='number')v=parseFormNumber(value);else v=normal(value);if(missing(v))fail('This field is required.');if(spec.min!==undefined&&spec.min!==null&&(spec.type==='number'?v<spec.min:v.length<spec.min))fail('Value is below the required minimum.');if(['lotId','heatId'].includes(spec.path))v=normalizeSpokenNumbers(v).replace(/\s+/g,'-').toUpperCase();if(spec.options){const key=x=>String(x).toLowerCase().replace(/[ _-]/g,'');const found=spec.options.find(x=>key(x)===key(v));if(found===undefined)fail('Choose one of: '+spec.options.join(', '));v=found;}return v;}
+if(spec.type==='number')v=parseFormNumber(value,{mass:['receivedKg','targetKg','qtyKg'].includes(spec.path)||/^charge\.\d+\.kg$/.test(spec.path)});else v=normal(value);if(missing(v))fail('This field is required.');if(spec.min!==undefined&&spec.min!==null&&(spec.type==='number'?v<spec.min:v.length<spec.min))fail('Value is below the required minimum.');if(['lotId','heatId'].includes(spec.path))v=normalizeSpokenNumbers(v).replace(/\s+/g,'-').toUpperCase();if(spec.options){const key=x=>String(x).toLowerCase().replace(/[.!?।]+$/u,'').replace(/[ _-]/g,'');const normalized=spec.path==='materialType'&&key(v)==='pickiron'?'pigiron':key(v);const found=spec.options.find(x=>key(x)===normalized);if(found===undefined)fail('Choose one of: '+spec.options.join(', '));v=found;}return v;}
 export function driWarnings(body,lot){const declared=lot?.declared||{},met=100*body.feMetallic/body.feTotal,w=[];const dm=declared.feTotal?100*declared.feMetallic/declared.feTotal:null;if(dm&&Math.abs(met-dm)>5)w.push('Metallization differs from supplier by more than 5 points');if(declared.feTotal&&Math.abs(body.feTotal-declared.feTotal)>3)w.push('Fe total differs from supplier by more than 3 points');if(declared.P&&body.P>2*declared.P)w.push('P exceeds twice supplier value');if(met<70)w.push('Metallization below 70 percent');return w;}
 export function prepareFormAction(text,context,services){
  const def=scopeFormMatch(text,context?.route);if(!def)return null;const loaded=context.loaded||{},selected=context.selected||{};const draft=structuredClone(loaded.voiceForms?.[def.id]||{});let target,summary,lotSnapshot,config,weights;
@@ -56,7 +64,7 @@ export function prepareFormAction(text,context,services){
  const gradeMatch=spoken.match(/\b(SG[- ]IRON|GREY[- ]IRON|LOW[- ]CARBON[- ]STEEL|MEDIUM[- ]CARBON[- ]STEEL|HIGH[- ]CARBON[- ]STEEL)\b/i);if(gradeMatch&&['plan_heat','create_training','create_grade'].includes(def.id))draft.grade=gradeMatch[1].toUpperCase().replaceAll(' ','-');
  if(def.id==='receive_lot')for(const [name,pattern] of Object.entries({STEEL_SCRAP:/steel scrap/i,CI_SCRAP:/ci scrap/i,PIG_IRON:/pig iron/i,DRI:/\bdri\b/i,RETURNS:/\breturns\b/i,FERROALLOY:/ferroalloy/i}))if(pattern.test(spoken))draft.materialType=name;
  if(def.id==='receive_alloy'){const match=spoken.match(/FeSi[- ]?75|HC FeMn|Recarburiser/i);if(match)draft.alloyName=match[0].toLowerCase().startsWith('fesi')?'FeSi-75':match[0].toLowerCase().startsWith('hc')?'HC FeMn':'Recarburiser';}
- if(['receive_lot','receive_alloy'].includes(def.id)){const supplier=command.match(/\b(?:from|supplier)\s+(.+?)(?=\s+(?:truck|cost|at)\b|$)/i);if(supplier)draft.supplier=supplier[1].trim();}
+ if(['receive_lot','receive_alloy'].includes(def.id)){const supplier=normal(text).match(/\b(?:from|supplier)\s+(.+?)(?=\s+(?:truck|cost|at)\b|$)/i);if(supplier)draft.supplier=supplier[1].trim();}
  if(def.id==='issue_invoice'){const customer=command.match(/\bcustomer\s+([A-Za-z0-9_-]+)/i),rate=spoken.match(/\bat\s+(\d+(?:\.\d+)?)/i);if(customer)draft.customerId=customer[1];if(rate)draft.ratePerKg=Number(rate[1]);}
  if(def.id==='dri_entry')for(const [key,label] of Object.entries({feTotal:'(?:fe total|total fe)',feMetallic:'(?:metallic fe|fe metallic)',C:'carbon',S:'(?:sulphur|sulfur)',P:'phosphorus'})){const match=spoken.match(new RegExp('\\b'+label+'\\s+(\\d+(?:\\.\\d+)?)','i'));if(match)draft[key]=Number(match[1]);}
  if(['dri_entry','release_lot','reject_lot'].includes(def.id))setDefault('lotId',idHints[0]?.replace(' ','-')||selected.lotId);

@@ -148,3 +148,11 @@ it.each([['Oru reading ediu.','request_reading','/spectrometer'],['gate check ро
  expect(prepareVoiceAction(text,{route,selected:{heatId:'H-1051'},loaded:{opcConnected:true,heats:[{heatId:'H-1051',status:'PLANNED'}]}})?.id).toBe(id);
 });
 it('does not invent a navigation alias for the observed coupon misrecognition',()=>expect(stage1Page('Spectrometer coupon.')).toBeNull());
+it('short gate-check command uses the existing action; result questions do not',()=>{
+ const context={route:'/premelt-gate',selected:{heatId:'H-1051'},loaded:{heats:[{heatId:'H-1051',status:'PLANNED'}]}};
+ for(const text of ['gate check','Gate check H 1051.','gate check H-1051'])expect(prepareVoiceAction(text,context)).toMatchObject({id:'gate_check',level:'ASK',cancelWindow:true});
+ expect(prepareVoiceAction('gate check result',context)).toBeNull();expect(prepareVoiceAction('what is gate check',context)).toBeNull();
+});
+it('outer action router preserves supplier case/punctuation through read-back',async()=>{
+ const action=prepareVoiceAction('receive truck from Kovai Pig Iron Co.',{route:'/raw-material-stock',loaded:{}},{});const replies=['Pig iron.','Four tons'];await action.collect(async()=>replies.shift(),{});await action.precheck();expect(action.buildSummary().displayText).toContain('Kovai Pig Iron Co.');
+});

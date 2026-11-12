@@ -86,7 +86,7 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
   const choose = (ta, en) => lang === 'ta' ? ta : en;
   const say = (text, spokenText = text, replyLang = lang, timing) => {
     if (!isCurrent()) return;
-    const reply={displayText:text,spokenText};
+    const reply={displayText:text,spokenText,language:replyLang};
     setAnswer(reply);
     console.info('kural_route',{stage:'answer',route:pageContext?.route,scopeCurrent:isCurrent(),speechAborted:speechAbort.current.signal.aborted});
     const ticket=++speechTicket.current;

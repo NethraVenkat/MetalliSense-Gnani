@@ -1,0 +1,21 @@
+{
+  "mocked": true,
+  "providerCalls": 0,
+  "physicalMicrophone": false,
+  "files": [
+    "en-confirm.png",
+    "en-completed.png",
+    "en-cancelled.png",
+    "en-countdown.png",
+    "ta-confirm.png",
+    "ta-completed.png",
+    "ta-cancelled.png",
+    "ta-countdown.png",
+    "hi-confirm.png",
+    "hi-completed.png",
+    "hi-cancelled.png",
+    "hi-countdown.png",
+    "ta-mobile.png",
+    "hi-mobile.png"
+  ]
+}

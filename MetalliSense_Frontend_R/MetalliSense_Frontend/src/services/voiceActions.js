@@ -34,7 +34,7 @@ export function createActionFlow({api,say:speak,capture,onChange=()=>{},setTimer
    const ask=async prompt=>{
     const label=formFieldLabel(prompt,ctx.lang);const wording=ctx.lang==='ta'?label+' — சொல்லுங்க.':ctx.lang==='hi'?label+' — बताइए।':prompt;
     publish({phase:'form',level:action.level,prompt:wording});await say(wording);if(signal.aborted)throw new DOMException('Cancelled','AbortError');
-    const response=await capture({signal,timeout:15000,no_store:false,purpose:'form',page:ctx.page,onState:state=>publish({phase:state==='listening'?'confirm':'form',level:action.level,prompt:wording})});if(signal.aborted)throw new DOMException('Cancelled','AbortError');
+    const response=await capture({signal,timeout:15000,no_store:false,purpose:'form',page:ctx.page,language:ctx.lang==='en'?'en-IN':ctx.lang==='hi'?'hi-IN,en-IN':'ta-IN,en-IN',onState:state=>publish({phase:state==='listening'?'confirm':'form',level:action.level,prompt:wording})});if(signal.aborted)throw new DOMException('Cancelled','AbortError');
     const text=String(typeof response==='string'?response:response.text||'').trim();if(/^(cancel|stop|ரத்து|வேண்டாம்|रद्द)[.!?।]*$/iu.test(text))throw new DOMException('Cancelled','AbortError');
     if(!hasConfirmationWords(text)){const error=Error('No reply — action not done.');error.timeout=true;throw error;}if(/^(skip|விடு|छोड़ो)[.!?।]*$/iu.test(text))throw Object.assign(Error('Required field cannot be skipped.'),{refused:true});return text;
    };

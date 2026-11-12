@@ -13,3 +13,6 @@ it('private capture retains paused digit speech within the unchanged 12-second d
  for(let i=0;i<6;i++){options.onFrame(new Int16Array(3200).fill(1500).buffer);options.onFrame(new Int16Array(16000).buffer);expect(stt).not.toHaveBeenCalled();}
  options.onFrame(new Int16Array(8000).buffer);await work;expect(stt).toHaveBeenCalledTimes(1);expect(stt.mock.calls[0][2]).toMatchObject({no_store:true,purpose:'passcode'});expect(vi.getTimerCount()).toBe(0);
 });
+it('form capture keeps a one-second pause inside a field without changing its deadline',async()=>{
+ vi.useFakeTimers();let options;const stt=vi.fn(async()=>({data:{success:true,text:'four tonnes'}}));const work=captureActionReply({signal:new AbortController().signal,timeout:15000,purpose:'form'},()=>{},{capture:async o=>{options=o;return {stop:vi.fn()};},transcribe:stt});await vi.advanceTimersByTimeAsync(300);options.onFrame(new Int16Array(3200).fill(2000).buffer);options.onFrame(new Int16Array(16000).buffer);expect(stt).not.toHaveBeenCalled();options.onFrame(new Int16Array(3200).fill(2000).buffer);options.onFrame(new Int16Array(24000).buffer);await work;expect(stt).toHaveBeenCalledTimes(1);expect(vi.getTimerCount()).toBe(0);
+});

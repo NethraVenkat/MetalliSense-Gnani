@@ -67,8 +67,9 @@ export function resolveVoiceTarget(text,rows,key,selected,label){
  const selectedRows=rows.filter(r=>selected&&canonical(r[key])===canonical(selected));requireValue(selectedRows.length===1,`Which ${label}? Select one on this page or say its ID.`);return selectedRows[0];
 }
 export function prepareVoiceAction(text,pageContext,services=defaults){
+ const originalText=text;
  text=normalizeCommandText(text);
- const form=prepareFormAction(text,pageContext,services);if(form)return form;
+ const form=prepareFormAction(originalText,pageContext,services);if(form)return form;
  const decision=prepareDecisionAction(text,pageContext,services);if(decision)return decision;
  const canonicalText=nativeActionText(text,actionDefinitions.filter(d=>d.page===pageContext?.route));
  const normalized=normalizeSpokenNumbers(canonicalText).normalize('NFKC').toLowerCase().replace(/[.!?]/g,'').trim();

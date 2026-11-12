@@ -1,3 +1,4 @@
+import {selectFixtureAudioLabel,publicFixtureTranscript} from './stage2-fixtures.mjs';
 import {it,expect,vi,afterEach} from 'vitest';
 import {formDefinitions,prepareFormAction,scopeFormMatch,driWarnings,parseFormNumber} from '../src/services/voiceFormActions';
 import {nativeActions,nativeActionText} from '../src/services/voiceActionLanguages';
@@ -22,3 +23,27 @@ it('numeric parsing never silently drops trailing words',()=>{expect(parseFormNu
 
 it('explicit spoken receive slots avoid redundant required questions',async()=>{const d=formDefinitions.find(d=>d.id==='receive_lot'),{context,services}=setup(d);context.loaded.voiceForms={};const ask=vi.fn();const action=prepareFormAction('receive truck 100 kg steel scrap from Fixture Supplier',context,services);await action.collect(ask,{});expect(ask).not.toHaveBeenCalled();await action.precheck();expect(action.buildSummary({}).displayText).toContain('Fixture Supplier');});
 it('spoken decimal receive quantities survive phrase preparation into readback and service',async()=>{const d=formDefinitions.find(d=>d.id==='receive_lot'),{context,services}=setup(d);context.loaded.voiceForms={};const action=prepareFormAction('receive truck 100.5 kg steel scrap.',context,services),ask=vi.fn();await action.collect(ask,{});expect(ask).not.toHaveBeenCalled();await action.precheck();expect(action.buildSummary({}).displayText).toContain('100.5');await action.execute({user:{role:'Operator',name:'Fixture'}});expect(services.receiveLot.mock.calls[0][0].receivedKg).toBe(100.5);});
+it.each(['receive truck','receive lot','receive the truck','truck vandhuduchu','lot receive pannu'])('receiving alias is page-scoped and unambiguous: %s',text=>{
+ expect(scopeFormMatch(text,'/raw-material-stock')?.id).toBe('receive_lot');expect(scopeFormMatch(text,'/grades')).toBeNull();expect(scopeFormMatch('what is '+text,'/raw-material-stock')).toBeNull();
+});
+it.each([['four tonnes',4000],['1.5 tonnes',1500],['4,000 kilograms',4000],['4000 கிலோ',4000],['4000 किलो',4000]])('mass units preserve kilograms: %s',(text,kg)=>expect(parseFormNumber(text,{mass:true})).toBe(kg));
+it('does not convert a tonne unit in chemistry or accept multiple values',()=>{
+ expect(()=>parseFormNumber('one tonne')).toThrow();expect(()=>parseFormNumber('1 kg 2 kg',{mass:true})).toThrow();
+});
+it('supplier text remains exact and cannot select another action',async()=>{
+ const action=prepareFormAction('receive truck from Kovai Pig Iron Co.',{route:'/raw-material-stock',loaded:{}},{});const replies=['pig iron','four tonnes'];await action.collect(async()=>replies.shift(),{});await action.precheck();expect(action.buildSummary().displayText).toContain('Kovai Pig Iron Co.');expect(action.buildSummary().displayText).toContain('4000');
+});
+it('real Prisma material reply Pick iron. is canonicalized only in the material field',async()=>{
+ const action=prepareFormAction('receive truck',{route:'/raw-material-stock',loaded:{}},{});const replies=['Pick iron.','Four thousand kilograms.'];await action.collect(async()=>replies.shift(),{});await action.precheck();expect(action.buildSummary().displayText).toContain('PIG_IRON');expect(action.buildSummary().displayText).toContain('4000');
+});
+it('Prisma tons is metric in receiving and is read back as kilograms',()=>{
+ expect(parseFormNumber('Four tons',{mass:true})).toBe(4000);expect(()=>parseFormNumber('4 US tons',{mass:true})).toThrow();
+});
+it('observed Received truck. is an exact command variant, not a conversation substring',()=>{
+ expect(scopeFormMatch('Received truck.','/raw-material-stock')?.id).toBe('receive_lot');expect(scopeFormMatch('we received truck','/raw-material-stock')).toBeNull();expect(scopeFormMatch('what is received truck','/raw-material-stock')).toBeNull();
+});
+it('fixture retries never consume private approval and private content is never logged',()=>{
+ expect(selectFixtureAudioLabel('receivedKg ? invalid, try once more',false,'approval')).toBe('weight');expect(selectFixtureAudioLabel('unknown field',false,'approval')).toBe('silence');expect(selectFixtureAudioLabel('Say your passcode',true,'command')).toBe('approval');
+ const privateFixture=Array(6).fill('1').join('');if(publicFixtureTranscript(privateFixture)!=='[response omitted]'||publicFixtureTranscript('receive truck '+privateFixture)!=='[response omitted]')throw Error('Private fixture redaction failed');
+ expect(publicFixtureTranscript('Pig iron.')).toBe('Pig iron.');expect(publicFixtureTranscript('zero one two three four five')).toBe('[response omitted]');
+});

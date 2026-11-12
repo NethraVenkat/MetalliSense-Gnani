@@ -10,3 +10,35 @@ export function formFieldLabel(path,lang='en'){
 export function spokenFormFields(value,lang='en',prefix=''){
  return Object.entries(value||{}).flatMap(([key,v])=>{const path=prefix?prefix+'.'+key:key;if(v!==null&&typeof v==='object'&&Object.keys(v).length)return spokenFormFields(v,lang,path);return formFieldLabel(path,lang)+': '+(v===null?'not provided':typeof v==='object'?JSON.stringify(v):String(v));}).join('; ');
 }
+
+// Presentation-only card copy. Never passed to speech, authorization or audit.
+const cardText={
+ 'voice action details':['குரல் செயல் விவரங்கள்','वॉइस कार्रवाई का विवरण'],
+ 'voice action':['குரல் செயல்','वॉइस कार्रवाई'],
+ 'action review':['செயல் சரிபார்ப்பு','कार्रवाई की समीक्षा'],
+ 'say yes or no':['ஆமா இல்லன்னா இல்லை சொல்லுங்க.','हाँ या नहीं बोलिए।'],
+ 'listening':['கேட்டுக்கிட்டு இருக்கேன்…','सुन रहा हूँ…'],
+ 'completed':['முடிஞ்சது','पूरा हुआ'],
+ 'cancelled':['ரத்து செய்யப்பட்டது','रद्द किया गया'],
+ 'yes':['ஆமா','हाँ'],'no':['இல்லை','नहीं'],'cancel':['ரத்து','रद्द करें'],
+ 'reply time remaining':['பதில் சொல்ல மீதமுள்ள நேரம்','जवाब देने का बाकी समय'],
+ 'seconds remaining':['விநாடிகள் மீதம்','सेकंड बाकी'],
+ 'say your passcode':['உங்கள் அனுமதி குறியீட்டை சொல்லுங்க.','अपना पासकोड बोलिए।'],
+ 'checking approval':['அனுமதியை சரிபார்க்கிறேன்…','अनुमति की जाँच हो रही है…'],
+ 'checking confirmation':['பதிலை சரிபார்க்கிறேன்…','जवाब की जाँच हो रही है…'],
+ 'starting confirmation microphone':['பதில் கேட்க மைக்கை தொடங்குறேன்…','जवाब के लिए माइक शुरू हो रहा है…'],
+ 'no reply — action not done':['பதில் வரல — செயல் செய்யல.','जवाब नहीं मिला — कार्रवाई नहीं हुई।'],
+ 'approval refused':['அனுமதி கிடைக்கல.','अनुमति नहीं मिली।'],
+ 'confirmation not understood; action not executed':['பதில் புரியல — செயல் செய்யல.','जवाब समझ नहीं आया — कार्रवाई नहीं हुई।'],
+ 'mic not available — tap yes or no':['மைக் கிடைக்கல — ஆமா அல்லது இல்லை தொடுங்க.','माइक उपलब्ध नहीं — हाँ या नहीं दबाइए।'],
+};
+export function voiceCardText(value,lang='en'){
+ const text=String(value??'');const index=lang==='ta'?0:lang==='hi'?1:-1;if(index<0)return text;
+ const key=text.trim().replace(/[…!?.।]+$/u,'').toLowerCase();
+ const exact=cardText[key]?.[index];if(exact)return exact;
+ const word=text.match(/^Say (DELETE|RESET|CLEAR|OVERRIDE)[.!?]*$/i)?.[1]?.toUpperCase();
+ return word?(lang==='ta'?word+' சொல்லுங்க.':word+' बोलिए।'):text;
+}
+export function voiceCardExecuting(seconds,lang='en'){
+ return lang==='ta'?`${seconds} விநாடியில செய்கிறேன்`:lang==='hi'?`${seconds} सेकंड में करेंगे`:`Executing in ${seconds}s`;
+}
