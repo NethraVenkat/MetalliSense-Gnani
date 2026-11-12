@@ -36,7 +36,7 @@ it('voice pause suspends advancement, continue restores it, boundaries do not re
  tour.control('voice-pause');expect(tour.snapshot().paused).toBe(true);expect(tour.snapshot().autoAdvancePaused).toBe(true);
  tour.control('voice-continue');expect(tour.snapshot().paused).toBe(false);expect(tour.snapshot().autoAdvancePaused).toBe(false);expect(calls).toHaveLength(1);
  tour.control('user-scroll');calls[0].resolve();await Promise.resolve();tour.control('voice-pause');tour.control('voice-continue');await vi.advanceTimersByTimeAsync(0);expect(tour.snapshot().index).toBe(1);
- tour.control('select-step',21);const count=calls.length;tour.control('voice-next');expect(tour.snapshot().active).toBe(true);expect(calls).toHaveLength(count);tour.stop();expect(calls.at(-1).t.signal.aborted).toBe(true);
+ tour.control('select-step',voiceTourSteps().length-1);const count=calls.length;tour.control('voice-next');expect(tour.snapshot().active).toBe(true);expect(calls).toHaveLength(count);tour.stop();expect(calls.at(-1).t.signal.aborted).toBe(true);
 });
 function micFixture(extra={}){
  const session={start:vi.fn(),stop:vi.fn()};let options;

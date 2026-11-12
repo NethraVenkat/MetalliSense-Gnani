@@ -21,8 +21,10 @@ ELEMENT_MAX_ADDITION = {
     "C": 1.5,
     "Si": 1.5,
     "Mn": 1.0,
-    "P": 0.05,
-    "S": 0.05,
+    # The application's approved additive inventory has no P/S source.
+    # Propose executable candidates; acceptance independently rejects P/S.
+    "P": 0.0,
+    "S": 0.0,
 }
 
 # Relative cost per unit addition, used purely to bias the policy toward
@@ -63,7 +65,9 @@ def constraint_violations(additions: Dict[str, float]) -> Dict[str, str]:
     for el in ELEMENTS:
         val = float(additions.get(el, 0.0))
         limit = ELEMENT_MAX_ADDITION.get(el, MAX_ADDITION_PERCENTAGE)
-        if abs(val) >= limit - 1e-9:
+        if limit == 0 and val != 0:
+            violations[el] = "No approved additive source"
+        elif limit > 0 and abs(val) >= limit - 1e-9:
             violations[el] = f"Hit max single-pass addition limit ({limit}%)"
     total = sum(abs(float(v)) for v in additions.values())
     if total >= MAX_TOTAL_ADDITION - 1e-9:

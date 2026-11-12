@@ -112,7 +112,7 @@ const LayoutBody = () => {
           tooltip:{maxWidth:'calc(100vw - 24px)',padding:0,borderRadius:16},
         }}
       />}
-      {voiceTour.visible&&voiceTour.state.active&&voiceTour.state.ready&&!voiceTour.state.targetMissing&&<TourSpotlight target={voiceTour.state.step.id==='handover'?voiceTour.state.step.target:'[data-tour="page-shell"]'} layoutKey={location.key} />}
+      {voiceTour.visible&&voiceTour.state.active&&voiceTour.state.ready&&!voiceTour.state.targetMissing&&<TourSpotlight target={'[data-tour="page-shell"]'} layoutKey={location.key} />}
       <Sidebar setRunTour={setRunTour} onStartTour={voiceTour.visible?()=>voiceTour.control('start',lang):undefined} />
       <div data-tour="page-shell" className={`flex min-w-0 flex-1 flex-col overflow-hidden ${voiceTour.state.active?'md:ml-72':'ml-72'}`}>
         <TopBar title={title} tourGuide={voiceTour.visible&&voiceTour.state.active?<VoiceTourCard

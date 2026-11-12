@@ -107,7 +107,7 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
   // Run both modes against real component mounts without local env overrides.
   for(const flag of ['true','false']){
    const outDir=`node_modules/.cache/f13-voice-${flag}`;
-   await build({root,configFile:false,envFile:false,logLevel:'error',plugins:[fixturePlugin],define:{'import.meta.env.VITE_VOICE_EVERYWHERE':JSON.stringify(flag),'import.meta.env.VITE_VOICE_TOUR':'"true"','import.meta.env.VITE_HANDOVER':'"true"','import.meta.env.VITE_SHOW_VOICE_PANEL':'"true"','import.meta.env.VITE_MOCK_MODE':'"true"','import.meta.env.VITE_TRANSLITERATE':'"false"','import.meta.env.VITE_VOICE_CLARITY':'"false"'},build:{outDir,emptyOutDir:false,target:'esnext',rollupOptions:{input:root+'/tests/fixtures/voice-everywhere.html'}}});
+   await build({root,configFile:false,envFile:false,logLevel:'error',plugins:[fixturePlugin],define:{'import.meta.env.VITE_VOICE_EVERYWHERE':JSON.stringify(flag),'import.meta.env.VITE_VOICE_TOUR':'"true"','import.meta.env.VITE_SHOW_VOICE_PANEL':'"true"','import.meta.env.VITE_MOCK_MODE':'"true"','import.meta.env.VITE_TRANSLITERATE':'"false"','import.meta.env.VITE_VOICE_CLARITY':'"false"'},build:{outDir,emptyOutDir:false,target:'esnext',rollupOptions:{input:root+'/tests/fixtures/voice-everywhere.html'}}});
    const hosted=await preview({root,configFile:false,logLevel:'error',build:{outDir},preview:{port:0,host:'127.0.0.1'}});
    server={httpServer:hosted.httpServer,close:()=>new Promise(resolve=>{hosted.httpServer.closeAllConnections();hosted.httpServer.close(resolve);})};
    const base=`http://127.0.0.1:${server.httpServer.address().port}`;
@@ -182,7 +182,7 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
     for(const language of ['ta','hi','en']){
      await page.getByLabel('Voice language',{exact:true}).selectOption(language);
      await page.evaluate(()=>window.spoken=[]);
-     await startTour.click();await expect.poll(()=>card.innerText()).toContain('01 / 22');
+     await startTour.click();await expect.poll(()=>card.innerText()).toContain('01 / 21');
      expect(await card.count()).toBe(1);expect(await card.getAttribute('data-guide-layout')).toBe('toolbar');expect(await page.getByRole('button',{name:/focus view/i}).count()).toBe(0);expect(await page.locator('[data-tour="sidebar"]').count()).toBe(1);expect(await page.getByText('Fixture connection',{exact:true}).count()).toBe(0);expect(await voicePanel.isVisible()).toBe(false);
      expect(await page.getByText('Demo transcripts',{exact:true}).isVisible()).toBe(false);
      await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
@@ -225,7 +225,7 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
       expect(await page.getByRole('button',{name:/focus view/i}).count()).toBe(0);
       const calls=await page.evaluate(()=>window.spoken.length);
       await card.evaluate(node=>window.headerGuide=node);
-      const stepsButton=page.getByRole('button',{name:'Tour steps, step 1 of 22',exact:true});
+      const stepsButton=page.getByRole('button',{name:'Tour steps, step 1 of 21',exact:true});
       await stepsButton.focus();await page.keyboard.press('Enter');
       const list=page.getByRole('dialog',{name:'Tour steps',exact:true});await expect.poll(()=>list.count()).toBe(1);
       expect(await list.locator('[aria-current="step"]').evaluate(node=>node===document.activeElement)).toBe(true);
@@ -235,7 +235,7 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
       await stepsButton.click();await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
       await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/supplier-scorecard');await expect.poll(()=>page.evaluate(()=>window.spoken.length)).toBe(calls+1);
       expect(await card.evaluate(node=>node===window.headerGuide)).toBe(true);
-      await page.getByRole('button',{name:'Tour steps, step 4 of 22',exact:true}).click();
+      await page.getByRole('button',{name:'Tour steps, step 4 of 21',exact:true}).click();
       expect(await list.getByRole('button',{name:'1. Dashboard, visited',exact:true}).count()).toBe(1);
       expect(await list.getByRole('button',{name:'2. Spectrometer',exact:true}).count()).toBe(1);
       await page.keyboard.press('Home');await page.keyboard.press('Enter');await expect.poll(()=>page.getByTestId('route').innerText()).toBe('/dashboard');
@@ -253,24 +253,20 @@ it('one persistent panel, selection unregister, late STT/answer isolation, HOLD 
     await page.getByRole('button',{name:'Next tour step',exact:true}).waitFor();
     await page.evaluate(()=>window.persistentTourCard=document.querySelector('[aria-label="Voice onboarding tour"]'));
     const stableCardBox=await card.boundingBox();
-    for(let step=2;step<=22;step++){
-     await page.getByRole('button',{name:'Next tour step',exact:true}).click();await expect.poll(()=>card.innerText()).toContain(`${String(step).padStart(2,'0')} / 22`);
+    for(let step=2;step<=21;step++){
+     await page.getByRole('button',{name:'Next tour step',exact:true}).click();await expect.poll(()=>card.innerText()).toContain(`${String(step).padStart(2,'0')} / 21`);
      // Wait for each requested page before advancing to exercise the real router.
-     const route=['/dashboard','/spectrometer','/grades','/supplier-scorecard','/raw-material-stock','/yard-inspection','/premelt-gate','/premelt-gate','/anomaly','/recommendation','/rl-optimizer','/full-analysis','/agent','/energy','/mechanical-properties','/sales','/inventory-forecast','/cost-analysis','/synthetic','/training-data','/semantic-search'][step-1];
+     const route=['/dashboard','/spectrometer','/grades','/supplier-scorecard','/raw-material-stock','/yard-inspection','/premelt-gate','/anomaly','/recommendation','/rl-optimizer','/full-analysis','/agent','/energy','/mechanical-properties','/sales','/inventory-forecast','/cost-analysis','/synthetic','/training-data','/semantic-search'][step-1];
      if(route)await expect.poll(()=>page.getByTestId('route').innerText()).toBe(route);
      expect(await page.evaluate(()=>window.persistentTourCard===document.querySelector('[aria-label="Voice onboarding tour"]'))).toBe(true);
-     if(step<22){await assertSpotlight(step===8?'[aria-label="Shift handover"]':'[data-tour="page-shell"]');}
-     if(step===8){
-      await page.locator('[aria-label="Shift handover"]').evaluate(node=>{node.style.marginTop='140px';});
-      await page.locator('main').dispatchEvent('scroll');await assertSpotlight('[aria-label="Shift handover"]');
-     }
+     if(step<21){await assertSpotlight('[data-tour="page-shell"]');}
 
      const routeBox=await card.boundingBox();expect(routeBox.x).toBe(stableCardBox.x);expect(routeBox.width).toBe(stableCardBox.width);expect(routeBox.y).toBe(stableCardBox.y);
     }
     expect(await page.evaluate(()=>localStorage.getItem('metallisense.voice.tour.done'))).toBe('true');
     await page.getByRole('button',{name:'Close tour',exact:true}).click();
     await page.getByRole('button',{name:'Mute voice',exact:true}).click();await page.evaluate(()=>window.spoken=[]);
-    await startTour.click();await expect.poll(()=>card.count()).toBe(1);expect(await card.innerText()).toContain('01 / 22');expect(await page.evaluate(()=>window.spoken)).toEqual([]);
+    await startTour.click();await expect.poll(()=>card.count()).toBe(1);expect(await card.innerText()).toContain('01 / 21');expect(await page.evaluate(()=>window.spoken)).toEqual([]);
     await page.getByRole('link',{name:'/energy',exact:true}).click();await expect.poll(()=>card.count()).toBe(0);
     await page.getByRole('button',{name:'Unmute voice',exact:true}).click();await startTour.click();
     await expect.poll(()=>page.evaluate(()=>Boolean(window.lastTourSignal))).toBe(true);

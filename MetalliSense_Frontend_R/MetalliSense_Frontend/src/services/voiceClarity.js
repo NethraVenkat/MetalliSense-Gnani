@@ -77,12 +77,3 @@ export function clarityReply(intent,heat,params,lang,fallback) {
   }
   return clarityText(fallback,lang);
 }
-
-export function clarityHandoverSummary(checks,lang='ta',register=spokenRegister()) {
-  const issues=checks.filter(check=>check.severity!=='green');
-  if(!issues.length) return sentences([choose(lang,'முரண்பாடுகள் இல்லை','कोई अंतर नहीं','No mismatches found')],lang,register);
-  return sentences(issues.flatMap(check=>[
-    `Heat ${check.heatId}, ${check.decision}`,
-    choose(lang,'கூற்றை திரையில் சரிபார்க்கவும்','बात स्क्रीन पर जाँचें','Check the claim on screen'),
-  ]),lang,register);
-}

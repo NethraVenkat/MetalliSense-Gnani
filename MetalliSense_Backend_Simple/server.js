@@ -307,9 +307,17 @@ opcRouter.post('/opc-disconnect', async (req, res) => {
 });
 
 opcRouter.post('/opc-reading', async (req, res) => {
-  const { metalGrade, deviationElements = [], deviationPercentage = 10 } = req.body;
+  const { deviationElements = [], deviationPercentage = 10 } = req.body;
+  // The plain Spectrometer button requests the instrument's current grade.
+  // A fresh simulator has no grade yet: use its first actual configured spec.
+  const metalGrade = req.body.metalGrade || opcuaService.getOPCStatus().server.currentGrade || gradeStore.getAllSpecs()[0]?.grade;
   if (!metalGrade) return res.status(400).json({ status: 'fail', message: 'Metal grade is required' });
   const result = await opcuaService.requestSpectrometerReading(metalGrade, deviationElements, deviationPercentage);
+  if (result.success) {
+    const reading = { ...result.data, _id: String(nextReadingId++), createdAt: new Date() };
+    readings.unshift(reading);
+    result.data = reading;
+  }
   res.status(result.success ? 200 : 500).json(result.success
     ? { status: 'success', data: { reading: result.data } }
     : { status: 'error', message: result.error });
@@ -336,7 +344,7 @@ opcRouter.get('/', (req, res) => {
 
 opcRouter.post('/', (req, res) => {
   const reading = { _id: String(nextReadingId++), ...req.body, createdAt: new Date() };
-  readings.push(reading);
+  readings.unshift(reading);
   res.status(201).json({ status: 'success', data: { data: reading } });
 });
 

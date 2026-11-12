@@ -63,13 +63,6 @@ const script=[
     "en": "This is the pre-melt gate. It shows go, warn or hold before melting. On hold, melting can't start, and I'll alert you right away."
   },
   {
-    "number": 8,
-    "label": "Shift Handover",
-    "ta": "இது ஷிஃப்ட் ஹேண்டோவர். போன ஷிஃப்ட்ல சொன்னது இங்கே வரும், கேட் நிலையோட சரிபாக்கும்.",
-    "hi": "यह शिफ्ट हैंडओवर है। पिछली शिफ्ट की बातें यहाँ आती हैं और गेट स्टेटस से मिलाई जाती हैं।",
-    "en": "This is the shift handover. It shows what the last shift said and checks it against the gate status."
-  },
-  {
     "number": 9,
     "label": "Composition Deviation",
     "ta": "இது காம்போசிஷன் டிவியேஷன். மெட்டல் அளவு லிமிட்ல இருந்து எவ்வளவு மாறியிருக்குன்னு காட்டும்.",
@@ -169,15 +162,13 @@ const script=[
   }
 ];
 export const tourFinish=Object.fromEntries(['ta','hi','en'].map(lang=>[lang,script.at(-1)[lang]]));
-export function voiceTourSteps(handover=import.meta.env?.VITE_HANDOVER==='true') {
-  const order=['dashboard','spectrometer','grades','supplier-scorecard','raw-material-stock','yard-inspection','premelt-gate','handover','anomaly','recommendation','rl-optimizer','full-analysis','agent','energy','mechanical-properties','sales','inventory-forecast','cost-analysis','synthetic','training-data','semantic-search','finish'];
+export function voiceTourSteps() {
+  const order=['dashboard','spectrometer','grades','supplier-scorecard','raw-material-stock','yard-inspection','premelt-gate','anomaly','recommendation','rl-optimizer','full-analysis','agent','energy','mechanical-properties','sales','inventory-forecast','cost-analysis','synthetic','training-data','semantic-search','finish'];
   return order.flatMap((id,n)=>{
-    if(id==='handover'&&!handover)return [];
-    const route=id==='finish'?null:id==='handover'?'/premelt-gate':'/'+id;
+    const route=id==='finish'?null:'/'+id;
     const texts=Object.fromEntries(['ta','hi','en'].map(lang=>[lang,script[n][lang]]));
-    return [{id,route,target:id==='grades'?'[data-tour-page="grades"]':id==='handover'?'[aria-label="Shift handover"]':'main',displayName:id==='handover'?'Shift handover':id==='finish'?'Finish':tourDisplayNames[route],
-      pageName:route?voicePage(route).pageName:{ta:'டூர் முடிஞ்சது',hi:'टूर पूरा हुआ',en:'Tour complete'},texts,
-      ...(id==='handover'?{target:'[aria-label="Shift handover"]'}:{})}];
+    return [{id,route,target:id==='grades'?'[data-tour-page="grades"]':'main',displayName:id==='finish'?'Finish':tourDisplayNames[route],
+      pageName:route?voicePage(route).pageName:{ta:'டூர் முடிஞ்சது',hi:'टूर पूरा हुआ',en:'Tour complete'},texts}];
   });
 }
 export const tourStepText=(step,lang)=>lang==='ta'&&approvedTourAssetsEnabled()?(approvedTamilClip(step.id)?.spokenText||step.texts[lang]):step.texts[lang];

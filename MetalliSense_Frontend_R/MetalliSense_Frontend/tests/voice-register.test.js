@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { clarityGateSpeech,clarityText,nativeSpeech,clarityHandoverSummary } from '../src/services/voiceClarity';
+import { clarityGateSpeech,clarityText,nativeSpeech } from '../src/services/voiceClarity';
 import { decimalDigits,registerLexicon,spokenRegister,colloquialElements } from '../src/services/voiceRegister';
 import { gateReasonAnswer,heatVoiceAnswer } from '../src/services/voiceGateAnswers';
 import { hindiHeatAnswer } from '../src/services/hindiVoice';
@@ -60,7 +60,7 @@ it.each([['23','two three'],['34','three four'],['45','four five'],['52','five t
 it.each(['ta','hi','en'])('all builders short, repeat-safe, max two reasons and read-only %s',lang=>{
  const before=JSON.stringify(heat);const extra=structuredClone(heat);extra.gateResult.checks.push({id:'stock',status:'FAIL',details:[{status:'FAIL'}]});
  const texts=[clarityGateSpeech(extra,lang,'reasons','colloquial'),clarityGateSpeech(heat,lang,'status','colloquial'),clarityGateSpeech(heat,lang,'alert','colloquial'),
- clarityGateSpeech({...heat,gateResult:{decision:'GO',checks:[]}},lang,'reasons','colloquial'),clarityHandoverSummary([{heatId:'H-1053',decision:'HOLD',severity:'red'}],lang,'colloquial')];
+ clarityGateSpeech({...heat,gateResult:{decision:'GO',checks:[]}},lang,'reasons','colloquial')];
  for(const text of texts){for(const sentence of text.split(/[.।]/).filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);expect(clarityText(text,lang,'colloquial')).toBe(text);expect(text).toContain('one zero five three');}
  expect(texts[0]).toContain(lang==='ta'?'மீதி ஸ்கிரீன்ல பாருங்க':lang==='hi'?'बाकी जानकारी स्क्रीन पर देखें':'See the rest on screen.');
  expect(JSON.stringify(heat)).toBe(before);
@@ -86,7 +86,6 @@ it.each(['ta','hi','en'])('formal outputs retain facts and authored retry punctu
  expect({
   reasons:clarityGateSpeech(heat,lang,'reasons','formal'),status:clarityGateSpeech(heat,lang,'status','formal'),alert:clarityGateSpeech(heat,lang,'alert','formal'),
   warn:clarityGateSpeech(warn,lang,'reasons','formal'),go:clarityGateSpeech({...heat,gateResult:{decision:'GO',checks:[]}},lang,'reasons','formal'),
-  handover:clarityHandoverSummary([{heatId:'H-1053',decision:'HOLD',severity:'red'}],lang,'formal'),
   summary:spokenShiftSummary(buildShiftSummary(rows),lang,{clarity:true,register:'formal'}),
   native:nativeSpeech('Heat H-1053 Lot PIG-1053 0.50%',lang,'formal'),
   blocked:clarityText('Please approve on screen',lang,'formal'),retry:clarityText('Could not hear you. Tap a suggestion below.',lang,'formal'),

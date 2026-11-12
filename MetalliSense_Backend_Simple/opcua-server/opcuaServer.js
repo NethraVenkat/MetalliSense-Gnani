@@ -54,7 +54,7 @@ class SpectrometerOPCUAServer {
   async initialize() {
     try {
       this.server = new OPCUAServer({
-        port: 4334,
+        port: Number(process.env.SPECTROMETER_OPCUA_PORT) || 4334,
         resourcePath: '/MetalliSense/Spectrometer',
         buildInfo: {
           productName: 'MetalliSense Spectrometer Simulator',

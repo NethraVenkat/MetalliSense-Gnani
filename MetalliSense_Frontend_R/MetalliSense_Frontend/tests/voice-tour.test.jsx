@@ -23,7 +23,7 @@ it.each(['ta','hi','en'])('tour and help preserve authored sentence boundaries: 
  }
  for(const page of voicePages)expect(clarityText(pageHelp(page,lang),lang,'colloquial')).not.toMatch(/\.\s+[a-z]/);
 });
-const reviewed=JSON.parse(readFileSync('tests/fixtures/f14-v4-script.json','utf8'));
+const reviewed=JSON.parse(readFileSync('tests/fixtures/f14-v4-script.json','utf8')).filter(row=>row.label!=='Shift Handover');
 const approvedTamilB=[ ['\u0b9f\u0bbe\u0bb7\u0bcd\u0baa\u0bcb\u0bb0\u0bcd\u0b9f\u0bc1',"dashboard"],
  ['\u0bb8\u0bcd\u0baa\u0bc6\u0b95\u0bcd\u0b9f\u0bcd\u0bb0\u0bcb\u0020\u0bae\u0bc0\u0b9f\u0bcd\u0b9f\u0bb0\u0bcd',"spectrometer"],
  ['\u0b95\u0bbf\u0bb0\u0bc7\u0b9f\u0bc1\u0020\u0bb8\u0bcd\u0baa\u0bc6\u0b95\u0bcd\u0bb8\u0bcd',"grade specs"],
@@ -79,10 +79,10 @@ it('Tamil overrides match literal whole phrases once without changing punctuatio
  expect(tourSpokenText(step,'ta',overrides)).toBe("cost analysis. cost அனாலிசிஸ்ல. 'ஹீட் one zero five three'?");
  expect(step.texts.ta).toContain('காஸ்ட் அனாலிசிஸ்.');
 });
-it.each(latinSpeech)('corrected speech snapshot $clipId leaves visible v4 text intact',row=>{
+it.each(latinSpeech.filter(row=>row.id!=='handover'))('corrected speech snapshot $clipId leaves visible v4 text intact',row=>{
  const step=voiceTourSteps(true).find(step=>step.id===row.id),before=structuredClone(step);
  expect(tourSpokenText(step,row.lang)).toBe(row.after);expect(step).toEqual(before);
- expect(tourStepText(step,row.lang)).toBe(reviewed.find(item=>item.number===voiceTourSteps(true).findIndex(item=>item.id===row.id)+1)[row.lang]);
+ expect(tourStepText(step,row.lang)).toBe(reviewed[voiceTourSteps(true).findIndex(item=>item.id===row.id)][row.lang]);
 });
 it('explicit Tamil inflections retain grammar without rewriting unrelated stems or எவ்வளவு',()=>{
  const text='எலிமென்ட்டும் ஹீட்டுக்கும் டெஸ்ட்க்கு டெஸ்ட்க்காக காஸ்டிங்கோட ஸ்க்ராப் லாட்டோட எவ்வளவு';
@@ -130,7 +130,7 @@ it.each(['start melting','start tour approve','start melting tour','approve ட�
 it('step order and optional handover',()=>{
  const plain=voiceTourSteps(false),full=voiceTourSteps(true);
  expect(plain.map(step=>step.route)).toEqual(['/dashboard','/spectrometer','/grades','/supplier-scorecard','/raw-material-stock','/yard-inspection','/premelt-gate','/anomaly','/recommendation','/rl-optimizer','/full-analysis','/agent','/energy','/mechanical-properties','/sales','/inventory-forecast','/cost-analysis','/synthetic','/training-data','/semantic-search',null]);
- expect(full[7]).toMatchObject({id:'handover',route:'/premelt-gate',target:'[aria-label="Shift handover"]'});
+ expect(full).toEqual(plain); expect(full.some(step=>step.id==='handover')).toBe(false);
 });
 it.each(['ta','hi','en'])('complete script, truthful tips, native scripts and finish %s',lang=>{
  for(const step of voiceTourSteps(true)){
@@ -190,7 +190,7 @@ it('mute keeps all step text and navigation without speech; storage denial is sa
 });
 it('tour step card is compact, accessible, progress-aware and contains its exact script',async()=>{
  const f=fixture();f.tour.control('start','ta');const html=renderToStaticMarkup(<VoiceTourCard state={f.tour.snapshot()} control={()=>{}}/>);
- expect(html).toContain('Step 1 of 22');expect(html).toContain('Voice onboarding tour');expect(html).not.toContain('aria-modal');
+ expect(html).toContain('Step 1 of 21');expect(html).toContain('Voice onboarding tour');expect(html).not.toContain('aria-modal');
  for(const label of ['Pause tour narration','Previous tour step','Next tour step','Close tour','Tour progress','aria-valuenow="1"','Tour language','ஆடியோ தயாராகிறது'])expect(html).toContain(label);
  expect(html).toContain(f.tour.snapshot().text);
 });
@@ -362,8 +362,8 @@ it.each(['loading','playing','paused','finished','muted','unavailable'])('emblem
 it('direct step selection validates indices, cancels stale speech and records only ready visits',async()=>{
  const f=fixture();f.tour.control('start','en');const old=f.speak.mock.lastCall[3];
  expect(f.tour.snapshot().visited).toEqual(['dashboard']);
- for(const index of [-1,22,1.5,'2'])expect(f.tour.control('select-step',index)).toBe(false);
+ for(const index of [-1,21,1.5,'2'])expect(f.tour.control('select-step',index)).toBe(false);
  f.tour.control('select-step',3);expect(old.signal.aborted).toBe(true);expect(old.isCurrent()).toBe(false);expect(f.tour.snapshot().visited).toEqual(['dashboard']);
  f.arrive();expect(f.tour.snapshot()).toMatchObject({index:3,ready:true});expect(f.tour.snapshot().visited).toEqual(['dashboard','supplier-scorecard']);
- expect(f.tour.snapshot().steps).toHaveLength(22);expect(f.tour.snapshot().steps.map(step=>step.id)).not.toContain('charge-optimizer');f.tour.dispose();
+ expect(f.tour.snapshot().steps).toHaveLength(21);expect(f.tour.snapshot().steps.map(step=>step.id)).not.toContain('charge-optimizer');f.tour.dispose();
 });

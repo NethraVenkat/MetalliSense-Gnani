@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { clarityGateSpeech, clarityText, nativeSpeech, clarityHandoverSummary } from '../src/services/voiceClarity';
+import { clarityGateSpeech, clarityText, nativeSpeech } from '../src/services/voiceClarity';
 import { createTranscriptHandler } from '../src/services/voiceTranscript';
 import { gateReasonAnswer, heatVoiceAnswer, spokenGateReasonAnswer } from '../src/services/voiceGateAnswers';
 import { hindiHeatAnswer } from '../src/services/hindiVoice';
@@ -35,7 +35,7 @@ it.each(['ta','hi','en'])('caps two reasons with screen remainder %s',lang=>{
  const spoken=clarityGateSpeech(extra,lang);expect(spoken).toContain(lang==='ta'?'மீதி ஸ்கிரீன்ல பாருங்க':lang==='hi'?'बाकी जानकारी स्क्रीन पर देखें':'See the rest on screen.');
  expect(spoken).not.toContain('extra reason');
 });
-it.each(['ta','hi','en'])('status warn go blocked retry and handover are short %s',lang=>{
+it.each(['ta','hi','en'])('status warn go blocked retry are short %s',lang=>{
  const texts=[clarityGateSpeech(heat,lang,'status'),clarityGateSpeech(heat,lang,'alert'),
  clarityGateSpeech({...heat,gateResult:{decision:'GO',checks:[]}},lang),
  clarityGateSpeech({...heat,gateResult:{decision:'WARN',checks:[{id:'residuals',status:'WARN',details:[{element:'Cu',value:.27,min:0,max:.3,status:'WARN'}]}]}},lang),
@@ -47,14 +47,6 @@ it.each(['ta','hi','en'])('status warn go blocked retry and handover are short %
 it('WARN keeps in-range risk, not a false comparison',()=>{
  const spoken=clarityGateSpeech({...heat,gateResult:{decision:'WARN',checks:[{id:'residuals',status:'WARN',details:[{element:'Cu',value:.27,min:0,max:.3,status:'WARN'}]}]}},'hi');
  expect(spoken).toContain('सीमा के पास');expect(spoken).not.toContain('ज़्यादा');
-});
-it.each(['ta','hi','en'])('handover spoken summary retains exact heat/gate fact %s',lang=>{
- const checks=[{heatId:'H-1053',decision:'HOLD',severity:'red'},{heatId:'H-1052',decision:'GO',severity:'green'}];
- const before=JSON.stringify(checks);const spoken=clarityHandoverSummary(checks,lang);
- expect(spoken).not.toContain(lang==='ta'?'ஐம்பத்து இரண்டு':lang==='hi'?'बावन':'fifty-two');
- expect(spoken).toContain(lang==='ta'?'ஹோல்ட்':lang==='hi'?'होल्ड':'HOLD');
- expect(JSON.stringify(checks)).toBe(before);
- for(const sentence of spoken.split(/[.।]/).filter(Boolean))expect(sentence.trim().split(/\s+/).length).toBeLessThanOrEqual(8);
 });
 it('Hindi display is unchanged by clarity speech creation',()=>{
  const display=hindiHeatAnswer('gate_reason',heat,{});clarityGateSpeech(heat,'hi');

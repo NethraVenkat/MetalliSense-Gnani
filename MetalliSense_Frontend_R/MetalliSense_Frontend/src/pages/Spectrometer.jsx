@@ -34,9 +34,9 @@ const Spectrometer = () => {
     setLoading(true);
     try {
       const response = await getAllReadings();
-      console.log("Spectrometer readings response:", response.data);
-      const data = Array.isArray(response.data.data) ? response.data.data : [];
-      console.log("Extracted readings:", data);
+      // Full backend wraps collections in data.data; the mock returns data.
+      const payload = response.data?.data;
+      const data = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
       setReadings(data);
       setLatestReading(data[0] || null);
     } catch (error) {
@@ -50,9 +50,9 @@ const Spectrometer = () => {
   const handleRequestReading = async () => {
     setRequesting(true);
     try {
-      const response = await requestOPCReading();
+      await requestOPCReading();
       toast.success("OPC reading received");
-      fetchReadings();
+      await fetchReadings();
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Failed to request OPC reading"
@@ -165,9 +165,7 @@ const Spectrometer = () => {
             {Object.entries(latestReading.composition || latestReading)
               .filter(
                 ([key]) =>
-                  !key.startsWith("_") &&
-                  key !== "timestamp" &&
-                  key !== "createdAt"
+                  typeof (latestReading.composition || latestReading)[key] === 'number'
               )
               .map(([element, value]) => (
                 <div key={element} className="p-4 bg-dark-50 rounded-lg">

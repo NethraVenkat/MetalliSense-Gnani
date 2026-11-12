@@ -8,14 +8,13 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).parents[1]/'app'))
 import httpx
 from app.copilot.gnani_client import GnaniClient, _silent_wav
-from app.copilot import gnani_batch
 from app.copilot import provider_calls as gate
 from app.copilot.evon_explainer import _EvonCompletions
 from copilot.wake_check import WakeChecker
 from copilot import provider_calls as alternate_gate
 
 
-def test_stt_tts_transliterate_handover_wake_share_one_provider_lease(monkeypatch,tmp_path):
+def test_stt_tts_transliterate_wake_share_one_provider_lease(monkeypatch,tmp_path):
     for key,value in {'GNANI_MOCK':'false','GNANI_API_KEY':'synthetic-key','GNANI_BASE_URL':'https://api.vachana.ai','GNANI_TTS_MODEL':'timbre-v3.0','GNANI_TTS_VOICE':'Kalpana','GNANI_TTS_CACHE_DIR':str(tmp_path)}.items():monkeypatch.setenv(key,value)
     assert gate._state is alternate_gate._state
     client=GnaniClient();client.mock=False;client.tts_cache_dir=tmp_path
@@ -37,9 +36,8 @@ def test_stt_tts_transliterate_handover_wake_share_one_provider_lease(monkeypatc
     monkeypatch.setattr('app.copilot.provider_calls._state.session.post',post)
     sleep=asyncio.sleep
     async def short_sleep(_):await sleep(0)
-    monkeypatch.setattr(gnani_batch.asyncio,'sleep',short_sleep)
     async def request(self,method,url,**kwargs):
-        enter('handover' if '/batch/' in url or 'amazonaws' in url else 'transliterate')
+        enter('transliterate')
         try:
             await sleep(.02)
             if url.endswith('/files'):data={'data':[{'transcript_url':'https://x.s3.amazonaws.com/a'}]}
@@ -50,9 +48,9 @@ def test_stt_tts_transliterate_handover_wake_share_one_provider_lease(monkeypatc
         finally:leave()
     monkeypatch.setattr(httpx.AsyncClient,'request',request)
     async def run():
-        await asyncio.gather(asyncio.to_thread(client.transcribe,audio),asyncio.to_thread(client.synthesize,'synthetic unique','ta',allow_fallback=False),client.transliterate(audio),gnani_batch.GnaniBatchClient().transcribe(audio,1,job_id='existing'),asyncio.to_thread(WakeChecker.send,audio),asyncio.to_thread(_EvonCompletions('https://synthetic.invalid','',False).create,'synthetic-model',[{'role':'user','content':'synthetic'}]))
+        await asyncio.gather(asyncio.to_thread(client.transcribe,audio),asyncio.to_thread(client.synthesize,'synthetic unique','ta',allow_fallback=False),client.transliterate(audio),asyncio.to_thread(WakeChecker.send,audio),asyncio.to_thread(_EvonCompletions('https://synthetic.invalid','',False).create,'synthetic-model',[{'role':'user','content':'synthetic'}]))
     asyncio.run(run())
-    assert set(paths)=={'stt','tts','transliterate','handover','wake','evon'}
+    assert set(paths)=={'stt','tts','transliterate','wake','evon'}
     assert maximum==1 and active==0 and not gate._state.lock.locked()
 
 

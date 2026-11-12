@@ -49,9 +49,11 @@ function loadCsv() {
 
 let records = loadCsv();
 let nextId = records.length + 1;
+let revision = 0;
 
 module.exports = {
   getAll: () => records,
+  getRevision: () => revision,
   findById: (id) => records.find((r) => r._id === String(id)) || null,
   create: (doc) => {
     const rec = {
@@ -69,22 +71,26 @@ module.exports = {
       updatedAt: new Date(),
     };
     records.push(rec);
+    revision++;
     return rec;
   },
   updateById: (id, updates) => {
     const rec = records.find((r) => r._id === String(id));
     if (!rec) return null;
     Object.assign(rec, updates, { updatedAt: new Date() });
+    revision++;
     return rec;
   },
   deleteById: (id) => {
     const idx = records.findIndex((r) => r._id === String(id));
     if (idx === -1) return false;
     records.splice(idx, 1);
+    revision++;
     return true;
   },
   reload: () => {
     records = loadCsv();
+    revision++;
     nextId = records.length + 1;
     return records.length;
   },

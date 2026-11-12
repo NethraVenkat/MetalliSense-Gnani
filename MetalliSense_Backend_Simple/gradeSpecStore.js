@@ -50,17 +50,23 @@ function computeDerivedSpec(grade, rows) {
   };
 }
 
+let derivedRevision = -1;
+let derivedSpecs = new Map();
 function getAllSpecs() {
-  const byGrade = {};
-  store.getAll().forEach((r) => {
-    if (!byGrade[r.grade]) byGrade[r.grade] = [];
-    byGrade[r.grade].push(r);
-  });
-  return Object.entries(byGrade)
-    .filter(([grade]) => !hidden.has(grade))
-    .map(([grade, rows]) =>
-      overlay.has(grade) ? overlay.get(grade) : computeDerivedSpec(grade, rows),
-    );
+  // dataset.csv is already in memory. Avoid regrouping its 200k rows on
+  // every page/status request; all datastore mutations advance the revision.
+  if (derivedRevision !== store.getRevision()) {
+    const byGrade = new Map();
+    store.getAll().forEach(row => {
+      if (!byGrade.has(row.grade)) byGrade.set(row.grade, []);
+      byGrade.get(row.grade).push(row);
+    });
+    derivedSpecs = new Map([...byGrade].map(([grade, rows]) => [grade, computeDerivedSpec(grade, rows)]));
+    derivedRevision = store.getRevision();
+  }
+  // Include newly created grades, not just overlays for CSV-derived names.
+  return [...new Map([...derivedSpecs, ...overlay])]
+    .filter(([grade]) => !hidden.has(grade)).map(([, spec]) => spec);
 }
 
 module.exports = {

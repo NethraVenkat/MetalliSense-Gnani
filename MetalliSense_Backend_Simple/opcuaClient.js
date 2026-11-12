@@ -12,7 +12,7 @@ class SpectrometerOPCUAClient {
     this.client = null;
     this.session = null;
     this.subscription = null;
-    this.endpointUrl = 'opc.tcp://localhost:4334/MetalliSense/Spectrometer';
+    this.endpointUrl = `opc.tcp://localhost:${Number(process.env.SPECTROMETER_OPCUA_PORT) || 4334}/MetalliSense/Spectrometer`;
     this.isConnected = false;
     this.connectionStatus = 'Disconnected';
     this.lastError = null;

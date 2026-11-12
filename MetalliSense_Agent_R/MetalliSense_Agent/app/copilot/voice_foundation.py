@@ -137,7 +137,7 @@ def delete(date:str,x_voice_admin:str=Header('')):
 def log_interaction(content,sid,purpose,no_store=False,page='/'):
     """Opt-in ordinary capture evidence. Never log challenge audio or transcript."""
     if not flag('VOICE_AUDIO_LOG_ENABLED') or not sid or not AUTH.valid_session(sid) or no_store or AUTH.sensitive(sid) or purpose=='passcode':return None
-    from .gnani_batch import validate_audio
+    from .audio_validation import validate_audio
     try:
         wav,_=validate_audio(content);event_id=secrets.token_hex(16)
         stored=AUDIO.store(wav,event_id,sid,'wake' if purpose=='wake' else 'command',page=page)

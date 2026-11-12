@@ -8,7 +8,9 @@ const {synthesis}=vi.hoisted(()=>({synthesis:vi.fn()}));
 vi.mock('../src/services/copilotService',()=>({synthesizeSpeechWithMeta:synthesis}));
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();vi.useRealTimers();});
 it('packages all 22 exact sources including revised Mechanical Properties',()=>{
- expect(clips.map(c=>c.id)).toEqual(voiceTourSteps(true).map(s=>s.id));
+ // Removed handover is not navigable; preserve its approved historical WAV.
+ expect(clips).toHaveLength(22);
+ expect(clips.filter(c=>c.id!=='handover').map(c=>c.id)).toEqual(voiceTourSteps().map(s=>s.id));
  for(const clip of clips){
   const bytes=fs.readFileSync(new URL('../public/audio/kural-tour-ta-v1/'+clip.file,import.meta.url));
   expect(crypto.createHash('sha256').update(bytes).digest('hex')).toBe(clip.sha256);
@@ -65,11 +67,12 @@ it('rapid selection, language changes and close abort prior approved sessions',a
  vi.stubEnv('VITE_VOICE_TOUR_APPROVED_TAMIL','true');
  const calls=[];
  const tour=createVoiceTour({enabled:()=>true,steps:voiceTourSteps(true).map(s=>({...s,route:null})),location:{scope:'same'},navigate:vi.fn(),speak:(text,lang,style,timing)=>new Promise(resolve=>calls.push({text,lang,timing,resolve}))});
- tour.control('start','ta');tour.control('next');tour.control('back');tour.control('select-step',14);
+ const mechanicalIndex=voiceTourSteps().findIndex(s=>s.id==='mechanical-properties');
+ tour.control('start','ta');tour.control('next');tour.control('back');tour.control('select-step',mechanicalIndex);
  expect(calls.slice(0,-1).every(c=>c.timing.signal.aborted)).toBe(true);
  expect(calls.at(-1).timing.approvedAsset.url).toContain('mechanical-properties.wav');
  const stale=calls[0];stale.timing.onAudioStart();stale.resolve();await Promise.resolve();
- expect(tour.snapshot().index).toBe(14);
+ expect(tour.snapshot().index).toBe(mechanicalIndex);
  tour.control('language','hi');expect(calls.at(-2).timing.signal.aborted).toBe(true);
  expect(calls.at(-1).timing.approvedAsset).toBeUndefined();
  tour.control('language','ta');expect(calls.at(-1).lang).toBe('ta');

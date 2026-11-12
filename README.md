@@ -22,9 +22,8 @@ A furnace operator wearing gloves needs to inspect chemistry, find a heat, under
 - **Voice actions and forms:** request a reading, check a gate, receive a truck, collect missing fields, review a draft and follow the registered approval flow.
 - **Page controls:** open a page, select/read a loaded row, switch supported tabs, scroll and refresh.
 - **Readable interaction:** Tamil/Hindi action-card body labels, transcript and answer display. The approved orb headings remain English by design.
-- **Read-only shift handover:** summarize a shift and export/read its handover without starting a heat or changing its gate.
 
-Feature scope: [action registry][actions], [current levels][levels], [page/control fixes][round2], [card labels][s2], [handover implementation](MetalliSense_Frontend_R/MetalliSense_Frontend/src/services/handover.js).
+Feature scope: [action registry][actions], [current levels][levels], [page/control fixes][round2], [card labels][s2].
 
 ## Safety by design
 
@@ -183,7 +182,6 @@ VITE_VOICE_DATA_READS=true
 VITE_MORNING_BRIEFING=true
 VITE_VOICE_DASHBOARD_BRIEFING=true
 VITE_SHIFT_SUMMARY=true
-VITE_HANDOVER=true
 VITE_VOICE_ACTIONS=true
 VITE_VOICE_AUDIT=true
 VITE_VOICE_AUDIO_LOG=false
