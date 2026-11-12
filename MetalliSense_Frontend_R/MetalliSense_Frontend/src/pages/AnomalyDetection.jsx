@@ -16,13 +16,14 @@ import { getExplanation } from "../services/copilotService";
 import toast from "react-hot-toast";
 import { formatPercentage } from "../utils/formatters";
 import { MeltSpinner } from "../components/common/FurnaceLoader";
+import {anomalyGateReading,anomalyPageState,readingTimestamp} from '../services/gateReading';
 
 const AnomalyDetection = () => {
   const navigate = useNavigate();
   const { flow, isUnlocked, canRunAnomaly, anomalyDone } = useMeltFlow();
-  const [generatedReading, setGeneratedReading] = useState(null);
+  const [generatedReading, setGeneratedReading] = useState(()=>anomalyPageState(flow).reading);
 
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(()=>anomalyPageState(flow).result);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiExplanation, setAiExplanation] = useState(null);
   const [loadingExplanation, setLoadingExplanation] = useState(false);
@@ -35,13 +36,7 @@ const AnomalyDetection = () => {
   // When a heat passes the gate, auto-run anomaly on the gate's predicted composition
   useEffect(() => {
     if (canRunAnomaly && flow.predictedComposition && !flow.anomalyResult && !analysisResult) {
-      const gateReading = {
-        metalGrade: flow.grade,
-        composition: flow.predictedComposition,
-        temperature: 1480,
-        pressure: 1,
-        source: `gate_prediction_${flow.gateId}`,
-      };
+      const gateReading = anomalyGateReading(flow);
       setGeneratedReading(gateReading);
       performAnalysis(gateReading);
     }
@@ -300,7 +295,7 @@ const AnomalyDetection = () => {
                 <div>
                   <span className="text-dark-600">Timestamp:</span>{" "}
                   <span className="font-mono text-dark-900 text-xs">
-                    {new Date(generatedReading.timestamp).toLocaleString()}
+                    {readingTimestamp(generatedReading.timestamp)}
                   </span>
                 </div>
               </div>

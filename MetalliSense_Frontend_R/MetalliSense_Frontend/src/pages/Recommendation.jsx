@@ -1,3 +1,4 @@
+import RecommendationReasoning from "../components/common/RecommendationReasoning";
 import {useRegisterVoicePage} from '../context/VoicePageContext';
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -392,6 +393,8 @@ const Recommendation = () => {
                 )}
               </div>
 
+              <RecommendationReasoning {...{handleGetAIExplanation,loadingExplanation,aiExplanation,audioUrl,isPlaying,handlePlayAudio}} />
+
               {/* Applied Deviations Details */}
               {syntheticReading.appliedDeviations &&
                 syntheticReading.appliedDeviations.length > 0 && (
@@ -407,67 +410,6 @@ const Recommendation = () => {
                             className="flex items-center justify-between p-2 bg-yellow-50 rounded text-sm"
                           >
                             <span className="font-mono font-bold text-dark-900">
-                              {/* AI Explanation Button */}
-                              <div className="flex justify-center">
-                                <Button
-                                  onClick={handleGetAIExplanation}
-                                  loading={loadingExplanation}
-                                  disabled={loadingExplanation}
-                                  className="w-full md:w-auto"
-                                  variant="success"
-                                >
-                                  <Sparkles className="w-4 h-4 mr-2" />
-                                  {aiExplanation
-                                    ? "Regenerate AI Reasoning"
-                                    : "Get AI Reasoning"}
-                                </Button>
-                              </div>
-
-                              {/* AI Explanation Display */}
-                              {aiExplanation && (
-                                <Card className="border-2 border-emerald-200">
-                                  <div className="space-y-4">
-                                    <div
-                                      className="flex items-center gap-2 text-emerald-700 cursor-pointer hover:bg-emerald-50 p-2 rounded-lg transition-colors"
-                                      onClick={
-                                        audioUrl ? handlePlayAudio : undefined
-                                      }
-                                      title={
-                                        audioUrl
-                                          ? isPlaying
-                                            ? "Click to pause audio"
-                                            : "Click to play audio explanation"
-                                          : "Audio not available"
-                                      }
-                                    >
-                                      <Sparkles className="w-5 h-5" />
-                                      <h3 className="text-lg font-semibold text-dark-900">
-                                        Gemini AI Summary
-                                      </h3>
-                                      {audioUrl &&
-                                        (isPlaying ? (
-                                          <VolumeX className="w-5 h-5 text-emerald-600" />
-                                        ) : (
-                                          <Volume2 className="w-5 h-5 text-emerald-600" />
-                                        ))}
-                                      <Badge
-                                        variant="success"
-                                        className="ml-auto"
-                                      >
-                                        Gemini Powered
-                                      </Badge>
-                                    </div>
-
-                                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-lg p-6">
-                                      <div className="prose prose-sm max-w-none">
-                                        <div className="text-dark-800 whitespace-pre-wrap leading-relaxed">
-                                          {aiExplanation}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </Card>
-                              )}
                               {deviation.element}
                             </span>
                             <div className="flex items-center gap-3 text-dark-700">

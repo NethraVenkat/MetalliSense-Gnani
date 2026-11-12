@@ -65,6 +65,8 @@
 
 .voice-action-panel,.voice-log-viewer{font-size:13px;overflow-wrap:anywhere}.voice-action-panel>button{min-height:44px;width:100%;background:#fde8e6;color:#a32d2d;border-radius:8px}.voice-log-viewer{max-height:50dvh;overflow:auto}.voice-log-viewer audio{max-width:100%}
 .kural-controls-popup small[aria-label="Logging on"]::before{content:'\1f534';margin-right:4px}
+/* The menu is viewport-bounded even when collision avoidance raises the orb. */
+.kural-floating .kural-controls-popup{max-height:calc(100dvh - 120px)}
 
 .voice-action-summary{max-height:110px;overflow:auto;overflow-wrap:anywhere;overscroll-behavior:contain;scrollbar-gutter:stable}
 
