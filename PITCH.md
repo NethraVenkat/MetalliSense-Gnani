@@ -38,4 +38,4 @@ Kural adds a voice to **MetalliSense**, our 21-page foundry app (yard XRF/LIBS i
 - **Nethra Venkat:** Tamil/Hindi/Tanglish wording and command matching, page answers and action phrases, live voice testing and bug finding, demo video, pitch and LinkedIn launch.
 
 ## Verified
-**2,662** frontend + **494** agent automated tests · **414/440** full-mode checks passed (**25** N/A, **1** preserved generated-wake miss) across all 21 pages · real-Prisma trials: spoken passcodes **10/10**, voice receiving form **3/3**, commands routed **5/5** under synthetic foundry noise at 5 dB SNR · demonstrated live to an audience. Honest limits are listed in the README.
+**2,668** frontend + **496** agent automated tests · **414/440** full-mode checks passed (**25** N/A, **1** preserved generated-wake miss) across all 21 pages · real-Prisma trials: spoken passcodes **10/10**, voice receiving form **3/3**, commands routed **5/5** under synthetic foundry noise at 5 dB SNR · demonstrated live to an audience. Honest limits are listed in the README.
