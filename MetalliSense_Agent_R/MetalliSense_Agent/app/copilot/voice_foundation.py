@@ -161,7 +161,7 @@ def private_transcription(content,language):
     except Exception:raise HTTPException(422,'Private capture requires complete PCM WAV') from None
     client=get_gnani_client()
     try:
-        result=client.transcribe(content,language,max_attempts=1,output_format='codemix')
+        result=client.transcribe(content,language,max_attempts=1,output_format='codemix',purpose='private')
         return {k:v for k,v in result.items() if k in ['text','language','success','detected_language_code']}
     except Exception:raise HTTPException(502,'Private transcription unavailable') from None
     finally:client.last_error=None

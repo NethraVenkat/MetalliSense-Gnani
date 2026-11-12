@@ -46,6 +46,17 @@ def valid_tts_pair(model: str, voice: str) -> bool:
 def tts_text(text: str, model: str, style: str, tags_enabled: bool) -> str:
     """Tags belong only to the provider payload, never to the frontend's text."""
     plain = re.sub(r"<[^>]+>", "", text).strip()
+    if model == 'timbre-v3.0' and _env_bool('TTS_AUDIO_TAGS') and plain:
+        # Payload-only safety delivery. No spoken passcode value is handled here.
+        private_prompt = bool(re.search(r'passcode|பாஸ்கோட்|பாஸ்கோட|அனுமதி\s+குறியீ|पासकोड', plain, re.I))
+        confirm_prompt = bool(re.search(r'yes or no|ஆமா.*இல்லை|हाँ.*नहीं', plain, re.I))
+        readback = bool(re.search(r'\b(?:H|PR|PIG|LOT)-\d+\b|\b\d+(?:\.\d+)?\s*(?:kg|kilograms?|tonnes?)\b|\d+\s*(?:கிலோ|किलो)', plain, re.I))
+        if private_prompt: return '<pauses> <slow> ' + plain
+        if confirm_prompt:
+            if readback:
+                return '<slow> ' + re.sub(r'yes or no|ஆமா[^.!?]*இல்லை|हाँ[^।.!?]*नहीं', lambda m: '<pauses> '+m[0], plain, count=1, flags=re.I)
+            return '<pauses> ' + plain
+        if readback: return '<slow> ' + plain
     if model.startswith('timbre-v3') and _env_bool('GNANI_TTS_CLARITY'):
         # Documented tags have no closing syntax. Slow persists to the next tag;
         # reapply it after each pause rather than inventing a normal/reset tag.
@@ -230,7 +241,7 @@ class GnaniClient:
             raise RuntimeError(f"ffmpeg conversion failed: {proc.stderr.decode(errors='ignore')[:300]}")
         return proc.stdout
 
-    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None, *, max_attempts: int = 2, output_format: Optional[str] = None) -> Dict:
+    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None, *, max_attempts: int = 2, output_format: Optional[str] = None, purpose: str = 'command') -> Dict:
         """Retry 429/504 once; callers with a strict credit budget may allow one attempt."""
         if max_attempts not in (1, 2):
             raise ValueError("max_attempts must be 1 or 2")
@@ -247,8 +258,11 @@ class GnaniClient:
             data = {"language_code": lang, "format": 'codemix' if bridge or output_format=='codemix' else output_format or self.stt_format}
             if self.stt_model:
                 data["model"] = self.stt_model
-            if self.stt_keyterms:
+            if purpose not in {'passcode', 'private', 'wake'} and self.stt_keyterms:
                 data["keyterms"] = self.stt_keyterms
+            from .stt_context import command_context, COMMAND_PURPOSES
+            if purpose in COMMAND_PURPOSES and _env_bool('STT_CONTEXT_ENABLED') and self.stt_model == 'prisma-v3.0':
+                data.update(command_context())
             for attempt in range(max_attempts):
                 self.stats["stt_calls"] += 1
                 response = provider_post(

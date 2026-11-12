@@ -771,6 +771,7 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
     }
     ```
     """
+    from copilot.gnani_client import _env_bool
     from copilot.voice_auth import AUTH as voice_auth
     private_capture=no_store or x_voice_no_store.lower()=='true' or purpose=='passcode' or voice_auth.sensitive(x_voice_session)
     if private_capture:
@@ -798,7 +799,10 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
         
         try:
             # Transcribe
-            result = await asyncio.to_thread(voice_service.transcribe_audio, tmp_path, language)
+            if _env_bool('STT_CONTEXT_ENABLED'):
+                result = await asyncio.to_thread(voice_service.transcribe_audio, tmp_path, language, purpose=purpose)
+            else:
+                result = await asyncio.to_thread(voice_service.transcribe_audio, tmp_path, language)
             return TranscriptionResponse(**result)
         finally:
             # Clean up temp file

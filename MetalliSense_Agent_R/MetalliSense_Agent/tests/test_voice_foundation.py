@@ -205,8 +205,8 @@ def test_private_transcription_uses_memory_and_clears_provider_error(monkeypatch
     secret=''.join(str(secrets.randbelow(10)) for _ in range(6))
     class Client:
         last_error=secret
-        def transcribe(self,content,language,max_attempts,output_format):
-            assert content==wav() and max_attempts==1 and output_format=='codemix'
+        def transcribe(self,content,language,max_attempts,output_format,purpose):
+            assert content==wav() and max_attempts==1 and output_format=='codemix' and purpose=='private'
             return {'success':True,'text':secret,'language':'ta','error':secret}
     client=Client();monkeypatch.setattr(gnani_client,'get_gnani_client',lambda:client)
     result=private_transcription(wav(),'ta');assert result['text']==secret;assert 'error' not in result;assert client.last_error is None
