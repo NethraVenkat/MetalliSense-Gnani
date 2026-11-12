@@ -1,30 +1,41 @@
-# Kural (குரல்): a hands-free voice copilot for foundry operators
+# Kural (குரல்): the voice of the foundry floor
 
-**Team:** Nethra Venkat · Manish Rahul · **Built on:** Gnani Prisma v3 (STT) + Timbre (TTS)
+**Hands-free, Tamil-first voice copilot for foundry operators · built on Gnani Prisma v3 (STT) + Timbre v3 (TTS)**
+Team of two: **Nethra Venkat · Manish Raghul S J** · Sri Eshwar College of Engineering, **Coimbatore**
+🎥 Demo: https://youtu.be/KxPlBhWzNms · 💻 Repo: https://github.com/NethraVenkat/MetalliSense-Gnani · ▶️ Run it: see README → "Run the full app"
 
-## The real problem on a foundry floor
-- **Hands and eyes are busy.** Melting crews work beside an induction furnace at around 1,500 °C, in gloves and face shields. Checking chemistry or a heat's status means walking to a terminal, taking gloves off and typing.
-- **Decisions are fast and costly.** Scrap charge, spectrometer readings and additions decide whether a heat meets its grade. A wrong charge or a missed HOLD can mean a rejected casting, re-melting energy and a safety risk.
-- **The workforce speaks Tamil and Hindi, the software speaks English.** Floor operators often think and talk in their own language, while plant screens are English-only, dense and built for an office desk.
-- **Approvals wait for the screen.** Purchase requests, lot releases and tap approvals queue until a supervisor gets back to a desk.
+## Problem solved
+Induction-foundry operators work beside a ~1,500 °C furnace with gloves on, eyes on the melt. The software that checks chemistry, gates each heat and approves purchases sits behind a keyboard, in English, while operators think and talk in **Tamil, Hindi or a mix with English**. A wrong charge or a missed HOLD means a rejected casting, re-melting energy and a safety risk.
+
+## Target users
+Furnace/melt operators, shift supervisors, unit controllers and stores staff in Indian foundries (Coimbatore is a major foundry cluster).
 
 ## Our solution
-Kural puts the foundry's plant software (MetalliSense, 21 pages) behind a voice the operator already uses: **say "Kural" and talk in Tamil, Hindi or English.**
-- Answers come **from the live page data**: chemistry, gate status, stock, supplier scores and forecasts.
-- Actions call **the same services as the screen buttons**. Navigation, row selection, reading, tabs and forms work by voice too.
-- Safety is built in: safe actions run with a 2-second cancel; record changes need a spoken yes/no; approvals, deletes and overrides need a **spoken 6-digit passcode** and a 5-second cancel. **A HOLD gate can never be bypassed by voice.** Every turn is logged with what was heard, matched and decided.
+Kural adds a voice to **MetalliSense**, our 21-page foundry app (yard XRF/LIBS inspection, live spectrometer over OPC-UA, pre-melt gate, AI anomaly/correction/strategy analysis, mechanical properties, stock, forecasting, sales).
+- **Say "Kural", no button needed.** Speak Tamil, Hindi, English, Tanglish or Hinglish: *"H-1053 status enna?"*, *"oru reading edu"*, *"truck receive करो"*.
+- **Answers from live plant data**, spoken in the operator's language; Tamil/Hindi on-screen card labels.
+- **Acts through the app's own services**: navigate, select rows, gate checks, readings, conversational forms ("receive truck"), approvals.
+- **Safe by design:** safe actions get a 2-second cancel; record changes need a read-back + spoken "yes"; approvals need a **role-checked spoken 6-digit passcode** (PBKDF2, 3-strike lock) + 5-second cancel. **A HOLD gate can never be bypassed by voice.** A hash-chained audit records what was heard, matched and decided; passcodes never enter the audio log. Synthetic data only.
 
-## A shift with Kural
-1. **Shift start:** "Kural, morning briefing" gives heats planned, HOLDs and stock alerts, spoken.
-2. **At the furnace:** "கடைசி ரீடிங் என்ன?" (what's the last reading?) gives carbon, silicon and manganese in Tamil, with no walk to the terminal.
-3. **Before charging:** "run gate check H-1051" gives GO or WARN. "start melting H-1053" is **refused: HOLD, residuals over the limit.**
-4. **From the floor:** the supervisor says "approve the selected PR" plus a passcode, and it's approved without going back to the desk.
-5. **Truck arrives:** "receive truck"; Kural asks one field at a time, reads everything back, then records the lot.
+## Gnani models used
+- **Prisma v3.0 (STT):** wake check, commands, form answers, yes/no replies, passcodes; ta-IN / hi-IN / en-IN with codemix (English nouns stay Latin inside Tamil/Hindi speech).
+- **Timbre v3.0 (TTS):** every answer, read-back and prompt.
+- One shared provider lease keeps every call inside the one-request-at-a-time key limit; the key stays server-side.
+- Evon is not on Gnani's API, so the explanation chat uses an open-weights model (gpt-oss-120b via Groq), per Gnani's guidance.
 
-## How Gnani is used
-Prisma v3 hears the wake word, commands, replies and passcodes (ta-IN / hi-IN / en-IN, codemix for digits). Timbre speaks every answer and read-back. One shared provider lease respects per-key limits; the API key stays server-side.
+## Award tracks: how Kural answers each
+| Track | Our answer |
+|---|---|
+| **Main Character** (regional language) | Tamil-first: Tamil wake word (குரல்), Tamil questions and spoken answers, Tamil card labels; Hindi too |
+| **Mixed Vibes** (code-mixed) | Tanglish/Hinglish commands route to real actions: "H-1053 status enna?", "gate check pannu H-1051", "truck receive करो"; real-Prisma routing improved 2/5 → 4/5 (Tanglish), 6/8 on new Hindi audio |
+| **Real Deal** (real-world problem) | A real foundry workflow end to end, and a voice that *refuses* unsafe actions (HOLD), with passcodes and an audit trail a plant can trust |
+| **Jugaad Genius** (creative Gnani use) | A wake word with **no wake-word model**: a local pause gate sends short bursts to Prisma + a first-word rule, after CNN, Sherpa and two Prisma variants failed. Live screen: 10/10 wakes, 0/10 confusables, 0/5 conversation false wakes. Every Gnani feature we tried (keyterms, audio tags, streaming, auto-language) was A/B-tested and kept only if it helped |
+| **Two-Person Army** | Built by a team of two; contributions below |
+| **Small Town, Big Build** | Built in Coimbatore, for the foundries around it |
 
-## Status (v22)
-Working end to end on synthetic foundry data: **2,630** frontend tests, **470** agent tests, a **597-case** page sweep and **435** real-app checks on all 21 pages. Wake word chosen after five approaches (pause-v3: 10/10 wakes, 0 false wakes in our test). Evon isn't on Gnani's API yet, so the LLM path uses open weights per Gnani's guidance.
+## Who built what
+- **Manish Raghul S J:** voice architecture and Gnani integration (Prisma/Timbre client, provider lease), wake-word research (CNN/Sherpa/Prisma pause gate), spoken-passcode security and audit log, voice capture and diagnostics, real-app test harnesses, full-stack setup.
+- **Nethra Venkat:** Tamil/Hindi/Tanglish wording and command matching, page answers and action phrases, live voice testing and bug finding, demo video, pitch and LinkedIn launch.
 
-**Repo:** https://github.com/NethraVenkat/MetalliSense-Gnani · **Demo:** https://youtu.be/KxPlBhWzNms
+## Verified
+**2,688** frontend + **507** agent automated tests · **435** real-app checks across all 21 pages · real-Prisma trials: spoken passcodes **10/10**, voice receiving form **3/3**, commands routed **5/5** under synthetic foundry noise at 5 dB SNR · demonstrated live to an audience. Honest limits are listed in the README.

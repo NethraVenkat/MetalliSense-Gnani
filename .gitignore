@@ -55,3 +55,7 @@ debug.log
 
 # test run logs
 *.log
+
+# python virtual envs
+venv/
+.venv/
