@@ -15,7 +15,7 @@ Kural adds a voice to **MetalliSense**, our 21-page foundry app (yard XRF/LIBS i
 - **Say "Kural", no button needed.** Speak Tamil, Hindi, English, Tanglish or Hinglish: *"H-1053 status enna?"*, *"oru reading edu"*, *"truck receive करो"*.
 - **Answers from live plant data**, spoken in the operator's language; Tamil/Hindi on-screen card labels.
 - **Acts through the app's own services**: navigate, select rows, gate checks, readings, conversational forms ("receive truck"), approvals.
-- **Safe by design:** safe actions get a 2-second cancel; record changes need a read-back + spoken "yes"; approvals need a **role-checked spoken 6-digit passcode** (PBKDF2, 3-strike lock) + 5-second cancel. **A HOLD gate can never be bypassed by voice.** A hash-chained audit records what was heard, matched and decided; passcodes never enter the audio log. Synthetic data only.
+- **Safe by design:** safe actions get a 2-second cancel; record changes need a read-back + spoken "yes"; approvals need a **role-checked spoken 6-digit passcode** (PBKDF2, 3-strike lock) + 5-second cancel. **Normal start can never turn a HOLD into GO by voice;** the only exception is a Unit Controller override with passcode, spoken reason and the word OVERRIDE. A hash-chained audit records what was heard, matched and decided; passcodes never enter the audio log. Synthetic data only.
 
 ## Gnani models used
 - **Prisma v3.0 (STT):** wake check, commands, form answers, yes/no replies, passcodes; ta-IN / hi-IN / en-IN with codemix (English nouns stay Latin inside Tamil/Hindi speech).
@@ -29,7 +29,7 @@ Kural adds a voice to **MetalliSense**, our 21-page foundry app (yard XRF/LIBS i
 | **Main Character** (regional language) | Tamil-first: Tamil wake word (குரல்), Tamil questions and spoken answers, Tamil card labels; Hindi too |
 | **Mixed Vibes** (code-mixed) | Tanglish/Hinglish commands route to real actions: "H-1053 status enna?", "gate check pannu H-1051", "truck receive करो"; real-Prisma routing improved 2/5 → 4/5 (Tanglish), 6/8 on new Hindi audio |
 | **Real Deal** (real-world problem) | A real foundry workflow end to end, and a voice that *refuses* unsafe actions (HOLD), with passcodes and an audit trail a plant can trust |
-| **Jugaad Genius** (creative Gnani use) | A wake word with **no wake-word model**: a local pause gate sends short bursts to Prisma + a first-word rule, after CNN, Sherpa and two Prisma variants failed. Live screen: 10/10 wakes, 0/10 confusables, 0/5 conversation false wakes. Every Gnani feature we tried (keyterms, audio tags, streaming, auto-language) was A/B-tested and kept only if it helped |
+| **Jugaad Genius** (creative Gnani use) | A wake word with **no wake-word model**: a local pause gate sends short bursts to Prisma + a first-word rule, after CNN, Sherpa and two Prisma variants failed. In our live wake screen: 10/10 wakes, 0/10 confusables, 0/5 conversation snippets. We A/B-tested Prisma keyterms, Timbre audio tags, streaming TTS and auto-language against real Gnani calls, and kept off anything that did not clearly help |
 | **Two-Person Army** | Built by a team of two; contributions below |
 | **Small Town, Big Build** | Built in Coimbatore, for the foundries around it |
 
