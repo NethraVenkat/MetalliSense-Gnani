@@ -74,6 +74,13 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: spea
       if(neverByVoice(text,pageContext?.route)){const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);await actionControl?.(text,pageContext,{refused:true});actionHandled=Boolean(actionControl);return output(screenOnly[replyLang],screenOnly[replyLang],replyLang);}
       if(!registered&&actionControl&&await dispatchAction())return;
       const elsewhere=registered||registeredVoiceAction(text);
+      // Receiving begins a new draft, so it does not depend on a selected row
+      // on the source page. Resume the existing form flow after Stock registers.
+      // The registered role, read-back and approval gates remain unchanged.
+      if(!registered&&elsewhere?.id==='receive_lot'&&pageContext?.queueAction){
+        pageContext.queueAction({id:elsewhere.id,page:elsewhere.page,text,language:lang});
+        return;
+      }
       if(elsewhere&&(registered||elsewhere.phrase.includes(' '))){
         reasonOverride='no_target';reportedLevel=elsewhere.level;reportIntent(elsewhere.id);
         const page=voicePage(elsewhere.page)?.pageName?.[lang]||elsewhere.page;

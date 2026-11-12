@@ -30,6 +30,7 @@ import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
+from threadpoolctl import threadpool_limits
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -103,7 +104,11 @@ class ChargeRiskModel:
         return sorted(self.models.keys())
 
     def _proba(self, grade: str, rows: np.ndarray) -> np.ndarray:
-        return self.models[grade].predict_proba(rows)[:, 1]
+        # These are tiny inference batches, not training jobs. Spinning up all
+        # OpenMP workers for each tree traversal dominates the gate request and
+        # can starve the other services running on the same workstation.
+        with threadpool_limits(limits=1, user_api="openmp"):
+            return self.models[grade].predict_proba(rows)[:, 1]
 
     def assess(
         self,
@@ -134,13 +139,26 @@ class ChargeRiskModel:
         reported = x0.copy()
         x0 = np.maximum(x0, floor)
 
-        risk_nominal = float(self._proba(grade, x0)[0])
+        # Score the nominal, explanation and uncertainty rows together. The
+        # model and all inputs are identical to the individual predictions.
+        all_normal = np.array([[stats[el]["mean"] for el in FEATURES]])
+        rows = [x0, all_normal]
+        for i, el in enumerate(FEATURES):
+            only = all_normal.copy()
+            only[0, i] = x0[0, i]
+            cf = x0.copy()
+            cf[0, i] = stats[el]["mean"] if el not in IMPURITIES else min(x0[0, i], stats[el]["mean"])
+            rows.extend([only, cf])
 
         if s.sum() > 0:
             rng = np.random.default_rng(seed)
             samples = np.clip(rng.normal(x0[0], s, size=(n_samples, len(FEATURES))), 0.0, None)
             samples = np.maximum(samples, floor)
-            probs = self._proba(grade, samples)
+            rows.append(samples)
+        scores = self._proba(grade, np.vstack(rows))
+        risk_nominal = float(scores[0])
+        if s.sum() > 0:
+            probs = scores[2 + 2 * len(FEATURES):]
             risk_mean = float(probs.mean())
             band = [float(np.percentile(probs, 10)), float(np.percentile(probs, 90))]
         else:
@@ -149,16 +167,11 @@ class ChargeRiskModel:
 
         # Explain: how much would the risk drop if this one element were at
         # the grade's normal (in-spec historical) mean?
-        all_normal = np.array([[stats[el]["mean"] for el in FEATURES]])
-        base_risk = float(self._proba(grade, all_normal)[0])
+        base_risk = float(scores[1])
         drivers = []
         for i, el in enumerate(FEATURES):
-            only = all_normal.copy()
-            only[0, i] = x0[0, i]
-            risk_only = float(self._proba(grade, only)[0])
-            cf = x0.copy()
-            cf[0, i] = stats[el]["mean"] if el not in IMPURITIES else min(x0[0, i], stats[el]["mean"])
-            risk_cf = float(self._proba(grade, cf)[0])
+            risk_only = float(scores[2 + 2 * i])
+            risk_cf = float(scores[3 + 2 * i])
             z = (reported[0, i] - stats[el]["mean"]) / stats[el]["std"]
             drivers.append({
                 "element": el,

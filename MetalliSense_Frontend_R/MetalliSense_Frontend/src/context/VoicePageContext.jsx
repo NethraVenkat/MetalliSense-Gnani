@@ -12,6 +12,12 @@ export function VoicePageProvider({children}) {
   const scope=`${location.key}:${location.pathname}${location.search}`;
   const current=useRef(scope);current.current=scope;
   const [registrations,setRegistrations]=useState([]);
+  const [pendingAction,setPendingAction]=useState(null);
+  const queueAction=useCallback(action=>{
+    setPendingAction({...action,origin:current.current});
+    navigate(action.page);
+  },[navigate]);
+  const consumeAction=useCallback(()=>setPendingAction(null),[]);
   const routeSnapshot=useMemo(()=>({route:location.pathname,pageName:voicePage(location.pathname)?.pageName||{ta:'பேஜ்',hi:'पेज',en:'page'},selected:{},source:'route',asOf:new Date().toISOString()}),[scope]);
   const register=useCallback((owner,forScope,details)=>{
     if(current.current!==forScope)return ()=>{};
@@ -26,7 +32,8 @@ export function VoicePageProvider({children}) {
   const controls=useMemo(()=>createPageControls({getContext:()=>latest.current,navigate,select}),[navigate,select]);
   const selected={...registration?.details?.selected,...(rowSelection.scope===scope&&rowSelection.base===registeredSelection?rowSelection.selected:{})};
   const focusedRow=rowSelection.scope===scope&&Object.entries(rowSelection.selected).every(([field,id])=>selected[field]===id)?rowSelection.selected:null;
-  const value={...routeSnapshot,...registration?.details,selected,focusedRow,scope,register,controls,tourNavigationToken:location.state?.kuralTour,isCurrent:token=>token===current.current};latest.current=value;
+  const value={...routeSnapshot,...registration?.details,selected,focusedRow,scope,register,controls,queueAction,consumeAction,pendingAction,tourNavigationToken:location.state?.kuralTour,isCurrent:token=>token===current.current};latest.current=value;
+  useEffect(()=>{if(pendingAction&&scope!==pendingAction.origin&&location.pathname!==pendingAction.page)setPendingAction(null);},[scope,location.pathname,pendingAction]);
   useEffect(()=>{
     if(!voiceEverywhereEnabled())return;
     const main=document.querySelector('main');if(!main)return;
