@@ -249,6 +249,8 @@ class GnaniClient:
         bridge = _env_bool('LANG_BRIDGE')
         lang = stt_language(os.getenv('GNANI_STT_LANGUAGE_BRIDGE', 'ta-IN,hi-IN,en-IN') if bridge
                             else language.strip() if language and language.strip() else self.stt_language)
+        auto_language = purpose == 'command' and self.stt_model == 'prisma-v3.0' and _env_bool('STT_AUTO_LANGUAGE')
+        if auto_language: lang = 'indic-auto'
         self.detected_language_code = None
         if self.mock:
             self.last_error = None
@@ -256,6 +258,7 @@ class GnaniClient:
         try:
             wav = self._to_wav_16k(audio_bytes)
             data = {"language_code": lang, "format": 'codemix' if bridge or output_format=='codemix' else output_format or self.stt_format}
+            if auto_language: data['format'] = 'codemix'
             if self.stt_model:
                 data["model"] = self.stt_model
             if purpose not in {'passcode', 'private', 'wake'} and self.stt_keyterms:

@@ -799,7 +799,7 @@ async def transcribe_audio(audio: UploadFile = File(...), language: Optional[str
         
         try:
             # Transcribe
-            if _env_bool('STT_CONTEXT_ENABLED'):
+            if _env_bool('STT_CONTEXT_ENABLED') or _env_bool('STT_AUTO_LANGUAGE'):
                 result = await asyncio.to_thread(voice_service.transcribe_audio, tmp_path, language, purpose=purpose)
             else:
                 result = await asyncio.to_thread(voice_service.transcribe_audio, tmp_path, language)

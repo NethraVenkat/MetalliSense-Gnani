@@ -26,11 +26,27 @@ export const voicePages = [
 ];
 export const voicePage = route => voicePages.find(page => page.route === route);
 const words = text => String(text).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
-export function pageVoiceIntent(transcript, { mock = import.meta.env?.VITE_MOCK_MODE === 'true' } = {}) {
+export function strictPageNavigation(transcript,{mock=import.meta.env?.VITE_MOCK_MODE==='true',currentRoute}={}){
+  const text=words(transcript);
+  // Strict page-only grammar: no unknown suffixes (especially not "coupon"),
+  // query words, IDs or action verbs. Bare names require a different known page.
+  const candidates=voicePages.flatMap(page=>page.aliases.map(alias=>({page,alias:words(alias)}))).sort((a,b)=>b.alias.length-a.alias.length);
+  for(const {page,alias} of candidates){
+    if(page.route==='/charge-optimizer'&&!mock)continue;
+    const padded=` ${text} `,needle=` ${alias} `;if(!padded.includes(needle))continue;
+    const remainder=padded.replace(needle,' ').trim();
+    const tokens=remainder?remainder.split(' '):[];
+    if(tokens.every(token=>['go','to','open','page','po','ponga','ku','pannu','खोलो','जाओ','jao','kholo','போ','போங்க','ஓப்பன்','பண்ணு'].includes(token))
+      &&(tokens.length>0||currentRoute&&currentRoute!==page.route&&Object.values(page.pageName).some(name=>words(name)===text)))return {intent:'open_screen',params:{route:page.route,pageAware:true}};
+  }
+  return null;
+}
+export function pageVoiceIntent(transcript, { mock = import.meta.env?.VITE_MOCK_MODE === 'true', currentRoute } = {}) {
   const text = words(transcript);
   if (['இங்க என்ன கேக்கலாம்','இங்கே என்ன கேட்கலாம்','yahan kya pooch sakte hain','यहाँ क्या पूछ सकते हैं','यहां क्या पूछ सकते हैं','what can i ask here'].includes(text)) return { intent:'page_help', params:{} };
+  const strict=strictPageNavigation(transcript,{mock,currentRoute});if(strict)return strict;
   // Navigation requires a navigation verb/page marker and never consumes IDs.
-  if (/\p{N}/u.test(text) || !/(?:^|\s)(?:open|show|go|page|kaattu|po|ponga|dikhao|kholo|खोलो|दिखाओ|காட்டு|போ|போங்க|திற|பேஜ்|पेज)(?:\s|$)/u.test(text)) return null;
+  if (/\p{N}/u.test(text) || !/(?:^|\s)(?:open|show|go|page|kaattu|po|ponga|dikhao|kholo|jao|जाओ|खोलो|दिखाओ|காட்டு|போ|போங்க|திற|பேஜ்|पेज)(?:\s|$)/u.test(text)) return null;
   const padded = ` ${text} `;
   const matches = voicePages.filter(page => page.aliases.some(alias => padded.includes(` ${words(alias)} `)));
   // A multiword alias wins over a contained short alias (e.g. raw material stock).

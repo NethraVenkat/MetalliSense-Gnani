@@ -106,9 +106,10 @@ function VoicePanel({ heatId,tour:suppliedTour,hidden=false }) {
     if (!selected) return null;
     return unwrap(await getHeat(selected.heatId));
   }
-  actionDeps.current={say:async text=>{say(text);await answerSpeech.current;},capture:options=>captureActionReply(options,value=>{if(alive.current)setMicLevel(value);})};
+  const actionReplyLanguage=useRef(lang);
+  actionDeps.current={say:async text=>{say(text,text,actionReplyLanguage.current);await answerSpeech.current;},capture:options=>captureActionReply(options,value=>{if(alive.current)setMicLevel(value);})};
   if(!actionFlow.current)actionFlow.current=createActionFlow({api:voiceActionApi,say:text=>actionDeps.current.say(text),capture:options=>actionDeps.current.capture(options),onChange:value=>{if(alive.current)setActionState(value);}});
-  async function actionControl(text,context,options={}){if(options.refused){await voiceActionApi.audit({...voiceDiagnostics(text,{winner:'screen-only',context,reason:'legacy_readonly_guard'}),page:context?.route,transcript:redactVoiceText(text,{transcript:true}),level:'ASK',intent:'screen-only',decision:'refused',spoken_reply:screenOnly[questionReplyLanguage(text,null,lang)],summary:'Not permitted by voice.'});return true;}const action=matchAction(text,context);if(!action)return false;wake.suspend();setHeard('');setHeardLatin('');await actionFlow.current.run(action,{page:context?.route,originalText:text,lang,context});return true;}
+  async function actionControl(text,context,options={}){if(options.refused){await voiceActionApi.audit({...voiceDiagnostics(text,{winner:'screen-only',context,reason:'legacy_readonly_guard'}),page:context?.route,transcript:redactVoiceText(text,{transcript:true}),level:'ASK',intent:'screen-only',decision:'refused',spoken_reply:screenOnly[questionReplyLanguage(text,null,lang)],summary:'Not permitted by voice.'});return true;}const action=matchAction(text,context);if(!action)return false;wake.suspend();setHeard('');setHeardLatin('');actionReplyLanguage.current=options.language||lang;await actionFlow.current.run(action,{page:context?.route,originalText:text,lang:actionReplyLanguage.current,context});return true;}
   const recordHeard=text=>{if(isCurrent()){setHeard(wakeTurn.current?.heard||text);setHeardLatin('');}};
   const callbacks=sharedContext?scopeVoiceCallbacks({say,navigate,setPhraseSource,tourControl:tour.control,tourActive:tour.isActive},isCurrent):{say,navigate,setPhraseSource};
   const dashboardBriefingLifecycle={

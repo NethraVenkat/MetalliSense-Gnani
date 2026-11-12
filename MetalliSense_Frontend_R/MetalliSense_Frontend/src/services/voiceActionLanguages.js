@@ -254,7 +254,7 @@ export const nativeActions={
   }
 };
 export function nativeActionText(text,definitions){
- const normalized=String(text||'').normalize('NFKC').replace(/(?<!\d)\.|\.(?!\d)|[!?]/g,'').replace(/,(?!\d)/g,' ').replace(/\s+/g,' ').trim();
+ const normalized=String(text||'').normalize('NFKC').replace(/(?<!\d)\.|\.(?!\d)|[!?।]/g,'').replace(/,(?!\d)/g,' ').replace(/\s+/g,' ').trim();
  if(definitions.some(d=>d.id==='gate_check')&&/^gate check(?:\s+h[\s-]*\d+)?$/iu.test(normalized))return 'run '+normalized;
  if(definitions.some(d=>d.id==='receive_lot')&&/^received\s+(?:the\s+)?truck$/iu.test(normalized))return 'receive truck';
  for(const d of definitions){const entry=nativeActions[d.id];if(!entry)continue;
@@ -285,6 +285,15 @@ Object.assign(nativeActions,{"receive_lot": {"canonical": "receive truck", "ta":
 
 export const runConfirmationPrompt={en:'Say yes or no.',ta:'ஆமா இல்லன்னா இல்லை சொல்லுங்க.',hi:'हाँ या नहीं बोलिए।'};
 export const approvalPrompt={en:'Say your passcode.',ta:'உங்கள் அனுமதி குறியீட்டை சொல்லுங்க.',hi:'अपना पासकोड बोलिए।'};
+// Explicit Hindi/Hinglish command phrases; same definitions, targets and roles.
+// No fuzzy action verbs and no correction of a provider's numeric ID.
+for(const [id,phrases] of Object.entries({
+ request_reading:['reading लो','reading ले लो','reading lo','reading le lo','reading lijiye','रीडिंग लीजिए'],
+ gate_check:['gate check करो','gate check कीजिए','gate check karo','gate check kijiye','गेट चेक कीजिए','gate जाँच करो'],
+ start_melting:['melting शुरू करो','melting start करो','melting shuru karo','melting start karo','पिघलाना शुरू करो'],
+ approve_pr:['PR approve करो','PR approve karo','PR approve kijiye','चुना हुआ PR अप्रूव करो','selected PR approve karo'],
+ receive_lot:['truck receive करो','truck receive karo','receive truck karo','ट्रक रिसीव करो','ट्रक प्राप्त करो','lot receive karo'],
+}))nativeActions[id].hi.push(...phrases);
 Object.assign(nativeActions,{
  opc_connect:{canonical:'connect spectrometer',en:['connect OPC'],ta:['ஸ்பெக்ட்ரோமீட்டர் இணை','OPC இணை'],tanglish:['spectrometer connect pannu'],hi:['स्पेक्ट्रोमीटर कनेक्ट करो','OPC कनेक्ट करो']},
  opc_disconnect:{canonical:'disconnect spectrometer',en:['disconnect','disconnect OPC'],ta:['ஸ்பெக்ட்ரோமீட்டர் இணைப்பை துண்டி','OPC துண்டி'],tanglish:['spectrometer disconnect pannu'],hi:['स्पेक्ट्रोमीटर डिस्कनेक्ट करो','OPC डिस्कनेक्ट करो']},

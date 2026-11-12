@@ -1,5 +1,5 @@
 import { normalizeSpokenNumbers } from './spokenNumbers.js';
-import {pageVoiceIntent,voiceEverywhereEnabled} from './voicePages.js';
+import {pageVoiceIntent,strictPageNavigation,voiceEverywhereEnabled} from './voicePages.js';
 import {tourCommand} from './voiceTour.js';
 const tamilWords = {
   'எப்படி இருக்கு': 'epdi irukku', 'எவ்வளவு': 'evvalavu', 'என்ன': 'enna',
@@ -29,7 +29,7 @@ function normalizeIntentTranscript(transcript) {
 // Mn spellings observed in cached Prisma en-IN transcripts of the benchmark phrases.
 const elements = { C: ['carbon', 'c', 'கார்பன்'], Si: ['silicon', 'si', 'சிலிக்கான்'], Mn: ['manganese', 'mn', 'மாங்கனீசு', 'magnus', 'magnes', 'magnis'], P: ['phosphorus', 'p'], S: ['sulphur', 'sulfur', 's'] };
 const has = (text, word) => text.split(/[^\p{L}\p{M}\p{N}]+/u).includes(word);
-export const heatStatusQuestion=text=>/\b(?:status|gate status|is (?:it|the heat) on hold)\b|நிலை|ஸ்டேட்டஸ்|स्थिति|स्टेटस/iu.test(text);
+export const heatStatusQuestion=text=>/\b(?:status|sthiti|haal|gate status|is (?:it|the heat) on hold)\b|நிலை|ஸ்டேட்டஸ்|स्थिति|स्टेटस/iu.test(text);
 const symbolToken=(text,symbol)=>new RegExp('(?<![\\p{L}\\p{M}\\p{N}\u0027\u2019])'+symbol+'(?![\\p{L}\\p{M}\\p{N}\u0027\u2019])','iu').test(text);
 export const voicePageDataReadsEnabled = () => import.meta.env?.VITE_VOICE_DATA_READS === 'true';
 export const voiceDashboardBriefingEnabled = () => import.meta.env?.VITE_VOICE_DASHBOARD_BRIEFING === 'true';
@@ -70,7 +70,7 @@ function pageDataQuestion(raw, normalized, selected = {}) {
   return null;
 }
 const hasBridgeAction = text => /\b(?:approv\w*|ap+ro+v\w*|apruv\w*|melting|milting|smelting|meltin|melton)\b|\b(?:start|shuru|suru|override|over\s+ride|release|deduct)\s*(?:karo|kro|kar|करो)?\b|(?:\bstock|स्टॉक)\s+(?:kam\b|kum\b|कम)|अप्रूव|एप्रूव|मंजूर|अनुमोदन|मेल्टिंग|मैल्टिंग|पिघला|शुरू|स्टार्ट|ओवरराइड|रिलीज|कन्फर्म/u.test(text);
-export function mapIntent(transcript, { langBridge = false, shiftSummary = import.meta.env?.VITE_SHIFT_SUMMARY === 'true', everywhere = voiceEverywhereEnabled(), pageDataReads = voicePageDataReadsEnabled(), dashboardBriefing = voiceDashboardBriefingEnabled(), selected = {} } = {}) {
+export function mapIntent(transcript, { langBridge = false, shiftSummary = import.meta.env?.VITE_SHIFT_SUMMARY === 'true', everywhere = voiceEverywhereEnabled(), pageDataReads = voicePageDataReadsEnabled(), dashboardBriefing = voiceDashboardBriefingEnabled(), selected = {}, currentRoute } = {}) {
   let text = normalizeIntentTranscript(transcript);
   const tourAction=tourCommand(transcript);
   const params = {};
@@ -92,6 +92,7 @@ export function mapIntent(transcript, { langBridge = false, shiftSummary = impor
   // Only an exact, flag-gated tour start is exempt from the existing broad
   // Hindi "start" action predicate. Dispatch still follows both safety checks.
   if(tourAction)return {intent:'tour_control',params:{action:tourAction}};
+  if(everywhere){const navigation=strictPageNavigation(transcript,{currentRoute});if(navigation)return navigation;}
   if(everywhere && dashboardBriefing && isDashboardBriefingRequest(transcript)) return {intent:'dashboard_briefing',params:{}};
   if(everywhere && pageDataReads) {
     const dataQuestion=pageDataQuestion(transcript,text,selected);

@@ -1,3 +1,4 @@
+import {autoReplyLanguage,autoReplyLanguageEnabled} from './autoReplyLanguage';
 import {spokenOnly} from './voiceWording';
 import {matchPageControl} from './voicePageControls';
 import {voiceDiagnostics} from './voiceDiagnostics';
@@ -13,7 +14,7 @@ import { sendChatMessage, phraseGateFacts } from './copilotService';
 import { gatePhraseFacts } from './gatePhraseFacts';
 import { mapIntent } from './voiceIntents';
 import { heatVoiceAnswer, spokenGateReasonAnswer } from './voiceGateAnswers';
-import { pickReplyLanguage, blockedVoiceReplies, questionReplyLanguage, hindiNotUnderstood, retryVoiceAnswer } from './languageBridge';
+import { pickReplyLanguage, blockedVoiceReplies, questionReplyLanguage as legacyQuestionReplyLanguage, hindiNotUnderstood, retryVoiceAnswer } from './languageBridge';
 import { hindiHeatAnswer } from './hindiVoice';
 import { voiceClarityEnabled, clarityReply } from './voiceClarity';
 import { buildShiftSummary, spokenShiftSummary, isSummaryActive } from './shiftSummary';
@@ -35,6 +36,7 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: spea
     // Recording/STT can outlive many streaming refreshes. Resolve the loaded
     // snapshot when the transcript arrives, retaining the caller's scope guards.
     const pageContext = getPageContext ? getPageContext() : initialPageContext;
+    const questionReplyLanguage=(value,detected,current)=>autoReplyLanguageEnabled()?autoReplyLanguage(value,detected,current,true):legacyQuestionReplyLanguage(value,detected,current);
     let reportedIntent='unmatched',actionHandled=false,reasonOverride=null,reportedLevel='ASK';
     const reportIntent=value=>{reportedIntent=value;metadata.onIntent?.(value);};
     const output=(...args)=>{
@@ -45,7 +47,8 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: spea
     };
     const started = performance.now();
     const dashboardRequestId=dashboardBriefingLifecycle.begin();
-    const lang = loadedPageAnswersEnabled()?questionReplyLanguage(text,metadata.detected_language_code,currentLang):pickReplyLanguage(text, metadata.detected_language_code, currentLang, langBridge);
+    const lang = autoReplyLanguageEnabled()?autoReplyLanguage(text,metadata.detected_language_code,currentLang,true):loadedPageAnswersEnabled()?questionReplyLanguage(text,metadata.detected_language_code,currentLang):pickReplyLanguage(text, metadata.detected_language_code, currentLang, langBridge);
+    const dispatchAction=()=>autoReplyLanguageEnabled()?actionControl(text,pageContext,{language:lang}):actionControl(text,pageContext);
     const choose = (ta, en) => lang === 'ta' ? ta : en;
     let clarityHeat = null;
     const say = (...args) => {
@@ -56,7 +59,7 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: spea
     };
     setHeard(text);
     setPhraseSource(null);
-    const { intent, params } = mapIntent(text, { langBridge, selected:pageContext?.selected||{} });
+    const { intent, params } = mapIntent(text, { langBridge, selected:pageContext?.selected||{}, currentRoute:pageContext?.route });
     reportIntent(intent==='ask_copilot'?'no match':intent);
     if(tourActive()&&tourVoiceCommandsEnabled()){
       // Existing global safety stays first; no spoken acknowledgement or data read.
@@ -67,9 +70,9 @@ export function createTranscriptHandler({ lang: currentLang, setHeard, say: spea
     }
     if(voiceActionsEnabled()&&!tourActive()){
       const registered=registeredVoiceAction(text,pageContext?.route);
-      if(registered&&actionControl&&await actionControl(text,pageContext))return;
+      if(registered&&actionControl&&await dispatchAction())return;
       if(neverByVoice(text,pageContext?.route)){const replyLang=questionReplyLanguage(text,metadata.detected_language_code,currentLang);await actionControl?.(text,pageContext,{refused:true});actionHandled=Boolean(actionControl);return output(screenOnly[replyLang],screenOnly[replyLang],replyLang);}
-      if(!registered&&actionControl&&await actionControl(text,pageContext))return;
+      if(!registered&&actionControl&&await dispatchAction())return;
       const elsewhere=registered||registeredVoiceAction(text);
       if(elsewhere&&(registered||elsewhere.phrase.includes(' '))){
         reasonOverride='no_target';reportedLevel=elsewhere.level;reportIntent(elsewhere.id);
